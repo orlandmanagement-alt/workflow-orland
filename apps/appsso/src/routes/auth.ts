@@ -2,14 +2,26 @@ import { Hono } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { hashData, verifyTurnstile, sendMail } from '../utils'
 
-type Bindings = { DB_SSO: D1Database; TURNSTILE_SECRET: string; RESEND_API_KEY?: string }
+// ==========================================
+// 1. PERBAIKAN BINDINGS (Sesuai wrangler.toml & Secrets)
+// ==========================================
+type Bindings = { 
+  DB_SSO: D1Database; 
+  TURNSTILE_SECRET: string; 
+  RESEND_API_KEY: string; // Sekarang bersifat wajib, bukan opsional (?)
+  SMTP_PASS: string; // Jika kamu menggunakan SMTP
+  TALENT_URL: string; // Untuk dinamisasi getPortalUrl
+  CLIENT_URL: string;
+}
 const auth = new Hono<{ Bindings: Bindings }>()
 
 const SESSION_EXPIRY = 259200
 const COOKIE_OPTS = { domain: '.orlandmanagement.com', path: '/', httpOnly: true, secure: true, sameSite: 'None' as const }
-const getPortalUrl = (role: string) => role === 'client' ? 'https://client.orlandmanagement.com' : 'https://talent.orlandmanagement.com'
 
-// Helper Function
+// Gunakan variabel URL dari environment jika memungkinkan
+const getPortalUrl = (env: Bindings, role: string) => 
+  role === 'client' ? env.CLIENT_URL || 'https://client.orlandmanagement.com' : env.TALENT_URL || 'https://talent.orlandmanagement.com'
+
 const getNow = () => Math.floor(Date.now() / 1000)
 
 // 1. ME & LOGOUT
@@ -50,6 +62,8 @@ auth.post('/register', async (c) => {
   
   const tokenUUID = crypto.randomUUID().replace(/-/g, '')
   await c.env.DB_SSO.prepare("INSERT INTO otp_requests (id, identifier, code, purpose, expires_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), cleanEmail, tokenUUID, 'activation', now + 86400).run()
+  
+  // Perbaikan pemanggilan sendMail (memastikan c.env dilempar dengan benar)
   await sendMail(c.env, cleanEmail, tokenUUID, 'activation')
   
   return c.json({ status: "ok", message: "Registrasi Sukses! Cek Email." })
@@ -69,7 +83,7 @@ auth.post('/verify-activation', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", role: user.role, redirect_url: getPortalUrl(user.role) })
+  return c.json({ status: "ok", role: user.role, redirect_url: getPortalUrl(c.env, user.role) })
 })
 
 // 4. LOGIN PASSWORD
@@ -112,7 +126,7 @@ auth.post('/login-password', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(user.role) })
+  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user.role) })
 })
 
 // 5. REQUEST OTP UMUM
@@ -156,7 +170,7 @@ async function handleOtpVerify(c: any, actionType: string) {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(user.role) })
+  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user.role) })
 }
 
 // 7. CHECK PIN & LOGIN PIN
@@ -181,7 +195,7 @@ auth.post('/login-pin', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(user.role) })
+  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user.role) })
 })
 
 // 8. FORGOT PASSWORD
@@ -229,7 +243,7 @@ auth.post('/google-login', async (c) => {
       const sid = crypto.randomUUID()
       await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
       setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-      return c.json({ status: "ok", is_new: false, redirect_url: getPortalUrl(user.role) })
+      return c.json({ status: "ok", is_new: false, redirect_url: getPortalUrl(c.env, user.role) })
     } else {
       return c.json({ status: "ok", is_new: true, email, name, social_id: googleId })
     }
@@ -251,7 +265,7 @@ auth.post('/social-complete', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, userId, body.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(body.role) })
+  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, body.role) })
 })
 
 export default auth

@@ -1,10 +1,45 @@
-name = "orland-appapi"
+name = "orland-api"
 main = "src/index.ts"
 compatibility_date = "2024-03-26"
+
+# --- BINDING DATABASES ---
+[[d1_databases]]
+binding = "DB_SSO"
+database_name = "sso_database"
+database_id = "6ebafba7-dafb-4e46-a4fe-b73e20ef7e4e"
+
 [[d1_databases]]
 binding = "DB_CORE"
 database_name = "orland_core"
-database_id = "INSERT_DB_CORE_ID"
+database_id = "ISI_DENGAN_ID_DB_CORE"
+
+[[d1_databases]]
+binding = "DB_LOGS"
+database_name = "orland_logs"
+database_id = "ISI_DENGAN_ID_DB_LOGS"
+
+[[d1_databases]]
+binding = "DB_ARCHIVE"
+database_name = "orland_archive"
+database_id = "ISI_DENGAN_ID_DB_ARCHIVE"
+
+# --- BINDING CACHE & STORAGE ---
 [[kv_namespaces]]
-binding = "CACHE_KV"
-id = "INSERT_KV_ID"
+binding = "ORLAND_CACHE"
+id = "ISI_DENGAN_ID_KV_NAMESPACE"
+
+[[r2_buckets]]
+binding = "R2_MEDIA"
+bucket_name = "orland-media"
+
+# --- PUBLIC VARIABLES ---
+[vars]
+APP_ENV = "production"
+TALENT_URL = "https://talent.orlandmanagement.com"
+CLIENT_URL = "https://client.orlandmanagement.com"
+CF_ACCOUNT_ID = "ISI_DENGAN_CLOUDFLARE_ACCOUNT_ID"
+
+# --- BACKGROUND JOBS (CRON) ---
+# Berjalan otomatis setiap hari Minggu jam 02:00 Pagi UTC untuk eksekusi pemindahan data DB_ARCHIVE
+[triggers]
+crons = ["0 2 * * 0"]

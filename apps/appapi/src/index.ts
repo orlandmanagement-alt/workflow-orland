@@ -1,101 +1,96 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 
-// 1. Deklarasi Bindings (Environment/Database)
-type Bindings = {
-  DB_CORE: D1Database
-  CACHE_KV: KVNamespace
-  JWT_SECRET: string
-}
+import talentRouter from './functions/talents/talentHandler'
+import experienceRouter from './functions/talents/experienceHandler'
+import certificationRouter from './functions/talents/certificationHandler'
+import bankAccountRouter from './functions/talents/bankAccountHandler'
+import rateCardRouter from './functions/talents/rateCardHandler'
+import internalNoteRouter from './functions/talents/internalNoteHandler'
+import clientRouter from './functions/clients/clientHandler'
+import projectRouter from './functions/projects/projectHandler'
+import evaluationRouter from './functions/projects/evaluationHandler'
+import bookingRouter from './functions/bookings/bookingHandler'
+import scheduleRouter from './functions/schedules/scheduleHandler'
+import mediaRouter from './functions/media/mediaHandler'
+import notificationRouter from './functions/notifications/notificationHandler'
+import broadcastRouter from './functions/notifications/broadcastHandler'
+import messageRouter from './functions/messages/messageHandler'
+import financialRouter from './functions/financials/financialHandler'
+import kycRouter from './functions/kyc/kycHandler'
+import kybRouter from './functions/kyb/kybHandler'
+import masterDataRouter from './functions/master/masterDataHandler'
+import searchRouter from './functions/search/searchHandler'
+import aiSearchRouter from './functions/ai/aiSearchHandler'
+import kolToolsRouter from './functions/tools/kolToolsHandler'
+import woEoToolsRouter from './functions/tools/woEoToolsHandler'
+import liveBoardRouter from './functions/castings/liveBoardHandler'
+import systemRoleRouter from './functions/system/systemRoleHandler'
+import disputeRouter from './functions/system/disputeHandler'
 
-// 2. Deklarasi Variables (Data yang dilempar antar middleware)
-type Variables = {
-  userId: string
-  userRole: string
-}
+// --- NEW MODULES ADDED ---
+import dashboardRouter from './functions/stats/dashboardHandler'
+import webhookRouter from './functions/webhooks/webhookHandler'
+import commsRouter from './functions/comms/commsHandler'
+import systemToolsRouter from './functions/system/systemToolsHandler'
+import miscToolsRouter from './functions/tools/miscToolsHandler'
+
+export type Bindings = { DB_CORE: D1Database; DB_LOGS: D1Database; DB_SSO: D1Database; ORLAND_CACHE: KVNamespace; R2_MEDIA: R2Bucket; JWT_SECRET: string; TALENT_URL: string; CLIENT_URL: string; CF_ACCOUNT_ID: string; R2_ACCESS_KEY_ID: string; R2_SECRET_ACCESS_KEY: string }
+export type Variables = { userId: string; userRole: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// Endpoint Publik (Tidak perlu login, misal untuk health check)
-app.get('/', (c) => c.json({ service: 'API Core', status: 'online' }))
-app.get('/health', (c) => c.json({ db: 'connected', kv: 'ready' }))
+app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] }))
 
-// ==========================================
-// 3. MIDDLEWARE OTENTIKASI JWT
-// ==========================================
-// Middleware ini akan melindungi semua rute yang berawalan /api/*
-app.use('/api/*', async (c, next) => {
+app.use('/api/v1/*', async (c, next) => {
+  if (c.req.path.startsWith('/api/v1/verify/') || c.req.path.startsWith('/api/v1/public/')) return next()
   const authHeader = c.req.header('Authorization')
-  
-  // Cek apakah header Authorization ada dan berformat "Bearer <token>"
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ 
-      success: false, 
-      error: 'Akses ditolak. Token tidak ditemukan (Unauthorized).' 
-    }, 401)
-  }
-
-  const token = authHeader.split(' ')[1]
-
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return c.json({ status: "error", message: "Unauthorized" }, 401)
   try {
-    // Verifikasi token menggunakan secret yang sama dengan appsso
-    const payload = await verify(token, c.env.JWT_SECRET)
-    
-    // Simpan data dari token ke dalam Context Hono (Aman & Type-Safe)
-    c.set('userId', payload.sub as string)
-    c.set('userRole', payload.role as string)
-    
-    // Lanjut ke endpoint tujuan
+    const payload = await verify(authHeader.split(' ')[1], c.env.JWT_SECRET)
+    c.set('userId', payload.sub as string); c.set('userRole', payload.role as string)
     await next()
-  } catch (err) {
-    // Jika token kadaluarsa atau dimanipulasi
-    return c.json({ 
-      success: false, 
-      error: 'Token tidak valid atau sudah kadaluarsa.' 
-    }, 401)
-  }
+  } catch (err) { return c.json({ status: "error", message: "Invalid Token" }, 401) }
 })
 
-// ==========================================
-// 4. PROTECTED ENDPOINTS (Butuh Login)
-// ==========================================
+app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 30 }))
 
-// Endpoint profil (Bisa diakses talent maupun client)
-app.get('/api/profile/me', async (c) => {
-  // Mengambil data yang disuntikkan oleh middleware tadi
-  const userId = c.get('userId')
-  const userRole = c.get('userRole')
+// REGISTRASI SEMUA ROUTER
+app.route('/api/v1/talents', talentRouter)
+app.route('/api/v1/talents', experienceRouter)
+app.route('/api/v1/talents', certificationRouter)
+app.route('/api/v1/talents', bankAccountRouter)
+app.route('/api/v1/talents', rateCardRouter)
+app.route('/api/v1/talents', internalNoteRouter)
+app.route('/api/v1/clients', clientRouter)
+app.route('/api/v1/projects', projectRouter)
+app.route('/api/v1/projects', evaluationRouter)
+app.route('/api/v1', bookingRouter)
+app.route('/api/v1', scheduleRouter)
+app.route('/api/v1/media', mediaRouter)
+app.route('/api/v1/notifications', notificationRouter)
+app.route('/api/v1/system/broadcast', broadcastRouter)
+app.route('/api/v1/messages', messageRouter)
+app.route('/api/v1/financials', financialRouter)
+app.route('/api/v1', financialRouter)
+app.route('/api/v1/kyc', kycRouter)
+app.route('/api/v1/kyb', kybRouter)
+app.route('/api/v1/master', masterDataRouter)
+app.route('/api/v1/search', searchRouter)
+app.route('/api/v1/ai', aiSearchRouter)
+app.route('/api/v1/tools/kol', kolToolsRouter)
+app.route('/api/v1/tools/events', woEoToolsRouter)
+app.route('/api/v1', liveBoardRouter)
+app.route('/api/v1/system', systemRoleRouter)
+app.route('/api/v1/disputes', disputeRouter)
 
-  // TODO: Query ke DB_CORE berdasarkan userId untuk ambil profil lengkap
-  // const profile = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE user_id = ?').bind(userId).first()
-
-  return c.json({
-    success: true,
-    message: "Data profil berhasil diambil",
-    source: "MOCK_DATA",
-    data: {
-      userId,
-      role: userRole,
-      status: "Verified"
-    }
-  })
-})
-
-// Endpoint khusus Admin (Contoh Role-Based Access Control / RBAC)
-app.get('/api/admin/dashboard', async (c) => {
-  const userRole = c.get('userRole')
-
-  if (userRole !== 'admin') {
-    return c.json({ 
-      success: false, 
-      error: 'Akses ditolak. Endpoint ini hanya untuk Admin.' 
-    }, 403) // 403 Forbidden
-  }
-
-  return c.json({
-    success: true,
-    data: { activeProjects: 12, newTalents: 5 }
-  })
-})
+// --- REGISTRASI ROUTER BARU ---
+app.route('/api/v1/stats', dashboardRouter)
+app.route('/api/v1/webhooks', webhookRouter)
+app.route('/api/v1/tools/comms', commsRouter)
+app.route('/api/v1/system', systemToolsRouter)
+app.route('/api/v1/tools', miscToolsRouter)
+app.route('/api/v1', miscToolsRouter) // Untuk endpoint projects/... di miscTools
 
 export default app

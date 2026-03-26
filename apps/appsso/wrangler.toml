@@ -2,7 +2,6 @@ name = "workflow-orland"
 main = "src/index.ts"
 compatibility_date = "2024-03-26"
 
-# Cloudflare Assets akan otomatis menyajikan folder public/ (UI Kamu)
 assets = { directory = "./public" }
 
 [[d1_databases]]
@@ -11,4 +10,25 @@ database_name = "sso_database"
 database_id = "6ebafba7-dafb-4e46-a4fe-b73e20ef7e4e"
 
 [vars]
+# === KONFIGURASI APLIKASI ===
+APP_ENV = "production"
+COOKIE_DOMAIN = ".orlandmanagement.com"
+SESSION_TTL_MIN = "720"
+PBKDF2_ITER = "100000"
+
+# === DAFTAR URL ===
+SSO_URL = "https://sso.orlandmanagement.com"
+TALENT_URL = "https://talent.orlandmanagement.com"
+CLIENT_URL = "https://client.orlandmanagement.com"
+DASHBOARD_URL = "https://dashboard.orlandmanagement.com"
+API_URL = "https://api.orlandmanagement.com"
+
+# === PUBLIC KEYS & IDENTIFIERS ===
 TURNSTILE_SECRET = "0x4AAAAAACs8dTjOU5UcntgtIKPw4lJznNg"
+GOOGLE_CLIENT_ID = "ISI_DENGAN_GOOGLE_CLIENT_ID_KAMU"
+FB_CLIENT_ID = "ISI_DENGAN_FB_CLIENT_ID_KAMU"
+
+# === KONFIGURASI SMTP (Publik) ===
+SMTP_HOST = "smtp.resend.com"
+SMTP_PORT = "465"
+SMTP_USER = "resend"

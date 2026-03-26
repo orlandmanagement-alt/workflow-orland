@@ -1,12 +1,19 @@
 {
-  "name": "appsso",
+  "name": "orland-appsso",
+  "version": "1.0.0",
   "scripts": {
     "dev": "wrangler dev",
+    "build": "echo 'No build required for Hono raw TS'",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@hono/zod-validator": "latest",
     "hono": "latest",
-    "zod": "latest",
-    "@hono/zod-validator": "latest"
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240320.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.0.0"
   }
 }

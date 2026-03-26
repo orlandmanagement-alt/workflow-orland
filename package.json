@@ -1,0 +1,22 @@
+{
+  "name": "orland-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,10 @@
+name = "orland-appapi"
+main = "src/index.ts"
+compatibility_date = "2024-03-26"
+[[d1_databases]]
+binding = "DB_CORE"
+database_name = "orland_core"
+database_id = "INSERT_DB_CORE_ID"
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "INSERT_KV_ID"

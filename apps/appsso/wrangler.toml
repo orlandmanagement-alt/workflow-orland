@@ -1,0 +1,14 @@
+name = "orland-appsso"
+main = "src/index.ts"
+compatibility_date = "2024-03-26"
+
+# Cloudflare Assets akan otomatis menyajikan folder public/ (UI Kamu)
+assets = { directory = "./public" }
+
+[[d1_databases]]
+binding = "DB_SSO"
+database_name = "orland_sso"
+database_id = "INSERT_DB_SSO_ID"
+
+[vars]
+TURNSTILE_SECRET = "0x4AAAAAACs8dTjOU5UcntgtIKPw4lJznNg"

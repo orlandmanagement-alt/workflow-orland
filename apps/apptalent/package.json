@@ -1,0 +1,1 @@
+{"name":"apptalent","scripts":{"dev":"wrangler dev","deploy":"wrangler deploy"},"dependencies":{"hono":"latest"}}

@@ -1,0 +1,1 @@
+{"name":"appapi","scripts":{"dev":"wrangler dev","deploy":"wrangler deploy"},"dependencies":{"hono":"latest"}}

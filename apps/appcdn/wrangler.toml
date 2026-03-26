@@ -1,0 +1,6 @@
+name = "orland-appcdn"
+main = "src/index.ts"
+compatibility_date = "2024-03-26"
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "orland-media"

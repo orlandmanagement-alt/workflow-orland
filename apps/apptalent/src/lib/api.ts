@@ -1,26 +1,25 @@
-import { useAuthStore } from '../store/useAppStore'
+import { useAuthStore } from '@/store/useAppStore';
 
-const BASE_URL = 'https://api.orlandmanagement.com/api/v1'
+const BASE_URL = 'https://api.orlandmanagement.com/v1';
 
-export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-  const token = useAuthStore.getState().token;
+export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const { token } = useAuthStore.getState();
+  
+  // Jika mengirim FormData (File Upload), browser akan otomatis mengatur Content-Type dengan boundary.
+  const isFormData = options.body instanceof FormData;
   
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
   const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
-  
-  if (response.status === 401) {
-    useAuthStore.getState().logout();
-    window.location.href = '/login';
-    throw new Error('Sesi telah berakhir. Silakan login kembali.');
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP Error: ${response.status}`);
   }
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'Terjadi kesalahan pada server');
-  
-  return data;
+  return response.json();
 }

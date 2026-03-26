@@ -1,12 +1,12 @@
 import { WifiOff } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { Outlet, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuthStore, useThemeStore } from '../../store/useAppStore';
+import { useAuthStore, useThemeStore } from '@/store/useAppStore';
 // FIX: Menambahkan Bell ke dalam import Lucide React!
 import { Menu, X, Moon, Sun, LogOut, Bell } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { MENU_ITEMS } from '../../config/menuConfig';
+import { MENU_ITEMS } from '@/config/menuConfig';
 
 export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 

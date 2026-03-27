@@ -158,7 +158,7 @@ window.requestPinOtp = async function() {
 window.loginWithPin = async function() {
     const id = document.getElementById('pin-login-identifier').value, pin = document.getElementById('pin-code').value; window.showToast("Verifikasi PIN...", "info");
     const res = await sendApi('login-pin', { identifier: id, pin: pin });
-    if(res.status === 'ok') { window.showToast("Login Sukses!", "success"); setTimeout(() => window.location.href = res.redirect_url, 1000); } else window.showToast(res.message, "error");
+    if(res.status === 'ok') { window.showToast("Login Sukses!", "success"); setTimeout(() => window.executeFinalRedirect(res), 1000); } else window.showToast(res.message, "error");
 }
 
 window.submitOtp = async function() {
@@ -168,7 +168,7 @@ window.submitOtp = async function() {
     if (purp === 'setup-pin') payload.new_pin = document.getElementById('new-pin-setup')?.value;
     window.showToast("Memverifikasi...", "info");
     const res = await sendApi(endpoint, payload);
-    if(res.status === 'ok') { clearInterval(otpInterval); window.showToast("Akses Diberikan!", "success"); setTimeout(() => window.location.href = res.redirect_url, 1000); } else window.showToast(res.message, "error");
+    if(res.status === 'ok') { clearInterval(otpInterval); window.showToast("Akses Diberikan!", "success"); setTimeout(() => window.executeFinalRedirect(res), 1000); } else window.showToast(res.message, "error");
 }
 
 window.resendOtp = async function() {
@@ -182,7 +182,7 @@ window.handleRegularLogin = async function() {
     window.showToast("Memverifikasi...", "info");
     const res = await sendApi('login-password', { identifier: document.getElementById('login-id').value, password: document.getElementById('login-pass').value, turnstile_token: ts });
     window.resetTurnstile();
-    if(res.status === 'ok') { window.showToast("Login Berhasil!", "success"); setTimeout(() => window.location.href = res.redirect_url, 1000); } else window.showToast(res.message, "error");
+    if(res.status === 'ok') { window.showToast("Login Berhasil!", "success"); setTimeout(() => window.executeFinalRedirect(res), 1000); } else window.showToast(res.message, "error");
 }
 
 window.handleGoogleLogin = async function(response) {
@@ -196,7 +196,7 @@ window.handleGoogleLogin = async function(response) {
             document.getElementById('blue-panel')?.classList.add('opacity-0', 'pointer-events-none'); 
             window.showView('view-social-role'); 
         } 
-        else { window.showToast("Login Berhasil! Mengalihkan...", "success"); setTimeout(() => window.location.href = res.redirect_url, 1000); }
+        else { window.showToast("Login Berhasil! Mengalihkan...", "success"); setTimeout(() => window.executeFinalRedirect(res), 1000); }
     } else window.showToast(res.message, "error");
 }
 
@@ -215,7 +215,7 @@ const payload = {
 
     window.showToast("Menyiapkan Ruang Kerja...", "info");
     const res = await sendApi('social-complete', payload);
-    if(res.status === 'ok') { window.showToast("Sukses! Membuka Portal...", "success"); setTimeout(() => window.location.href = res.redirect_url, 1000); } else window.showToast(res.message, "error");
+    if(res.status === 'ok') { window.showToast("Sukses! Membuka Portal...", "success"); setTimeout(() => window.executeFinalRedirect(res), 1000); } else window.showToast(res.message, "error");
 }
 
 document.addEventListener('DOMContentLoaded', async () => { 

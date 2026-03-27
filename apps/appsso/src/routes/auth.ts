@@ -40,7 +40,7 @@ auth.get('/me', async (c) => {
   if (!session) return c.json({ status: "error", message: "Sesi kadaluarsa" }, 401)
   const user = await c.env.DB_SSO.prepare("SELECT id, full_name, email, role, status FROM users WHERE id=?").bind(session.user_id).first<any>()
   if (!user || user.status === 'deleted') return c.json({ status: "error", message: "Akun tidak ditemukan" }, 404)
-  return c.json({ status: "ok", user, redirect_url: getRedirectUrl(c.env, user.role, sid) })
+  return c.json({ status: "ok", user, token: sid, redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
 auth.post('/logout', async (c) => {
@@ -91,7 +91,7 @@ auth.post('/verify-activation', async (c) => {
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
   
   // UPGRADE: Menyisipkan sid ke URL callback
-  return c.json({ status: "ok", role: user.role, redirect_url: getRedirectUrl(c.env, user.role, sid) })
+  return c.json({ status: "ok", role: user.role, token: sid, redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
 // --- LOGIN PASSWORD ---
@@ -136,7 +136,7 @@ auth.post('/login-password', async (c) => {
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
   
   // UPGRADE: Menyisipkan sid ke URL callback
-  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, user.role, sid) })
+  return c.json({ status: "ok", token: sid, redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
 // --- REQUEST OTP UMUM ---
@@ -182,7 +182,7 @@ async function handleOtpVerify(c: any, actionType: string) {
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
   
   // UPGRADE: Menyisipkan sid ke URL callback
-  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, user.role, sid) })
+  return c.json({ status: "ok", token: sid, redirect_url: getRedirectUrl(c.env, user.role, sid) })
 }
 
 // --- CHECK PIN & LOGIN PIN ---
@@ -209,7 +209,7 @@ auth.post('/login-pin', async (c) => {
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
   
   // UPGRADE: Menyisipkan sid ke URL callback
-  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, user.role, sid) })
+  return c.json({ status: "ok", token: sid, redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
 // --- FORGOT PASSWORD ---
@@ -259,7 +259,7 @@ auth.post('/google-login', async (c) => {
       setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
       
       // UPGRADE: Menyisipkan sid ke URL callback
-      return c.json({ status: "ok", is_new: false, redirect_url: getRedirectUrl(c.env, user.role, sid) })
+      return c.json({ status: "ok", is_new: false, token: sid, redirect_url: getRedirectUrl(c.env, user.role, sid) })
     } else {
       return c.json({ status: "ok", is_new: true, email, name, social_id: googleId })
     }
@@ -283,7 +283,7 @@ auth.post('/social-complete', async (c) => {
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
   
   // UPGRADE: Menyisipkan sid ke URL callback
-  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, body.role, sid) })
+  return c.json({ status: "ok", token: sid, redirect_url: getRedirectUrl(c.env, body.role, sid) })
 })
 
 export default auth

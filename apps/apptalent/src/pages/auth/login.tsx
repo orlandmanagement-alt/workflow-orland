@@ -6,8 +6,8 @@ export default function Login() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
 
-  const ssoUrl = import.meta.env.VITE_SSO_URL || 'https://sso.orlandmanagement.com';
-  const talentUrl = import.meta.env.VITE_TALENT_URL || 'https://talent.orlandmanagement.com';
+  const ssoUrl = (import.meta as any).env.VITE_SSO_URL || 'https://sso.orlandmanagement.com';
+  const talentUrl = (import.meta as any).env.VITE_TALENT_URL || 'https://talent.orlandmanagement.com';
   const ssoLoginUrl = `${ssoUrl}/login?redirect_uri=${encodeURIComponent(talentUrl + '/auth/callback')}`;
 
   useEffect(() => {

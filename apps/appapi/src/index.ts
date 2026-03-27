@@ -1,6 +1,5 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verify } from 'hono/jwt'
 
 import talentRouter from './functions/talents/talentHandler'
 import experienceRouter from './functions/talents/experienceHandler'
@@ -28,8 +27,6 @@ import woEoToolsRouter from './functions/tools/woEoToolsHandler'
 import liveBoardRouter from './functions/castings/liveBoardHandler'
 import systemRoleRouter from './functions/system/systemRoleHandler'
 import disputeRouter from './functions/system/disputeHandler'
-
-// --- NEW MODULES ADDED ---
 import dashboardRouter from './functions/stats/dashboardHandler'
 import webhookRouter from './functions/webhooks/webhookHandler'
 import commsRouter from './functions/comms/commsHandler'
@@ -43,20 +40,31 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] }))
 
+// MIDDLEWARE AUTHENTICATION (Cek UUID Session di DB_SSO)
 app.use('/api/v1/*', async (c, next) => {
   if (c.req.path.startsWith('/api/v1/verify/') || c.req.path.startsWith('/api/v1/public/')) return next()
+  
   const authHeader = c.req.header('Authorization')
   if (!authHeader || !authHeader.startsWith('Bearer ')) return c.json({ status: "error", message: "Unauthorized" }, 401)
+  
   try {
-    const payload = await verify(authHeader.split(' ')[1], c.env.JWT_SECRET)
-    c.set('userId', payload.sub as string); c.set('userRole', payload.role as string)
+    const sid = authHeader.split(' ')[1]
+    const now = Math.floor(Date.now() / 1000)
+    
+    const session = await c.env.DB_SSO.prepare("SELECT * FROM sessions WHERE id=? AND expires_at > ?").bind(sid, now).first<any>()
+    if (!session) return c.json({ status: "error", message: "Session Invalid or Expired" }, 401)
+
+    c.set('userId', session.user_id)
+    c.set('userRole', session.role)
     await next()
-  } catch (err) { return c.json({ status: "error", message: "Invalid Token" }, 401) }
+  } catch (err) { 
+    return c.json({ status: "error", message: "Auth Error" }, 500) 
+  }
 })
 
 app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 30 }))
 
-// REGISTRASI SEMUA ROUTER
+// REGISTRASI SEMUA ROUTER (Tidak ada yang terhapus)
 app.route('/api/v1/talents', talentRouter)
 app.route('/api/v1/talents', experienceRouter)
 app.route('/api/v1/talents', certificationRouter)
@@ -84,13 +92,11 @@ app.route('/api/v1/tools/events', woEoToolsRouter)
 app.route('/api/v1', liveBoardRouter)
 app.route('/api/v1/system', systemRoleRouter)
 app.route('/api/v1/disputes', disputeRouter)
-
-// --- REGISTRASI ROUTER BARU ---
 app.route('/api/v1/stats', dashboardRouter)
 app.route('/api/v1/webhooks', webhookRouter)
 app.route('/api/v1/tools/comms', commsRouter)
 app.route('/api/v1/system', systemToolsRouter)
 app.route('/api/v1/tools', miscToolsRouter)
-app.route('/api/v1', miscToolsRouter) // Untuk endpoint projects/... di miscTools
+app.route('/api/v1', miscToolsRouter)
 
 export default app

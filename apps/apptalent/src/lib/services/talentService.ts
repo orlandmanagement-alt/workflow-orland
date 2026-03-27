@@ -2,15 +2,13 @@ import { api } from '../api';
 
 export const talentService = {
   getProfile: async () => {
-    const response = await api.get('/talent/profile');
-    return response.data;
+    // URL Baku sesuai router backend
+    const response = await api.get('/api/v1/talents/me');
+    return response.data.data;
   },
   updateProfile: async (data: any) => {
-    const response = await api.put('/talent/profile', data);
-    return response.data;
-  },
-  getStats: async () => {
-    const response = await api.get('/talent/stats');
-    return response.data;
+    // URL Baku sesuai router backend
+    const response = await api.put('/api/v1/talents/me', data);
+    return response.data.data;
   }
 };

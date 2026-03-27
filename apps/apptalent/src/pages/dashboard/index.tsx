@@ -1,54 +1,194 @@
-import { Briefcase, CalendarCheck, Wallet, ChevronRight, Loader2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useRef } from 'react';
+import Cropper from 'cropperjs';
+import 'cropperjs/dist/cropper.css';
 import { talentService } from '@/lib/services/talentService';
+import { api } from '@/lib/api';
 
-export default function DashboardHome() {
-  // API WIRING: Mengambil data asli dari server
-  const { data: profile, isLoading, isError } = useQuery({
-    queryKey: ['profile-me'],
-    queryFn: talentService.getProfile,
+const Dashboard = () => {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // State Data
+  const [formData, setFormData] = useState({
+    full_name: '', height: '', weight: '', birth_date: '',
+    category: 'Model', instagram: '', profile_picture: '',
+    experience: '', youtube_url: '', audio_url: ''
   });
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin text-brand-600" size={40} /></div>
-  );
+  // Cropper Refs
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [cropper, setCropper] = useState<Cropper | null>(null);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
-  // Jika error, ErrorBoundary di level Layout akan menangkapnya, 
-  // tapi kita juga bisa handle manual di sini jika ingin.
-  if (isError) throw new Error('Gagal mengambil data profil');
+  useEffect(() => {
+    const checkProfile = async () => {
+      try {
+        const data = await talentService.getProfile();
+        if (data && data.profile_picture) setProfile(data);
+      } catch (e) { console.log("Profil baru terdeteksi."); }
+      finally { setLoading(false); }
+    };
+    checkProfile();
+  }, []);
 
-  return (
-    <div className="space-y-10">
-      <div className="bg-white dark:bg-dark-card p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tighter">
-                  Halo, {profile?.full_name || 'Talent'}! 👋
-                </h2>
-                <p className="text-slate-600 dark:text-slate-400 mt-2 max-w-xl">Profil Anda {profile?.profile_completion || '0'}% lengkap. Selesaikan KYC untuk mendapatkan proyek eksklusif.</p>
+  // Handle Image Selection
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setPreviewSrc(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Init Cropper
+  useEffect(() => {
+    if (previewSrc && imageRef.current) {
+      if (cropper) cropper.destroy();
+      const newCropper = new Cropper(imageRef.current, {
+        aspectRatio: 3 / 4,
+        viewMode: 1,
+      });
+      setCropper(newCropper);
+    }
+  }, [previewSrc]);
+
+  // Upload to R2 via API
+  const handleUploadAndNext = async () => {
+    if (!cropper) return setStep(2);
+    setIsUploading(true);
+    
+    cropper.getCroppedCanvas({ width: 600, height: 800 }).toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], "profile.jpg", { type: "image/jpeg" });
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+
+      try {
+        // Endpoint API R2 Anda
+        const res = await api.post('/upload/profile', uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        setFormData({ ...formData, profile_picture: res.data.url });
+        setStep(2);
+      } catch (err) {
+        alert("Gagal upload foto ke R2.");
+      } finally {
+        setIsUploading(false);
+      }
+    }, 'image/jpeg', 0.8); // Kompresi 80%
+  };
+
+  const finalSubmit = async () => {
+    setLoading(true);
+    try {
+      await talentService.updateProfile(formData);
+      window.location.reload();
+    } catch (err) {
+      alert("Gagal menyimpan. Cek koneksi API.");
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="p-20 text-center">Sinkronisasi Data...</div>;
+
+  if (!profile) {
+    return (
+      <div className="max-w-xl mx-auto p-4 animate-in fade-in duration-500">
+        {/* Progress Bar */}
+        <div className="flex justify-between mb-8 px-2">
+          {[1, 2, 3, 4].map(s => (
+            <div key={s} className={`h-2 flex-1 mx-1 rounded-full ${step >= s ? 'bg-orange-500' : 'bg-gray-200'}`} />
+          ))}
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+          {/* STEP 1: FOTO UTAMA (Wajib) */}
+          {step === 1 && (
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-1">Foto Profil Utama</h2>
+              <p className="text-gray-400 text-sm mb-6">Gunakan foto terbaik (Close up/Full body)</p>
+              
+              {!previewSrc ? (
+                <label className="border-2 border-dashed border-gray-200 rounded-2xl h-64 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50">
+                  <span className="text-gray-400">Klik untuk pilih foto</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={onFileChange} />
+                </label>
+              ) : (
+                <div>
+                  <div className="max-h-80 overflow-hidden rounded-xl mb-4">
+                    <img ref={imageRef} src={previewSrc} alt="Preview" />
+                  </div>
+                  <button onClick={handleUploadAndNext} disabled={isUploading}
+                    className="w-full bg-black text-white py-4 rounded-2xl font-bold">
+                    {isUploading ? 'Mengompres & Upload...' : 'Lanjut ke Data Fisik'}
+                  </button>
+                  <button onClick={() => setPreviewSrc(null)} className="w-full text-gray-400 mt-2 text-sm">Ganti Foto</button>
+                </div>
+              )}
             </div>
-            <button className="flex items-center justify-center px-6 py-3.5 bg-brand-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all group shrink-0">
-                Lengkapi Profil Pro
-                <ChevronRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
-            </button>
+          )}
+
+          {/* STEP 2: BASIC PROFILE (Wajib) */}
+          {step === 2 && (
+            <div className="p-6 space-y-4">
+              <h2 className="text-xl font-bold">Informasi Fisik</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <input type="number" placeholder="Tinggi (cm)" className="p-4 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500"
+                  onChange={e => setFormData({...formData, height: e.target.value})} />
+                <input type="number" placeholder="Berat (kg)" className="p-4 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500"
+                  onChange={e => setFormData({...formData, weight: e.target.value})} />
+              </div>
+              <input type="date" placeholder="Tgl Lahir" className="w-full p-4 bg-gray-50 rounded-xl border-none"
+                onChange={e => setFormData({...formData, birth_date: e.target.value})} />
+              <select className="w-full p-4 bg-gray-50 rounded-xl border-none"
+                onChange={e => setFormData({...formData, category: e.target.value})}>
+                <option>Model</option><option>Actor</option><option>Influencer</option>
+              </select>
+              <button onClick={() => setStep(3)} className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold mt-4">Lanjut</button>
+            </div>
+          )}
+
+          {/* STEP 3: EXPERIENCE & SOCMED (Opsional) */}
+          {step === 3 && (
+            <div className="p-6 space-y-4">
+              <h2 className="text-xl font-bold">Sosial Media & Pengalaman</h2>
+              <input type="text" placeholder="@username_instagram" className="w-full p-4 bg-gray-50 rounded-xl border-none"
+                onChange={e => setFormData({...formData, instagram: e.target.value})} />
+              <textarea placeholder="Pengalaman (Bisa dikosongkan)" className="w-full p-4 bg-gray-50 rounded-xl border-none" rows={3}
+                onChange={e => setFormData({...formData, experience: e.target.value})} />
+              <div className="flex gap-2">
+                <button onClick={() => setStep(4)} className="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-400">Lewati</button>
+                <button onClick={() => setStep(4)} className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-bold">Lanjut</button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: YOUTUBE & FINISH */}
+          {step === 4 && (
+            <div className="p-6 space-y-4">
+              <h2 className="text-xl font-bold">Video & Audio</h2>
+              <input type="text" placeholder="URL YouTube Video" className="w-full p-4 bg-gray-50 rounded-xl border-none"
+                onChange={e => setFormData({...formData, youtube_url: e.target.value})} />
+              <input type="text" placeholder="URL Audio (Voice Reel)" className="w-full p-4 bg-gray-50 rounded-xl border-none"
+                onChange={e => setFormData({...formData, audio_url: e.target.value})} />
+              <button onClick={finalSubmit} className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold mt-4">Selesaikan Pendaftaran</button>
+            </div>
+          )}
         </div>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-        <StatCard name="Total Lamaran" value={profile?.stats?.total_applied || '0'} icon={Briefcase} />
-        <StatCard name="Jadwal Terdekat" value={profile?.stats?.upcoming_schedules || '0'} icon={CalendarCheck} />
-        <StatCard name="Saldo Payout" value={`Rp ${profile?.stats?.balance || '0'}`} icon={Wallet} />
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ name, value, icon: Icon }: any) {
   return (
-    <div className="bg-white dark:bg-dark-card p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 group transition-all duration-300">
-      <div className="p-3 w-fit bg-brand-50 dark:bg-brand-950 rounded-xl border border-brand-100 dark:border-brand-900"><Icon className="text-brand-600 dark:text-brand-400" /></div>
-      <p className="text-base font-semibold text-slate-600 dark:text-slate-400 mt-6">{name}</p>
-      <p className="text-4xl font-extrabold text-slate-900 dark:text-white mt-1">{value}</p>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold">Selamat Datang, {profile.full_name}!</h1>
+      <p className="text-gray-500">Profil Anda sudah aktif di katalog Orland.</p>
+      {/* Konten Dashboard Stats Anda di sini */}
     </div>
   );
-}
+};
+
+export default Dashboard;

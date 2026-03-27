@@ -1,30 +1,38 @@
-import { Hono } from 'hono'
+import { Hono, Context } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { hashData, verifyTurnstile, sendMail } from '../utils'
 
 // ==========================================
-// 1. PERBAIKAN BINDINGS (Sesuai wrangler.toml & Secrets)
+// 1. BINDINGS & CONFIG
 // ==========================================
 type Bindings = { 
   DB_SSO: D1Database; 
   TURNSTILE_SECRET: string; 
-  RESEND_API_KEY: string; // Sekarang bersifat wajib, bukan opsional (?)
-  SMTP_PASS: string; // Jika kamu menggunakan SMTP
-  TALENT_URL: string; // Untuk dinamisasi getPortalUrl
+  RESEND_API_KEY: string;
+  SMTP_PASS: string;
+  TALENT_URL: string;
   CLIENT_URL: string;
 }
 const auth = new Hono<{ Bindings: Bindings }>()
 
-const SESSION_EXPIRY = 259200
+const SESSION_EXPIRY = 259200 // 3 Hari
 const COOKIE_OPTS = { domain: '.orlandmanagement.com', path: '/', httpOnly: true, secure: true, sameSite: 'None' as const }
-
-// Gunakan variabel URL dari environment jika memungkinkan
-const getPortalUrl = (env: Bindings, role: string) => 
-  role === 'client' ? env.CLIENT_URL || 'https://client.orlandmanagement.com' : env.TALENT_URL || 'https://talent.orlandmanagement.com'
 
 const getNow = () => Math.floor(Date.now() / 1000)
 
-// 1. ME & LOGOUT
+const getPortalUrl = (env: Bindings, role: string) => 
+  role === 'client' ? env.CLIENT_URL || 'https://client.orlandmanagement.com' : env.TALENT_URL || 'https://talent.orlandmanagement.com'
+
+// HELPER BARU: Otomatis menyuntikkan Session ID (sid) ke URL Callback AppTalent/Client
+const getRedirectUrl = (env: Bindings, role: string, sid: string) => 
+  `${getPortalUrl(env, role)}/auth/callback?token=${sid}`
+
+
+// ==========================================
+// 2. ENDPOINTS
+// ==========================================
+
+// --- ME & LOGOUT ---
 auth.get('/me', async (c) => {
   const sid = getCookie(c, 'sid')
   if (!sid) return c.json({ status: "error", message: "Tidak ada sesi" }, 401)
@@ -42,7 +50,7 @@ auth.post('/logout', async (c) => {
   return c.json({ status: "ok", message: "Logout Sukses" })
 })
 
-// 2. REGISTER
+// --- REGISTER ---
 auth.post('/register', async (c) => {
   const body = await c.req.json()
   const ip = c.req.header('cf-connecting-ip') || 'unknown'
@@ -63,13 +71,11 @@ auth.post('/register', async (c) => {
   const tokenUUID = crypto.randomUUID().replace(/-/g, '')
   await c.env.DB_SSO.prepare("INSERT INTO otp_requests (id, identifier, code, purpose, expires_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), cleanEmail, tokenUUID, 'activation', now + 86400).run()
   
-  // Perbaikan pemanggilan sendMail (memastikan c.env dilempar dengan benar)
   await sendMail(c.env, cleanEmail, tokenUUID, 'activation')
-  
   return c.json({ status: "ok", message: "Registrasi Sukses! Cek Email." })
 })
 
-// 3. AKTIVASI EMAIL
+// --- AKTIVASI EMAIL ---
 auth.post('/verify-activation', async (c) => {
   const body = await c.req.json()
   const now = getNow()
@@ -83,10 +89,12 @@ auth.post('/verify-activation', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", role: user.role, redirect_url: getPortalUrl(c.env, user.role) })
+  
+  // UPGRADE: Menyisipkan sid ke URL callback
+  return c.json({ status: "ok", role: user.role, redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
-// 4. LOGIN PASSWORD
+// --- LOGIN PASSWORD ---
 auth.post('/login-password', async (c) => {
   const body = await c.req.json()
   const ip = c.req.header('cf-connecting-ip') || 'unknown'
@@ -126,10 +134,12 @@ auth.post('/login-password', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user.role) })
+  
+  // UPGRADE: Menyisipkan sid ke URL callback
+  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
-// 5. REQUEST OTP UMUM
+// --- REQUEST OTP UMUM ---
 auth.post('/request-otp', async (c) => {
   const body = await c.req.json()
   const id = (body.identifier || "").trim().toLowerCase()
@@ -145,7 +155,7 @@ auth.post('/request-otp', async (c) => {
   return c.json({ status: "ok", message: "OTP Terkirim." })
 })
 
-// 6. LOGIN OTP & SETUP PIN
+// --- LOGIN OTP & SETUP PIN ---
 auth.post('/login-otp', async (c) => handleOtpVerify(c, 'login'))
 auth.post('/setup-pin', async (c) => handleOtpVerify(c, 'setup-pin'))
 
@@ -170,10 +180,12 @@ async function handleOtpVerify(c: any, actionType: string) {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user.role) })
+  
+  // UPGRADE: Menyisipkan sid ke URL callback
+  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, user.role, sid) })
 }
 
-// 7. CHECK PIN & LOGIN PIN
+// --- CHECK PIN & LOGIN PIN ---
 auth.post('/check-pin', async (c) => {
   const body = await c.req.json()
   const id = (body.identifier || "").trim().toLowerCase()
@@ -195,10 +207,12 @@ auth.post('/login-pin', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user.role) })
+  
+  // UPGRADE: Menyisipkan sid ke URL callback
+  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
-// 8. FORGOT PASSWORD
+// --- FORGOT PASSWORD ---
 auth.post('/request-reset', async (c) => {
   const body = await c.req.json()
   const id = (body.identifier || "").trim().toLowerCase()
@@ -228,7 +242,7 @@ auth.post('/reset-password', async (c) => {
   return c.json({ status: "ok", message: "Password berhasil diubah." })
 })
 
-// 9. GOOGLE OAUTH
+// --- GOOGLE OAUTH ---
 auth.post('/google-login', async (c) => {
   try {
     const body = await c.req.json()
@@ -243,7 +257,9 @@ auth.post('/google-login', async (c) => {
       const sid = crypto.randomUUID()
       await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
       setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-      return c.json({ status: "ok", is_new: false, redirect_url: getPortalUrl(c.env, user.role) })
+      
+      // UPGRADE: Menyisipkan sid ke URL callback
+      return c.json({ status: "ok", is_new: false, redirect_url: getRedirectUrl(c.env, user.role, sid) })
     } else {
       return c.json({ status: "ok", is_new: true, email, name, social_id: googleId })
     }
@@ -265,7 +281,9 @@ auth.post('/social-complete', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, userId, body.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, body.role) })
+  
+  // UPGRADE: Menyisipkan sid ke URL callback
+  return c.json({ status: "ok", redirect_url: getRedirectUrl(c.env, body.role, sid) })
 })
 
 export default auth

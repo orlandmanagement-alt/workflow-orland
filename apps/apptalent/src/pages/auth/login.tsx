@@ -4,7 +4,7 @@ export default function Login() {
   
   const handleSSOLogin = () => {
     // 1. Tentukan URL SSO (Appsso)
-    const ssoUrl = 'https://appsso.orlandmanagement.com/login';
+    const ssoUrl = 'https://sso.orlandmanagement.com/login';
     
     // 2. Tentukan Callback URI (Halaman talent callback yang baru kita buat)
     const callbackUri = 'https://talent.orlandmanagement.com/auth/callback';

@@ -6,16 +6,22 @@ import { Loader2 } from 'lucide-react';
 export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  // Ambil fungsi setToken dari Zustand
-  const setToken = useAuthStore((state) => state.setToken);
+  
+  // Menggunakan fungsi 'login' dari Zustand karena 'setToken' mungkin tidak ada di interface
+  const login = useAuthStore((state: any) => state.login);
 
   useEffect(() => {
     // 1. Tangkap token JWT dari URL (contoh: ?token=xyz123)
     const token = searchParams.get('token');
     
     if (token) {
-      // 2. Simpan token secara permanen di Zustand (yang otomatis masuk ke LocalStorage)
-      setToken(token);
+      // 2. Simpan token menggunakan fungsi login bawaan
+      if (login) {
+        login(token);
+      } else {
+        // Fallback langsung ke localStorage jika fungsi Zustand bermasalah
+        localStorage.setItem('auth-storage', JSON.stringify({ state: { token, isAuthenticated: true }, version: 0 }));
+      }
       
       // 3. Hapus jejak URL callback dan lempar ke Dashboard
       navigate('/dashboard', { replace: true });
@@ -23,7 +29,7 @@ export default function AuthCallback() {
       // Jika nyasar ke halaman ini tanpa token, kembalikan ke gerbang SSO
       navigate('/auth/login', { replace: true });
     }
-  }, [searchParams, navigate, setToken]);
+  }, [searchParams, navigate, login]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">

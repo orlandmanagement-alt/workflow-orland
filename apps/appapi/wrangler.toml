@@ -42,4 +42,4 @@ CF_ACCOUNT_ID = "6c8fb4264bc8bce97572b708fc0eb5fb"
 # --- BACKGROUND JOBS (CRON) ---
 # Berjalan otomatis setiap hari Minggu jam 02:00 Pagi UTC untuk eksekusi pemindahan data DB_ARCHIVE
 [triggers]
-crons = ["0 2 * * 0"]
+crons = ["0 2 * * SUN"]

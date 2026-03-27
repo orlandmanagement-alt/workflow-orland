@@ -6,9 +6,8 @@ export default function Login() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
 
-  const ssoUrl = (import.meta as any).env.VITE_SSO_URL || 'https://sso.orlandmanagement.com';
-  const talentUrl = (import.meta as any).env.VITE_TALENT_URL || 'https://talent.orlandmanagement.com';
-  const ssoLoginUrl = `${ssoUrl}/login?redirect_uri=${encodeURIComponent(talentUrl + '/auth/callback')}`;
+  // Langsung ke root domain SSO, tanpa path /login atau parameter yang bikin 404
+  const ssoUrl = 'https://sso.orlandmanagement.com';
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -27,7 +26,7 @@ export default function Login() {
           Gunakan Akun SSO Orland Management Anda untuk masuk.
         </p>
         <a 
-          href={ssoLoginUrl} 
+          href={ssoUrl} 
           className="flex items-center justify-center w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all"
         >
           Masuk dengan Orland SSO &rarr;

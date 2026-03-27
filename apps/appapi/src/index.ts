@@ -47,19 +47,17 @@ app.use('/api/v1/*', async (c, next) => {
   
   const authHeader = c.req.header('Authorization')
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ status: "error", message: "Unauthorized: Token JWT tidak ditemukan" }, 401)
+      return c.json({ status: "error", message: "Unauthorized" }, 401)
   }
   
-  const jwtToken = authHeader.split(' ')[1]
-
   try {
-    // 🎯 INILAH SOLUSINYA: Menambahkan 'HS256' di akhir parameter verify
+    const jwtToken = authHeader.split(' ')[1]
     const payload = await verify(jwtToken, c.env.JWT_SECRET || 'orland-rahasia-utama-123', 'HS256')
     c.set('userId', payload.sub as string)
     c.set('userRole', payload.role as string)
     await next()
-  } catch (err: any) { 
-    return c.json({ status: "error", message: `Unauthorized: JWT Error - ${err.message || 'Unknown'}` }, 401) 
+  } catch (err) { 
+    return c.json({ status: "error", message: "Unauthorized" }, 401) 
   }
 })
 

@@ -97,12 +97,12 @@ function startOtpTimer() {
     }
 }
 
-function doRedirectCountdown(role, title = "Anda Sudah Login!") {
+function doRedirectCountdown(role, title = "Anda Sudah Login!", redirectUrl = null) {
     document.getElementById('success-title').innerText = title;
     document.getElementById('logged-in-role').innerText = role;
     window.showView('view-success-redirect');
     let count = 5; const timerEl = document.getElementById('redirect-timer');
-    setInterval(() => { count--; if(timerEl) timerEl.innerText = count; if(count <= 0) window.location.href = role === 'client' ? 'https://client.orlandmanagement.com' : 'https://talent.orlandmanagement.com'; }, 1000);
+    setInterval(() => { count--; if(timerEl) timerEl.innerText = count; if(count <= 0) { window.location.href = redirectUrl || (role === 'client' ? 'https://client.orlandmanagement.com' : 'https://talent.orlandmanagement.com'); } }, 1000);
 }
 
 window.doLogout = async function() { window.showToast("Logout...", "info"); await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = "/"; }
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const res = await sendApi('verify-activation', { token: urlParams.get('activation_token') });
         
         if(res.status === 'ok') { 
-            doRedirectCountdown(res.role, "Aktivasi Berhasil!"); 
+            doRedirectCountdown(res.role, "Aktivasi Berhasil!", res.redirect_url); 
             window.history.replaceState({}, document.title, window.location.pathname); 
             return; 
         } else { 
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('reset-token-hidden').value = urlParams.get('reset_token'); window.showView('view-reset-password'); window.history.replaceState({}, document.title, window.location.pathname); return;
     }
 
-    try { const meRes = await fetch('/api/auth/me'); if (meRes.ok) { const data = await meRes.json(); doRedirectCountdown(data.user.role); return; } } catch(e) {}
+    try { const meRes = await fetch('/api/auth/me'); if (meRes.ok) { const data = await meRes.json(); doRedirectCountdown(data.user.role, "Anda Sudah Login!", data.redirect_url); return; } } catch(e) {}
 });
 
 window.addEventListener('resize', () => { if(!document.getElementById('view-register')?.classList.contains('hidden') && window.innerWidth > 767) { document.getElementById('main-container')?.classList.add('flex-row-reverse'); document.getElementById('blue-panel')?.classList.add('reverse'); } });

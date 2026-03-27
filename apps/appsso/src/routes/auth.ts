@@ -40,7 +40,7 @@ auth.get('/me', async (c) => {
   if (!session) return c.json({ status: "error", message: "Sesi kadaluarsa" }, 401)
   const user = await c.env.DB_SSO.prepare("SELECT id, full_name, email, role, status FROM users WHERE id=?").bind(session.user_id).first<any>()
   if (!user || user.status === 'deleted') return c.json({ status: "error", message: "Akun tidak ditemukan" }, 404)
-  return c.json({ status: "ok", user })
+  return c.json({ status: "ok", user, redirect_url: getRedirectUrl(c.env, user.role, sid) })
 })
 
 auth.post('/logout', async (c) => {

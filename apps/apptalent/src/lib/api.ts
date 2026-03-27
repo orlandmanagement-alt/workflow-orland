@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/useAppStore';
 
-// Mengambil URL dari environment, jika tidak ada gunakan URL production yang valid
-const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://api.orlandmanagement.com';
+// Mengabaikan import.meta.env yang rentan gagal di browser
+// KITA PAKSA TEMBAK KE DOMAIN API ORLAND
+const API_URL = 'https://api.orlandmanagement.com';
 
 export const api = axios.create({
   baseURL: API_URL,

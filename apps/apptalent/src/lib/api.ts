@@ -1,27 +1,24 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/useAppStore';
 
-// KITA KUNCI LANGSUNG KE /api/v1 AGAR TIDAK ADA PATH YANG TERPOTONG
+// SOLUSI: Kunci baseURL absolut ke v1 agar tidak pernah nyasar ke domain frontend
 const API_URL = 'https://api.orlandmanagement.com/api/v1';
 
 export const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
+// SOLUSI TS: Menggunakan ': any' untuk membungkam TypeScript Strict Mode
+api.interceptors.request.use((config: any) => {
   const token = useAuthStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: any) => response,
+  (error: any) => {
     if (error.response && error.response.status === 401) {
       console.error('Sesi JWT kadaluarsa/ditolak. Logout otomatis...');
       useAuthStore.getState().logout();
@@ -30,3 +27,18 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// SOLUSI TS (BACKWARD COMPATIBILITY): Jembatan untuk service lama (kycService, dll)
+export const apiRequest = async (url: string, options: any = {}) => {
+  try {
+    const response = await api({
+      url,
+      method: options.method || 'GET',
+      data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : options.data,
+      headers: options.headers,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

@@ -2,8 +2,7 @@ import { api } from '../api';
 
 export const talentService = {
   getProfile: async () => {
-    // baseURL sudah https://api.orlandmanagement.com/api/v1
-    // Jadi ini akan otomatis menembak ke: /api/v1/talents/me
+    // Akan otomatis menggabung menjadi: https://api.orlandmanagement.com/api/v1/talents/me
     const response = await api.get('/talents/me');
     return response.data.data;
   },

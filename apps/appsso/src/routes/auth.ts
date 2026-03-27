@@ -9,15 +9,11 @@ const auth = new Hono<{ Bindings: Bindings }>()
 const SESSION_EXPIRY = 259200 // 3 Hari
 const COOKIE_OPTS = { domain: '.orlandmanagement.com', path: '/', httpOnly: true, secure: true, sameSite: 'None' as const }
 
-// FUNGSI PEMBUAT JWT
+// SOLUSI: Fungsi pembuat JWT yang memasukkan 'sub' (User ID) dan 'role'
 async function generateJWT(env: Bindings, user: any) {
-  const payload = {
-    sub: user.id,
-    role: user.role,
-    exp: Math.floor(Date.now() / 1000) + SESSION_EXPIRY
-  }
-  // JWT_SECRET HARUS diset di wrangler.toml atau .dev.vars milik appsso!
-  return await sign(payload, env.JWT_SECRET || 'orland-secret-key') 
+  const payload = { sub: user.id, role: user.role, exp: Math.floor(Date.now() / 1000) + SESSION_EXPIRY }
+  // Pastikan JWT_SECRET diset di Cloudflare Dashboard SSO Anda
+  return await sign(payload, env.JWT_SECRET || 'orland-rahasia-utama-123') 
 }
 
 const getStandardCallbackUrl = (env: Bindings, role: string, token: string) => {
@@ -31,35 +27,22 @@ auth.post('/login-password', async (c) => {
   const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND status != 'deleted'").bind(id, id).first<any>()
   
   if (!user) return c.json({ status: "error", message: "Kredensial salah." }, 401)
-
   const hashInput = await hashData(body.password)
   if (user.password_hash !== hashInput) return c.json({ status: "error", message: "Password salah." }, 401)
 
-  // Buat JWT Token
   const jwtToken = await generateJWT(c.env, user)
-  
-  // Set JWT di Cookie untuk fallback SSO internal
   setCookie(c, 'sid', jwtToken, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
   
-  // Kirim JWT Token ke Frontend
-  return c.json({ 
-    status: "ok", 
-    token: jwtToken, 
-    redirect_url: getStandardCallbackUrl(c.env, user.role, jwtToken) 
-  })
+  return c.json({ status: "ok", token: jwtToken, redirect_url: getStandardCallbackUrl(c.env, user.role, jwtToken) })
 })
 
 auth.get('/me', async (c) => {
   const jwtToken = getCookie(c, 'sid')
   if (!jwtToken) return c.json({ status: "error", message: "Tidak ada sesi" }, 401)
-  
   try {
-    const payload = await verify(jwtToken, c.env.JWT_SECRET || 'orland-secret-key')
+    const payload = await verify(jwtToken, c.env.JWT_SECRET || 'orland-rahasia-utama-123')
     const user = await c.env.DB_SSO.prepare("SELECT id, full_name, email, role FROM users WHERE id=?").bind(payload.sub).first<any>()
-    return c.json({ 
-      status: "ok", user, token: jwtToken, 
-      redirect_url: getStandardCallbackUrl(c.env, user.role, jwtToken) 
-    })
+    return c.json({ status: "ok", user, token: jwtToken, redirect_url: getStandardCallbackUrl(c.env, user.role, jwtToken) })
   } catch (err) {
     return c.json({ status: "error", message: "Sesi kadaluarsa" }, 401)
   }

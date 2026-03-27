@@ -47,3 +47,6 @@ crons = ["0 2 * * SUN"]
 [observability.logs]
 enabled = false
 invocation_logs = true
+
+[observability]
+enabled = false

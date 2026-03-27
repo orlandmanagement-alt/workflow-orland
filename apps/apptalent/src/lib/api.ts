@@ -1,25 +1,33 @@
+import axios from 'axios';
 import { useAuthStore } from '@/store/useAppStore';
 
-const BASE_URL = 'https://api.orlandmanagement.com/v1';
+// Gunakan URL API Talent Anda (sesuaikan jika berbeda)
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.orlandmanagement.com';
 
-export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const { token } = useAuthStore.getState();
-  
-  // Jika mengirim FormData (File Upload), browser akan otomatis mengatur Content-Type dengan boundary.
-  const isFormData = options.body instanceof FormData;
-  
-  const headers: HeadersInit = {
-    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
+export const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP Error: ${response.status}`);
+// INTERCEPTOR: Otomatis tempelkan token ke setiap request
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+  return config;
+});
 
-  return response.json();
-}
+// INTERCEPTOR: Jika token tidak valid (401), otomatis lempar ke SSO Login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().logout();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);

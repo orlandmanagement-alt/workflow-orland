@@ -1,18 +1,16 @@
-import { apiRequest } from '@/lib/api';
+import { api } from '../api';
 
 export const talentService = {
-  // Ambil Data Profil
-  getProfile: () => apiRequest('/talents/me'),
-  
-  // Update Comp Card
-  updateProfile: (data: any) => apiRequest('/talents/me', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  }),
-
-  // Ambil Proyek Aktif
-  getProjects: () => apiRequest('/talents/me/projects'),
-  
-  // Ambil Jadwal
-  getSchedules: () => apiRequest('/talents/me/schedules'),
+  getProfile: async () => {
+    const response = await api.get('/talent/profile');
+    return response.data;
+  },
+  updateProfile: async (data: any) => {
+    const response = await api.put('/talent/profile', data);
+    return response.data;
+  },
+  getStats: async () => {
+    const response = await api.get('/talent/stats');
+    return response.data;
+  }
 };

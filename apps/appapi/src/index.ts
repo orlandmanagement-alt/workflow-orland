@@ -38,33 +38,54 @@ export type Variables = { userId: string; userRole: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] }))
+// 1. PENGATURAN CORS YANG BENAR UNTUK BROWSER
+app.use('*', cors({ 
+  origin: '*', // Di production nanti bisa diganti 'https://talent.orlandmanagement.com'
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length'],
+  maxAge: 600,
+}))
 
-// MIDDLEWARE AUTHENTICATION (Cek UUID Session di DB_SSO)
+// 2. MIDDLEWARE AUTHENTICATION YANG DILENGKAPI BYPASS OPTIONS
 app.use('/api/v1/*', async (c, next) => {
-  if (c.req.path.startsWith('/api/v1/verify/') || c.req.path.startsWith('/api/v1/public/')) return next()
+  // PENTING: Biarkan browser melakukan Preflight (OPTIONS) tanpa token!
+  if (c.req.method === 'OPTIONS') {
+    return await next()
+  }
+
+  // Bypass rute publik
+  if (c.req.path.startsWith('/api/v1/verify/') || c.req.path.startsWith('/api/v1/public/')) {
+    return await next()
+  }
   
   const authHeader = c.req.header('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return c.json({ status: "error", message: "Unauthorized" }, 401)
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ status: "error", message: "Unauthorized: Token tidak ditemukan" }, 401)
+  }
   
   try {
     const sid = authHeader.split(' ')[1]
     const now = Math.floor(Date.now() / 1000)
     
+    // Verifikasi Token ke DB_SSO
     const session = await c.env.DB_SSO.prepare("SELECT * FROM sessions WHERE id=? AND expires_at > ?").bind(sid, now).first<any>()
-    if (!session) return c.json({ status: "error", message: "Session Invalid or Expired" }, 401)
+    
+    if (!session) {
+      return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid atau kadaluarsa" }, 401)
+    }
 
     c.set('userId', session.user_id)
     c.set('userRole', session.role)
     await next()
   } catch (err) { 
-    return c.json({ status: "error", message: "Auth Error" }, 500) 
+    return c.json({ status: "error", message: "Internal Server Error saat Autentikasi" }, 500) 
   }
 })
 
 app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 30 }))
 
-// REGISTRASI SEMUA ROUTER (Tidak ada yang terhapus)
+// REGISTRASI SEMUA ROUTER
 app.route('/api/v1/talents', talentRouter)
 app.route('/api/v1/talents', experienceRouter)
 app.route('/api/v1/talents', certificationRouter)

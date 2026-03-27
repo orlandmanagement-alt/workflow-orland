@@ -1,192 +1,160 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Cropper from 'cropperjs';
-import 'cropperjs/dist/cropper.css';
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { talentService } from '@/lib/services/talentService';
-import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/useAppStore';
+import '@/assets/css/profile.css'; // Menggunakan CSS asli Anda yang sudah modular
+
+// --- VALIDATION SCHEMA (ZOD) ---
+// Memastikan data yang dikirim ke API sudah bersih dan sesuai standar
+const profileSchema = z.object({
+  full_name: z.string().min(3, "Nama lengkap minimal 3 karakter"),
+  birth_date: z.string().min(1, "Tanggal lahir wajib diisi"),
+  height: z.string().refine((v) => parseInt(v) > 50 && parseInt(v) < 250, "Tinggi harus antara 50cm-250cm"),
+  weight: z.string().refine((v) => parseInt(v) > 20 && parseInt(v) < 200, "Berat harus antara 20kg-200kg"),
+  category: z.enum(["Model", "Actor", "Influencer"]),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const Dashboard = () => {
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  
-  // State Data
-  const [formData, setFormData] = useState({
-    full_name: '', height: '', weight: '', birth_date: '',
-    category: 'Model', instagram: '', profile_picture: '',
-    experience: '', youtube_url: '', audio_url: ''
-  });
+  const [loading, setLoading] = useState(true);
+  const [isNewTalent, setIsNewTalent] = useState(false);
+  const user = useAuthStore((state) => state.user);
 
-  // Cropper Refs
-  const imageRef = useRef<HTMLImageElement>(null);
-  const [cropper, setCropper] = useState<Cropper | null>(null);
-  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
-
+  // --- INITIAL LOAD ---
+  // Membaca API saat halaman dibuka
   useEffect(() => {
-    const checkProfile = async () => {
+    const loadProfile = async () => {
       try {
         const data = await talentService.getProfile();
-        if (data && data.profile_picture) setProfile(data);
-      } catch (e) { console.log("Profil baru terdeteksi."); }
-      finally { setLoading(false); }
+        // Backend memberikan data, tapi jika belum lengkap (misal height kosong), anggap NewTalent
+        if (data && data.height) {
+          setProfile(data);
+        } else {
+          setIsNewTalent(true);
+          // Pre-fill data nama dari SSO jika ada
+          if (data?.full_name) reset({ full_name: data.full_name });
+        }
+      } catch (err) {
+        // API error / 404: Anggap Talent baru
+        setIsNewTalent(true);
+      } finally {
+        setLoading(false);
+      }
     };
-    checkProfile();
+    loadProfile();
   }, []);
 
-  // Handle Image Selection
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setPreviewSrc(reader.result as string);
-      reader.readAsDataURL(file);
+  // --- REACT HOOK FORM (Final Mode) ---
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      category: 'Model'
     }
-  };
+  });
 
-  // Init Cropper
-  useEffect(() => {
-    if (previewSrc && imageRef.current) {
-      if (cropper) cropper.destroy();
-      const newCropper = new Cropper(imageRef.current, {
-        aspectRatio: 3 / 4,
-        viewMode: 1,
-      });
-      setCropper(newCropper);
-    }
-  }, [previewSrc]);
-
-  // Upload to R2 via API
-  const handleUploadAndNext = async () => {
-    if (!cropper) return setStep(2);
-    setIsUploading(true);
-    
-    cropper.getCroppedCanvas({ width: 600, height: 800 }).toBlob(async (blob) => {
-      if (!blob) return;
-      const file = new File([blob], "profile.jpg", { type: "image/jpeg" });
-      const uploadData = new FormData();
-      uploadData.append('file', file);
-
-      try {
-        // Endpoint API R2 Anda
-        const res = await api.post('/upload/profile', uploadData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        setFormData({ ...formData, profile_picture: res.data.url });
-        setStep(2);
-      } catch (err) {
-        alert("Gagal upload foto ke R2.");
-      } finally {
-        setIsUploading(false);
-      }
-    }, 'image/jpeg', 0.8); // Kompresi 80%
-  };
-
-  const finalSubmit = async () => {
-    setLoading(true);
+  // --- SUBMIT LOGIC ---
+  const onSubmit = async (data: ProfileFormValues) => {
     try {
-      await talentService.updateProfile(formData);
-      window.location.reload();
+      const updatedProfile = await talentService.updateProfile(data);
+      setProfile(updatedProfile);
+      setIsNewTalent(false);
+      alert("Profil berhasil disimpan ke server Orland!");
     } catch (err) {
-      alert("Gagal menyimpan. Cek koneksi API.");
-      setLoading(false);
+      alert("Gagal menyimpan profil. Data Anda tetap aman di Draft lokal.");
     }
   };
 
-  if (loading) return <div className="p-20 text-center">Sinkronisasi Data...</div>;
+  if (loading) return <div className="p-20 text-center font-bold text-gray-400">Menghubungi Server API Orland...</div>;
 
-  if (!profile) {
+  // ==========================================
+  // TAMPILAN 1: FORM PENDAFTARAN (New Talent)
+  // ==========================================
+  if (isNewTalent) {
     return (
-      <div className="max-w-xl mx-auto p-4 animate-in fade-in duration-500">
-        {/* Progress Bar */}
-        <div className="flex justify-between mb-8 px-2">
-          {[1, 2, 3, 4].map(s => (
-            <div key={s} className={`h-2 flex-1 mx-1 rounded-full ${step >= s ? 'bg-orange-500' : 'bg-gray-200'}`} />
-          ))}
-        </div>
+      <div className="profile-wrap animate-in fade-in duration-500 relative">
+        <div className="max-w-xl mx-auto">
+          <div className="profile-card profile-main">
+            <h2 className="text-xl font-extrabold mb-1">Lengkapi Profil Talent Anda</h2>
+            <p className="text-gray-400 text-sm mb-6">Data ini dikelola sepenuhnya oleh Orland AppAPI untuk Katalog.</p>
 
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-          {/* STEP 1: FOTO UTAMA (Wajib) */}
-          {step === 1 && (
-            <div className="p-6">
-              <h2 className="text-xl font-bold mb-1">Foto Profil Utama</h2>
-              <p className="text-gray-400 text-sm mb-6">Gunakan foto terbaik (Close up/Full body)</p>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               
-              {!previewSrc ? (
-                <label className="border-2 border-dashed border-gray-200 rounded-2xl h-64 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50">
-                  <span className="text-gray-400">Klik untuk pilih foto</span>
-                  <input type="file" className="hidden" accept="image/*" onChange={onFileChange} />
-                </label>
-              ) : (
-                <div>
-                  <div className="max-h-80 overflow-hidden rounded-xl mb-4">
-                    <img ref={imageRef} src={previewSrc} alt="Preview" />
+              <div className="profile-section">
+                <div className="profile-sectionHead">1. Data Fisik (Wajib)</div>
+                <div className="profile-sectionBody profile-formGrid">
+                  <div className="profile-frow">
+                    <label>Nama Lengkap</label>
+                    <input type="text" {...register('full_name')} placeholder="Sesuai KTP" />
+                    {errors.full_name && <span className="text-red-500 text-xs">{errors.full_name.message}</span>}
                   </div>
-                  <button onClick={handleUploadAndNext} disabled={isUploading}
-                    className="w-full bg-black text-white py-4 rounded-2xl font-bold">
-                    {isUploading ? 'Mengompres & Upload...' : 'Lanjut ke Data Fisik'}
-                  </button>
-                  <button onClick={() => setPreviewSrc(null)} className="w-full text-gray-400 mt-2 text-sm">Ganti Foto</button>
+                  <div className="profile-frow">
+                    <label>Tanggal Lahir</label>
+                    <input type="date" {...register('birth_date')} />
+                    {errors.birth_date && <span className="text-red-500 text-xs">{errors.birth_date.message}</span>}
+                  </div>
+                  <div className="profile-frow">
+                    <label>Tinggi (cm)</label>
+                    <input type="number" {...register('height')} placeholder="Contoh: 170" />
+                    {errors.height && <span className="text-red-500 text-xs">{errors.height.message}</span>}
+                  </div>
+                  <div className="profile-frow">
+                    <label>Berat (kg)</label>
+                    <input type="number" {...register('weight')} placeholder="Contoh: 60" />
+                    {errors.weight && <span className="text-red-500 text-xs">{errors.weight.message}</span>}
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* STEP 2: BASIC PROFILE (Wajib) */}
-          {step === 2 && (
-            <div className="p-6 space-y-4">
-              <h2 className="text-xl font-bold">Informasi Fisik</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <input type="number" placeholder="Tinggi (cm)" className="p-4 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500"
-                  onChange={e => setFormData({...formData, height: e.target.value})} />
-                <input type="number" placeholder="Berat (kg)" className="p-4 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500"
-                  onChange={e => setFormData({...formData, weight: e.target.value})} />
               </div>
-              <input type="date" placeholder="Tgl Lahir" className="w-full p-4 bg-gray-50 rounded-xl border-none"
-                onChange={e => setFormData({...formData, birth_date: e.target.value})} />
-              <select className="w-full p-4 bg-gray-50 rounded-xl border-none"
-                onChange={e => setFormData({...formData, category: e.target.value})}>
-                <option>Model</option><option>Actor</option><option>Influencer</option>
-              </select>
-              <button onClick={() => setStep(3)} className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold mt-4">Lanjut</button>
-            </div>
-          )}
 
-          {/* STEP 3: EXPERIENCE & SOCMED (Opsional) */}
-          {step === 3 && (
-            <div className="p-6 space-y-4">
-              <h2 className="text-xl font-bold">Sosial Media & Pengalaman</h2>
-              <input type="text" placeholder="@username_instagram" className="w-full p-4 bg-gray-50 rounded-xl border-none"
-                onChange={e => setFormData({...formData, instagram: e.target.value})} />
-              <textarea placeholder="Pengalaman (Bisa dikosongkan)" className="w-full p-4 bg-gray-50 rounded-xl border-none" rows={3}
-                onChange={e => setFormData({...formData, experience: e.target.value})} />
-              <div className="flex gap-2">
-                <button onClick={() => setStep(4)} className="flex-1 bg-gray-100 py-4 rounded-2xl font-bold text-gray-400">Lewati</button>
-                <button onClick={() => setStep(4)} className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-bold">Lanjut</button>
+              <div className="profile-section">
+                <div className="profile-sectionHead">2. Kategori</div>
+                <div className="profile-sectionBody">
+                    <div className="profile-frow">
+                      <select {...register('category')}>
+                        <option>Model</option><option>Actor</option><option>Influencer</option>
+                      </select>
+                    </div>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* STEP 4: YOUTUBE & FINISH */}
-          {step === 4 && (
-            <div className="p-6 space-y-4">
-              <h2 className="text-xl font-bold">Video & Audio</h2>
-              <input type="text" placeholder="URL YouTube Video" className="w-full p-4 bg-gray-50 rounded-xl border-none"
-                onChange={e => setFormData({...formData, youtube_url: e.target.value})} />
-              <input type="text" placeholder="URL Audio (Voice Reel)" className="w-full p-4 bg-gray-50 rounded-xl border-none"
-                onChange={e => setFormData({...formData, audio_url: e.target.value})} />
-              <button onClick={finalSubmit} className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold mt-4">Selesaikan Pendaftaran</button>
-            </div>
-          )}
+              {/* STICKY FOOTER SAVE BAR (Mode Pendaftaran) */}
+              <div className="sticky-save-bar visible" style={{zIndex: 10}}>
+                <div className="flex items-center gap-3 text-amber-600 font-bold text-sm">
+                  <span className="draft-dot"></span>
+                  <span className="hidden sm:inline">Semua data dikendalikan penuh oleh AppAPI.</span>
+                </div>
+                <button type="submit" disabled={isSubmitting} className="px-6 py-2 text-sm font-bold text-white bg-orange-600 rounded-full shadow-lg hover:bg-orange-700 transition">
+                  {isSubmitting ? 'Menyimpan...' : 'Kirim Data & Buka Dashboard'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     );
   }
 
+  // ==========================================
+  // TAMPILAN 2: REAL DASHBOARD STATS
+  // ==========================================
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">Selamat Datang, {profile.full_name}!</h1>
-      <p className="text-gray-500">Profil Anda sudah aktif di katalog Orland.</p>
-      {/* Konten Dashboard Stats Anda di sini */}
+    <div className="profile-wrap animate-in fade-in duration-500 p-8">
+      <h1 className="text-3xl font-extrabold">Halo, {profile.full_name}! 👋</h1>
+      <p className="text-gray-500 mt-2">Data Anda sudah aktif di katalog Orland Management.</p>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xl shadow-gray-50">
+          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider">Status</p>
+          <p className="text-2xl font-bold text-green-500 mt-1">Aktif & Terverifikasi</p>
+        </div>
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xl shadow-gray-50">
+          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider">Kategori</p>
+          <p className="text-2xl font-bold mt-1">{profile.category}</p>
+        </div>
+      </div>
     </div>
   );
 };

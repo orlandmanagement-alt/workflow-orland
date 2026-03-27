@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/useAppStore';
 
-// SOLUSI: Kunci baseURL absolut ke v1 agar tidak pernah nyasar ke domain frontend
 const API_URL = 'https://api.orlandmanagement.com/api/v1';
 
 export const api = axios.create({
@@ -9,10 +8,12 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// SOLUSI TS: Menggunakan ': any' untuk membungkam TypeScript Strict Mode
 api.interceptors.request.use((config: any) => {
   const token = useAuthStore.getState().token;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -20,15 +21,20 @@ api.interceptors.response.use(
   (response: any) => response,
   (error: any) => {
     if (error.response && error.response.status === 401) {
-      console.error('Sesi JWT kadaluarsa/ditolak. Logout otomatis...');
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
+      const errorMsg = error.response.data?.message || 'Token tidak valid';
+      console.error('API Menolak Akses:', errorMsg);
+      
+      // KITA NONAKTIFKAN TENDANGAN OTOMATIS SEMENTARA
+      // useAuthStore.getState().logout();
+      // window.location.href = '/login';
+      
+      // Munculkan popup agar kita tahu persis apa alasan API menolaknya
+      alert(`AKSES DITOLAK API: ${errorMsg}`);
     }
     return Promise.reject(error);
   }
 );
 
-// SOLUSI TS (BACKWARD COMPATIBILITY): Jembatan untuk service lama (kycService, dll)
 export const apiRequest = async (url: string, options: any = {}) => {
   try {
     const response = await api({

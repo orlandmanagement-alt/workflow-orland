@@ -1,9 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/useAppStore';
 
-// Mengabaikan import.meta.env yang rentan gagal di browser
-// KITA PAKSA TEMBAK KE DOMAIN API ORLAND
-const API_URL = 'https://api.orlandmanagement.com';
+// KITA KUNCI LANGSUNG KE /api/v1 AGAR TIDAK ADA PATH YANG TERPOTONG
+const API_URL = 'https://api.orlandmanagement.com/api/v1';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -12,7 +11,6 @@ export const api = axios.create({
   },
 });
 
-// INTERCEPTOR REQUEST: Sebelum request dikirim, masukkan Token
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token) {
@@ -21,12 +19,11 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// INTERCEPTOR RESPONSE: Jika API menolak (401), tendang user ke login
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.error('Sesi kadaluarsa atau tidak valid. Melakukan logout otomatis...');
+      console.error('Sesi JWT kadaluarsa/ditolak. Logout otomatis...');
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }

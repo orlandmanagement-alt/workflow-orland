@@ -43,10 +43,12 @@ CF_ACCOUNT_ID = "6c8fb4264bc8bce97572b708fc0eb5fb"
 [triggers]
 crons = ["0 2 * * SUN"]
 
+
 # --- OBSERVABILITY & LOGS ---
 [observability]
+enabled = true
 head_sampling_rate = 1
 
 [observability.logs]
-head_sampling_rate = 1
+enabled = true
 invocation_logs = true

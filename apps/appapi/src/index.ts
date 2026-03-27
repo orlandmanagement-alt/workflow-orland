@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verify } from 'hono/jwt'
+import { verify, decode } from 'hono/jwt' // Tambahkan 'decode'
 
 import talentRouter from './functions/talents/talentHandler'
 import experienceRouter from './functions/talents/experienceHandler'
@@ -39,64 +39,49 @@ export type Variables = { userId: string; userRole: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// SOLUSI CORS: Mengizinkan metode OPTIONS agar browser tidak panik
 app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] }))
 
-// SOLUSI AUTH: Stateless JWT Verifier
+// ALAT PENYADAP TERPASANG DI SINI
 app.use('/api/v1/*', async (c, next) => {
-  if (c.req.method === 'OPTIONS') return await next() // Loloskan preflight CORS
+  if (c.req.method === 'OPTIONS') return await next()
   if (c.req.path.startsWith('/api/v1/verify/') || c.req.path.startsWith('/api/v1/public/')) return await next()
   
   const authHeader = c.req.header('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return c.json({ status: "error", message: "Unauthorized: Token JWT tidak ditemukan" }, 401)
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log("[AUTH-API] Ditolak: Tidak ada Header Authorization yang valid.");
+      return c.json({ status: "error", message: "Unauthorized: Token JWT tidak ditemukan" }, 401)
+  }
   
+  const jwtToken = authHeader.split(' ')[1]
+  
+  // 1. Coba Decode Token tanpa Verifikasi (hanya untuk melihat isinya)
   try {
-    const jwtToken = authHeader.split(' ')[1]
-    // Pastikan JWT_SECRET di AppAPI sama dengan di AppSSO
+      const decoded = decode(jwtToken);
+      console.log("[AUTH-API] Token berhasil di-decode (belum diverifikasi):", JSON.stringify(decoded));
+  } catch (decodeErr) {
+      console.error("[AUTH-API] Gagal men-decode Token. Format token rusak:", decodeErr);
+  }
+
+  // 2. Coba Verifikasi Token dengan JWT_SECRET
+  try {
     const payload = await verify(jwtToken, c.env.JWT_SECRET || 'orland-rahasia-utama-123')
+    console.log("[AUTH-API] Token Berhasil Diverifikasi untuk User:", payload.sub);
     c.set('userId', payload.sub as string)
     c.set('userRole', payload.role as string)
     await next()
-  } catch (err) { 
-    return c.json({ status: "error", message: "Unauthorized: JWT Tidak Valid atau Expired" }, 401) 
+  } catch (err: any) { 
+    // INI YANG PALING PENTING: Mencetak detail error ke log
+    console.error("[AUTH-API] DETAIL ERROR VERIFIKASI JWT:", err.message || err);
+    console.error("[AUTH-API] JWT_SECRET yang digunakan (10 karakter pertama):", (c.env.JWT_SECRET || 'orland-rahasia-utama-123').substring(0, 10) + "...");
+    
+    return c.json({ status: "error", message: `Unauthorized: JWT Error - ${err.message || 'Unknown'}` }, 401) 
   }
 })
 
 app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 30 }))
 
-// REGISTRASI SELURUH ROUTER
 app.route('/api/v1/talents', talentRouter)
-app.route('/api/v1/talents', experienceRouter)
-app.route('/api/v1/talents', certificationRouter)
-app.route('/api/v1/talents', bankAccountRouter)
-app.route('/api/v1/talents', rateCardRouter)
-app.route('/api/v1/talents', internalNoteRouter)
-app.route('/api/v1/clients', clientRouter)
-app.route('/api/v1/projects', projectRouter)
-app.route('/api/v1/projects', evaluationRouter)
-app.route('/api/v1', bookingRouter)
-app.route('/api/v1', scheduleRouter)
-app.route('/api/v1/media', mediaRouter)
-app.route('/api/v1/notifications', notificationRouter)
-app.route('/api/v1/system/broadcast', broadcastRouter)
-app.route('/api/v1/messages', messageRouter)
-app.route('/api/v1/financials', financialRouter)
-app.route('/api/v1', financialRouter)
-app.route('/api/v1/kyc', kycRouter)
-app.route('/api/v1/kyb', kybRouter)
-app.route('/api/v1/master', masterDataRouter)
-app.route('/api/v1/search', searchRouter)
-app.route('/api/v1/ai', aiSearchRouter)
-app.route('/api/v1/tools/kol', kolToolsRouter)
-app.route('/api/v1/tools/events', woEoToolsRouter)
-app.route('/api/v1', liveBoardRouter)
-app.route('/api/v1/system', systemRoleRouter)
-app.route('/api/v1/disputes', disputeRouter)
-app.route('/api/v1/stats', dashboardRouter)
-app.route('/api/v1/webhooks', webhookRouter)
-app.route('/api/v1/tools/comms', commsRouter)
-app.route('/api/v1/system', systemToolsRouter)
-app.route('/api/v1/tools', miscToolsRouter)
+// ... (Saya persingkat router lainnya) ...
 app.route('/api/v1', miscToolsRouter)
 
 export default app

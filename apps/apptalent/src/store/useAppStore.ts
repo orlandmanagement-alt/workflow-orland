@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
-  user: any | null; // Ditambahkan kembali agar DashboardLayout tidak error
+  user: any | null;
   login: (token: string, userData?: any) => void;
   logout: () => void;
 }
@@ -23,27 +23,38 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// --- 2. THEME STORE (Restorasi) ---
+// --- 2. THEME STORE ---
+// Menggunakan 'isDark' sesuai error: TS2339 Property 'isDark' does not exist
 interface ThemeState {
-  theme: 'light' | 'dark';
+  isDark: boolean;
   toggleTheme: () => void;
 }
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      theme: 'light',
-      toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+      isDark: false,
+      toggleTheme: () => set((state) => ({ isDark: !state.isDark })),
     }),
     { name: 'orland-theme-storage' }
   )
 );
 
-// --- 3. PROFILE DRAFT STORE (Restorasi) ---
+// --- 3. PROFILE DRAFT STORE ---
+// Menggunakan draftData, updateDraft, dan clearDraft sesuai error TS2339
 interface ProfileDraftState {
-  draft: any;
-  setDraft: (draft: any) => void;
+  draftData: any;
+  updateDraft: (data: any) => void;
+  clearDraft: () => void;
 }
-export const useProfileDraftStore = create<ProfileDraftState>()((set) => ({
-  draft: null,
-  setDraft: (draft) => set({ draft }),
-}));
+
+export const useProfileDraftStore = create<ProfileDraftState>()(
+  persist(
+    (set) => ({
+      draftData: null,
+      updateDraft: (data) => set((state) => ({ draftData: { ...state.draftData, ...data } })),
+      clearDraft: () => set({ draftData: null }),
+    }),
+    { name: 'orland-profile-draft' }
+  )
+);

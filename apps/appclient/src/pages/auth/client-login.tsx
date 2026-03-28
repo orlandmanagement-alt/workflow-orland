@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, FileText, UploadCloud, CheckCircle2, Lock, Mail, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { Building2, FileText, Clock, UploadCloud, CheckCircle2, Lock, Mail, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 
 export default function ClientAuth() {
   const navigate = useNavigate();

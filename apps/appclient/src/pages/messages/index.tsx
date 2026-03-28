@@ -10,15 +10,25 @@ const MOCK_CHATS = [
 export default function ClientMessages() {
   const [activeChat, setActiveChat] = useState<any>(null);
   const [inputText, setInputText] = useState("");
+
   const maskText = (txt: string) => {
-    return txt.replace(/(+62|62|0)8[1-9][0-9]{6,10}/g, "[No HP dilarang]")
-              .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[Email dilarang]");
+    // Perbaikan: Menambahkan \ sebelum + agar terbaca sebagai karakter plus, bukan quantifier regex
+    const phoneRegex = /(\+62|62|0)8[1-9][0-9]{6,10}/g;
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    
+    return txt.replace(phoneRegex, "[No HP dilarang]")
+              .replace(emailRegex, "[Email dilarang]");
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = maskText(e.target.value);
+    setInputText(masked);
   };
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-white dark:bg-dark-card animate-in fade-in duration-500 border-t border-slate-100 dark:border-slate-800">
       
-      {/* SIDEBAR: DAFTAR CHAT (35% Width) */}
+      {/* SIDEBAR: DAFTAR CHAT */}
       <div className={`w-full md:w-[350px] flex-shrink-0 border-r border-slate-100 dark:border-slate-800 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50">
           <div className="relative">
@@ -49,7 +59,7 @@ export default function ClientMessages() {
         </div>
       </div>
 
-      {/* CHAT AREA: PESAN (65% Width) */}
+      {/* CHAT AREA */}
       <div className={`flex-1 flex flex-col bg-[#efeae2] dark:bg-[#0b141a] ${!activeChat ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
         {!activeChat ? (
           <div className="text-center opacity-30 flex flex-col items-center">
@@ -58,10 +68,9 @@ export default function ClientMessages() {
           </div>
         ) : (
           <>
-            {/* Header Chat */}
             <div className="bg-white dark:bg-[#202c33] p-3 px-6 flex justify-between items-center shadow-sm z-10">
               <div className="flex items-center gap-3">
-                <button onClick={() => setActiveChat(null)} className="md:hidden text-slate-500 mr-2"><User /></button>
+                <button onClick={() => setActiveChat(null)} className="md:hidden text-slate-500 mr-2"><ArrowRight size={20} className="rotate-180" /></button>
                 <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold ${activeChat.avatar}`}>{activeChat.name.charAt(0)}</div>
                 <div>
                   <h3 className="text-sm font-black text-slate-900 dark:text-white">{activeChat.name}</h3>
@@ -75,7 +84,6 @@ export default function ClientMessages() {
               </div>
             </div>
 
-            {/* Messages Container */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ backgroundImage: 'url("https://transparenttextures.com/patterns/cubes.png")', opacity: 0.9 }}>
                <div className="flex justify-start">
                   <div className="bg-white dark:bg-[#202c33] p-3 rounded-2xl rounded-tl-none shadow-sm max-w-[80%]">
@@ -83,21 +91,16 @@ export default function ClientMessages() {
                     <p className="text-[9px] text-slate-400 text-right mt-1">10:40</p>
                   </div>
                </div>
-               <div className="flex justify-end">
-                  <div className="bg-[#d9fdd3] dark:bg-[#005c4b] p-3 rounded-2xl rounded-tr-none shadow-sm max-w-[80%]">
-                    <p className="text-sm dark:text-slate-900 dark:text-white">Siap sarah, saya cek dulu bareng tim kreatif.</p>
-                    <div className="flex justify-end items-center gap-1 mt-1">
-                      <p className="text-[9px] text-slate-500 dark:text-slate-300">10:42</p>
-                      <CheckCheck size={12} className="text-blue-500" />
-                    </div>
-                  </div>
-               </div>
             </div>
 
-            {/* Input Bar */}
             <div className="p-3 bg-white dark:bg-[#202c33] flex items-center gap-3">
               <button className="p-2 text-slate-500"><Paperclip size={20}/></button>
-              <input placeholder="Dilarang share No HP/Email..." value={inputText} onChange={(e) => setInputText(maskText(e.target.value))} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-[#2a3942] rounded-xl text-sm outline-none dark:text-white" />
+              <input 
+                placeholder="Dilarang share No HP/Email..." 
+                value={inputText} 
+                onChange={handleInputChange}
+                className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-[#2a3942] rounded-xl text-sm outline-none dark:text-white" 
+              />
               <button className="h-10 w-10 bg-brand-600 rounded-full flex items-center justify-center text-white shadow-lg"><Send size={18} className="ml-1"/></button>
             </div>
           </>

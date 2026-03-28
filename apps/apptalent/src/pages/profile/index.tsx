@@ -30,11 +30,29 @@ const ProfileEditor = () => {
         {/* SIDEBAR */}
         <aside className="profile-card profile-side dark:bg-dark-card dark:border-slate-800">
           <h4 className="text-xs font-bold tracking-widest text-slate-600 dark:text-slate-400 mb-3">HEADSHOT</h4>
-          <div className="profile-ph dark:bg-slate-800">
-            <input type="file" id="profile-upload" accept="image/*" className="hidden" onChange={(e) => { if(e.target.files?.[0]) { alert("Sistem siap mengunggah: " + e.target.files[0].name); /* Integrasi API Upload di sini */ } }} />
-            <div onClick={() => document.getElementById("profile-upload")?.click()} className="profile-avatar border dark:border-slate-700 bg-slate-100 cursor-pointer group hover:opacity-80 transition-opacity relative" style={{ backgroundImage: data.profile_picture ? `url(${data.profile_picture})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-              {!data.profile_picture {!data.profile_picture && <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold">Upload (Di Galeri)</span>}{!data.profile_picture && <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold">Upload (Di Galeri)</span>} <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold text-xs">Ketuk untuk Upload</span>}
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full"><span className="text-white text-xs font-bold">Ubah Foto</span></div>
+          
+          <div className="profile-ph dark:bg-slate-800 relative">
+            <input 
+              type="file" 
+              id="profile-upload" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={(e) => { 
+                if(e.target.files?.[0]) { 
+                  alert("Sistem siap mengunggah: " + e.target.files[0].name); 
+                  // Integrasi API Upload di sini 
+                } 
+              }} 
+            />
+            <div 
+              onClick={() => document.getElementById("profile-upload")?.click()} 
+              className="profile-avatar border dark:border-slate-700 bg-slate-100 cursor-pointer group hover:opacity-80 transition-opacity relative" 
+              style={{ backgroundImage: data.profile_picture ? `url(${data.profile_picture})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}
+            >
+              {!data.profile_picture && <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold text-xs">Ketuk untuk Upload</span>}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                  <span className="text-white text-xs font-bold">Ubah Foto</span>
+              </div>
             </div>
           </div>
           
@@ -85,7 +103,7 @@ const ProfileEditor = () => {
             </div>
           )}
 
-          {/* TAB 2, 3, 4 Disingkat agar Script Termux Ringkas */}
+          {/* TAB 2, 3, 4 */}
           {activeTab === 'photos' && <div className="p-8 mt-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-center"><Link to="/media" className="inline-block px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-lg transition-colors">Buka Comp Card Pro &rarr;</Link></div>}
           {activeTab === 'assets' && <div className="mt-6 p-4 text-center text-slate-500">Menu Manajemen Sosial Media</div>}
           {activeTab === 'credits' && <div className="mt-6 p-4 text-center text-slate-500">Menu Manajemen CV & Pengalaman</div>}
@@ -93,9 +111,7 @@ const ProfileEditor = () => {
         </main>
       </div>
 
-      {/* ========================================================= */}
       {/* HIDDEN TEMPLATE COMP CARD UNTUK PDF GENERATOR (A4 Layout) */}
-      {/* ========================================================= */}
       <div id="pdf-comp-card-template" style={{ display: 'none', width: '794px', height: '1123px', backgroundColor: '#ffffff', padding: '40px', boxSizing: 'border-box', position: 'absolute', top: '-9999px', left: '-9999px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '4px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
               <div>

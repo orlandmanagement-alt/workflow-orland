@@ -49,14 +49,21 @@ async function sendApi(action, payload) {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify(payload),
-            credentials: 'include' // <- KUNCI: Memaksa JWT Cookie terkirim
+            credentials: 'include' 
         }); 
         const contentType = res.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) return await res.json();
-        else return { status: 'error', message: 'Terjadi kesalahan sistem. (Server Error)' };
-    } catch(e) { return { status: 'error', message: 'Koneksi terputus. Periksa jaringan Anda.' }; } 
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return await res.json();
+        } else {
+            // JIKA BACKEND CRASH, TANGKAP TEKS ERROR-NYA!
+            const errorText = await res.text();
+            console.error("🔥 BACKEND CRASH LOG:", errorText);
+            return { status: 'error', message: `Server Crash (Code: ${res.status}). Cek Console!` };
+        }
+    } catch(e) { 
+        return { status: 'error', message: 'Koneksi terputus. Periksa jaringan Anda.' }; 
+    } 
 }
-
 function startOtpTimer() {
     clearInterval(otpInterval); let timeLeft = 180; const timerEl = document.getElementById('otp-timer'), resendBtn = document.getElementById('btn-resend-otp');
     if(timerEl && resendBtn) {

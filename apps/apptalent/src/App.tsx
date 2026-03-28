@@ -35,14 +35,12 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/p/:username" element={<PublicProfile />} />
           
-          {/* Live Casting Room (Bisa public/private tergantung setting nanti) */}
+          {/* Live Casting Room */}
           <Route path="/live-boards/:id" element={<LiveBoardJoin />} />
 
-          {/* Protected Routes (Harus Login - Dibungkus oleh DashboardLayout) */}
+          {/* Protected Routes (Harus Login - Gatekeeper ada di DashboardLayout) */}
           <Route element={<DashboardLayout />}>
-            {/* Redirect root ke dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />

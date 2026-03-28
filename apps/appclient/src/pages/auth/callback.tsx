@@ -8,39 +8,22 @@ export default function AuthCallback() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
-    const role = params.get('role');
+    const role = (params.get('role') || '').toLowerCase(); // FIX HURUF KECIL
     const userId = params.get('user_id');
     const name = params.get('name');
     const email = params.get('email');
 
     if (token && role) {
-      // TENDANG JIKA BUKAN CLIENT
-      if (role.toLowerCase() !== 'client') {
-        alert("Akses Ditolak: Ruang Kerja ini khusus Client/Nasabah.");
+      if (role !== 'client') {
+        alert("Akses Ditolak: Akun Anda terdaftar sebagai Talent. Mengalihkan...");
         localStorage.clear();
-        window.location.replace('https://sso.orlandmanagement.com/');
+        window.location.replace('https://talent.orlandmanagement.com/');
         return;
       }
 
-      // SIMPAN RICH PAYLOAD KE BRANKAS
-      const authState = {
-        state: {
-          token: token,
-          role: 'client',
-          user: {
-            id: userId,
-            name: name,
-            email: email
-          }
-        }
-      };
-      
-      localStorage.setItem('orland-auth-client', JSON.stringify(authState));
-      
-      // Buka Pintu ke Command Center (Dashboard)
+      localStorage.setItem('orland-auth-client', JSON.stringify({ state: { token, role: 'client', user: { id: userId, name, email } } }));
       navigate('/dashboard', { replace: true });
     } else {
-      // Jika nyasar tanpa token
       window.location.replace('https://sso.orlandmanagement.com/');
     }
   }, [navigate, location]);
@@ -49,7 +32,6 @@ export default function AuthCallback() {
     <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-[#071122]">
       <div className="text-center animate-pulse">
         <h2 className="text-xl font-bold text-brand-600 mb-2">Membuka Command Center...</h2>
-        <p className="text-slate-500 text-sm">Menarik data kampanye dan metrik finansial...</p>
       </div>
     </div>
   );

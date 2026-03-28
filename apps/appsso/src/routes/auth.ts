@@ -8,17 +8,11 @@ const auth = new Hono<{ Bindings: Bindings }>()
 const SESSION_EXPIRY = 259200
 const COOKIE_OPTS = { domain: '.orlandmanagement.com', path: '/', httpOnly: true, secure: true, sameSite: 'None' as const }
 
-// IDE BRILIAN ANDA: Mengirim token beserta data lengkap via URL
+// FIX: Pastikan Role selalu HURUF KECIL
 const getPortalUrl = (env: Bindings, user: any, token: string) => {
-  const baseUrl = user.role === 'client' ? (env.CLIENT_URL || 'https://client.orlandmanagement.com') : (env.TALENT_URL || 'https://talent.orlandmanagement.com');
-  const params = new URLSearchParams({
-    token: token,
-    role: user.role,
-    user_id: user.id,
-    name: user.full_name,
-    email: user.email
-  });
-  // SELALU ARAHKAN KE /auth/callback AGAR TIDAK TERJADI LOOPING!
+  const safeRole = (user.role || 'talent').toLowerCase(); 
+  const baseUrl = safeRole === 'client' ? (env.CLIENT_URL || 'https://client.orlandmanagement.com') : (env.TALENT_URL || 'https://talent.orlandmanagement.com');
+  const params = new URLSearchParams({ token: token, role: safeRole, user_id: user.id, name: user.full_name, email: user.email });
   return `${baseUrl}/auth/callback?${params.toString()}`;
 }
 
@@ -42,27 +36,36 @@ auth.post('/logout', async (c) => {
 })
 
 auth.post('/register', async (c) => {
-  const body = await c.req.json()
-  const ip = c.req.header('cf-connecting-ip') || 'unknown'
-  const isHuman = await verifyTurnstile(body.turnstile_token, ip, c.env.TURNSTILE_SECRET)
-  if (!isHuman) return c.json({ status: "error", message: "Verifikasi keamanan gagal." }, 400)
-  
-  const cleanEmail = (body.email || "").trim().toLowerCase()
-  const existingUser = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND status != 'deleted'").bind(cleanEmail, cleanEmail).first<any>()
-  if (existingUser) return c.json({ status: "error", message: "Email sudah terdaftar." }, 400)
-  
-  const hashedPw = await hashData(body.password)
-  const userId = crypto.randomUUID()
-  const now = getNow()
-  
-  await c.env.DB_SSO.prepare("INSERT INTO users (id, full_name, email, phone, role, password_hash, status, created_at) VALUES (?,?,?,?,?,?,'pending',?)")
-    .bind(userId, body.fullName, cleanEmail, body.phone, body.role, hashedPw, now).run()
-  
-  const tokenUUID = crypto.randomUUID().replace(/-/g, '')
-  await c.env.DB_SSO.prepare("INSERT INTO otp_requests (id, identifier, code, purpose, expires_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), cleanEmail, tokenUUID, 'activation', now + 86400).run()
-  await sendMail(c.env, cleanEmail, tokenUUID, 'activation')
-  
-  return c.json({ status: "ok", message: "Registrasi Sukses! Cek Email." })
+  try {
+    const body = await c.req.json()
+    const ip = c.req.header('cf-connecting-ip') || 'unknown'
+    const isHuman = await verifyTurnstile(body.turnstile_token, ip, c.env.TURNSTILE_SECRET)
+    if (!isHuman) return c.json({ status: "error", message: "Verifikasi keamanan gagal." }, 400)
+    
+    const cleanEmail = (body.email || "").trim().toLowerCase()
+    const safeRole = (body.role || 'talent').toLowerCase()
+    const existingUser = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND status != 'deleted'").bind(cleanEmail, cleanEmail).first<any>()
+    if (existingUser) return c.json({ status: "error", message: "Email atau No HP sudah terdaftar." }, 400)
+    
+    const hashedPw = await hashData(body.password)
+    const userId = crypto.randomUUID()
+    const now = getNow()
+    
+    await c.env.DB_SSO.prepare("INSERT INTO users (id, full_name, email, phone, role, password_hash, status, created_at) VALUES (?,?,?,?,?,?,'pending',?)")
+      .bind(userId, body.fullName, cleanEmail, body.phone, safeRole, hashedPw, now).run()
+    
+    const tokenUUID = crypto.randomUUID().replace(/-/g, '')
+    await c.env.DB_SSO.prepare("INSERT INTO otp_requests (id, identifier, code, purpose, expires_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), cleanEmail, tokenUUID, 'activation', now + 86400).run()
+    
+    // FIX ANTI CRASH: Bungkus pengiriman email agar tidak mematikan server jika API Resend error
+    try { await sendMail(c.env, cleanEmail, tokenUUID, 'activation'); } 
+    catch (mailErr) { console.error("Mail Error:", mailErr); }
+    
+    return c.json({ status: "ok", message: "Registrasi Sukses! Cek Email." })
+  } catch (err) {
+    console.error("Crash Registrasi:", err);
+    return c.json({ status: "error", message: "Gagal menyimpan data ke server." }, 500)
+  }
 })
 
 auth.post('/verify-activation', async (c) => {
@@ -127,7 +130,8 @@ auth.post('/request-otp', async (c) => {
   
   await c.env.DB_SSO.prepare("DELETE FROM otp_requests WHERE identifier=? AND purpose=?").bind(user.email, body.purpose).run()
   await c.env.DB_SSO.prepare("INSERT INTO otp_requests (id, identifier, code, purpose, expires_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), user.email, otp, body.purpose, now + 180).run()
-  await sendMail(c.env, user.email, otp, body.purpose)
+  
+  try { await sendMail(c.env, user.email, otp, body.purpose); } catch (e) { console.error("Mail Error"); }
   return c.json({ status: "ok", message: "OTP Terkirim." })
 })
 
@@ -192,7 +196,7 @@ auth.post('/request-reset', async (c) => {
   const now = getNow()
   await c.env.DB_SSO.prepare("DELETE FROM otp_requests WHERE identifier=? AND purpose=?").bind(user.email, 'reset').run()
   await c.env.DB_SSO.prepare("INSERT INTO otp_requests (id, identifier, code, purpose, expires_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), user.email, tokenUUID, 'reset', now + 1800).run()
-  await sendMail(c.env, user.email, tokenUUID, 'reset')
+  try { await sendMail(c.env, user.email, tokenUUID, 'reset'); } catch (e) {}
   return c.json({ status: "ok", message: "Link reset terkirim." })
 })
 

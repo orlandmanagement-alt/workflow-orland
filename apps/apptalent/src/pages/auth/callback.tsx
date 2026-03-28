@@ -8,35 +8,20 @@ export default function AuthCallback() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
-    const role = params.get('role');
+    const role = (params.get('role') || '').toLowerCase(); // FIX HURUF KECIL
     const userId = params.get('user_id');
     const name = params.get('name');
     const email = params.get('email');
 
     if (token && role) {
-      if (role.toLowerCase() !== 'talent') {
-        alert("Akses Ditolak: Aplikasi ini khusus Talent.");
+      if (role !== 'talent') {
+        alert("Akses Ditolak: Akun Anda terdaftar sebagai Client. Mengalihkan...");
         localStorage.clear();
-        window.location.replace('https://sso.orlandmanagement.com/');
+        window.location.replace('https://client.orlandmanagement.com/');
         return;
       }
 
-      // SIMPAN SEMUA DATA (Token + Profil) KE BRANKAS
-      const authState = {
-        state: {
-          token: token,
-          role: 'talent',
-          user: {
-            id: userId,
-            name: name,
-            email: email
-          }
-        }
-      };
-      
-      localStorage.setItem('orland-auth-talent', JSON.stringify(authState));
-      
-      // Buka Pintu ke Dashboard
+      localStorage.setItem('orland-auth-talent', JSON.stringify({ state: { token, role: 'talent', user: { id: userId, name, email } } }));
       navigate('/dashboard', { replace: true });
     } else {
       window.location.replace('https://sso.orlandmanagement.com/');
@@ -46,8 +31,7 @@ export default function AuthCallback() {
   return (
     <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-[#071122]">
       <div className="text-center animate-pulse">
-        <h2 className="text-xl font-bold text-brand-600 mb-2">Menyiapkan Studio Virtual Anda...</h2>
-        <p className="text-slate-500 text-sm">Menarik data profil dan jadwal...</p>
+        <h2 className="text-xl font-bold text-brand-600 mb-2">Memverifikasi Ruang Talent...</h2>
       </div>
     </div>
   );

@@ -14,18 +14,19 @@ export default function AuthCallback() {
     const email = params.get('email');
 
     if (token && role) {
-      if (role.toLowerCase() !== 'talent') {
-        alert("Akses Ditolak: Aplikasi ini khusus Talent.");
+      // TENDANG JIKA BUKAN CLIENT
+      if (role.toLowerCase() !== 'client') {
+        alert("Akses Ditolak: Ruang Kerja ini khusus Client/Nasabah.");
         localStorage.clear();
         window.location.replace('https://sso.orlandmanagement.com/');
         return;
       }
 
-      // SIMPAN SEMUA DATA (Token + Profil) KE BRANKAS
+      // SIMPAN RICH PAYLOAD KE BRANKAS
       const authState = {
         state: {
           token: token,
-          role: 'talent',
+          role: 'client',
           user: {
             id: userId,
             name: name,
@@ -34,11 +35,12 @@ export default function AuthCallback() {
         }
       };
       
-      localStorage.setItem('orland-auth-talent', JSON.stringify(authState));
+      localStorage.setItem('orland-auth-client', JSON.stringify(authState));
       
-      // Buka Pintu ke Dashboard
+      // Buka Pintu ke Command Center (Dashboard)
       navigate('/dashboard', { replace: true });
     } else {
+      // Jika nyasar tanpa token
       window.location.replace('https://sso.orlandmanagement.com/');
     }
   }, [navigate, location]);
@@ -46,8 +48,8 @@ export default function AuthCallback() {
   return (
     <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-[#071122]">
       <div className="text-center animate-pulse">
-        <h2 className="text-xl font-bold text-brand-600 mb-2">Menyiapkan Studio Virtual Anda...</h2>
-        <p className="text-slate-500 text-sm">Menarik data profil dan jadwal...</p>
+        <h2 className="text-xl font-bold text-brand-600 mb-2">Membuka Command Center...</h2>
+        <p className="text-slate-500 text-sm">Menarik data kampanye dan metrik finansial...</p>
       </div>
     </div>
   );

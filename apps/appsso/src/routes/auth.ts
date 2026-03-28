@@ -8,10 +8,18 @@ const auth = new Hono<{ Bindings: Bindings }>()
 const SESSION_EXPIRY = 259200
 const COOKIE_OPTS = { domain: '.orlandmanagement.com', path: '/', httpOnly: true, secure: true, sameSite: 'None' as const }
 
-// MODIFIKASI: Menambahkan token ke URL agar ditangkap Appclient
-const getPortalUrl = (role: string, token: string) => {
-  const baseUrl = role === 'client' ? 'https://client.orlandmanagement.com/dashboard' : 'https://talent.orlandmanagement.com/dashboard';
-  return `${baseUrl}?token=${token}&role=${role}`;
+// IDE BRILIAN ANDA: Mengirim token beserta data lengkap via URL
+const getPortalUrl = (env: Bindings, user: any, token: string) => {
+  const baseUrl = user.role === 'client' ? (env.CLIENT_URL || 'https://client.orlandmanagement.com') : (env.TALENT_URL || 'https://talent.orlandmanagement.com');
+  const params = new URLSearchParams({
+    token: token,
+    role: user.role,
+    user_id: user.id,
+    name: user.full_name,
+    email: user.email
+  });
+  // SELALU ARAHKAN KE /auth/callback AGAR TIDAK TERJADI LOOPING!
+  return `${baseUrl}/auth/callback?${params.toString()}`;
 }
 
 const getNow = () => Math.floor(Date.now() / 1000)
@@ -23,7 +31,7 @@ auth.get('/me', async (c) => {
   if (!session) return c.json({ status: "error", message: "Sesi kadaluarsa" }, 401)
   const user = await c.env.DB_SSO.prepare("SELECT id, full_name, email, role, status FROM users WHERE id=?").bind(session.user_id).first<any>()
   if (!user || user.status === 'deleted') return c.json({ status: "error", message: "Akun tidak ditemukan" }, 404)
-  return c.json({ status: "ok", user, redirect_url: getPortalUrl(user.role, sid) })
+  return c.json({ status: "ok", user, redirect_url: getPortalUrl(c.env, user, sid) })
 })
 
 auth.post('/logout', async (c) => {
@@ -70,7 +78,7 @@ auth.post('/verify-activation', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", role: user.role, redirect_url: getPortalUrl(user.role, sid) })
+  return c.json({ status: "ok", role: user.role, redirect_url: getPortalUrl(c.env, user, sid) })
 })
 
 auth.post('/login-password', async (c) => {
@@ -98,14 +106,14 @@ auth.post('/login-password', async (c) => {
   }
 
   if (user.status === 'pending') {
-    return c.json({ status: "error", message: "Akun belum aktif! Cek email." }, 403)
+    return c.json({ status: "error", message: "Akun belum aktif! Tautan aktivasi telah dikirim ke email." }, 403)
   }
 
   await c.env.DB_SSO.prepare("UPDATE users SET fail_count=0, locked_until=NULL WHERE id=?").bind(user.id).run()
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(user.role, sid) })
+  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user, sid) })
 })
 
 auth.post('/request-otp', async (c) => {
@@ -147,7 +155,7 @@ async function handleOtpVerify(c: any, actionType: string) {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(user.role, sid) })
+  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user, sid) })
 }
 
 auth.post('/check-pin', async (c) => {
@@ -171,7 +179,7 @@ auth.post('/login-pin', async (c) => {
   const sid = crypto.randomUUID()
   await c.env.DB_SSO.prepare("INSERT INTO sessions (id, user_id, role, created_at, expires_at) VALUES (?,?,?,?,?)").bind(sid, user.id, user.role, now, now + SESSION_EXPIRY).run()
   setCookie(c, 'sid', sid, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  return c.json({ status: "ok", redirect_url: getPortalUrl(user.role, sid) })
+  return c.json({ status: "ok", redirect_url: getPortalUrl(c.env, user, sid) })
 })
 
 auth.post('/request-reset', async (c) => {

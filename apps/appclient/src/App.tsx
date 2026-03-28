@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } f
 import { LayoutDashboard, Briefcase, Users, FileText, Settings } from 'lucide-react';
 import Header from './components/layout/Header';
 import OmniSearch from "./components/layout/OmniSearch";
+
+// Pages
+import AuthCallback from './pages/auth/callback';
+import ClientAuth from "./pages/auth/client-login"; // Jika masih ada
 import ClientDashboard from './pages/dashboard/index';
 import ProjectsHub from './pages/projects/index';
 import FinanceHub from "./pages/finance/invoices";
@@ -12,40 +16,21 @@ import ClientMessages from "./pages/messages/index";
 import TalentDiscovery from "./pages/talents/search";
 import ProjectDetail from "./pages/projects/detail";
 
-// --- STRICT GATEKEEPER: ANTI CROSS-ROLE ---
+// --- STRICT GATEKEEPER: HANYA MENGECEK BRANKAS ---
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const params = new URLSearchParams(window.location.search);
-  const urlToken = params.get('token');
-  const urlRole = params.get('role'); // Ambil role dari SSO
-  
-  // 1. TANGKAP & VERIFIKASI URL
-  if (urlToken && urlRole) {
-    // Jika Talent mencoba masuk ke URL Client, TENDANG!
-    if (urlRole.toLowerCase() !== 'client') {
-        localStorage.clear(); // Bersihkan sisa-sisa data
-        window.location.replace('https://sso.orlandmanagement.com/');
-        return null;
-    }
-    
-    // Jika benar Client, simpan ke brankas
-    localStorage.setItem('orland-auth-client', JSON.stringify({ state: { token: urlToken, role: 'client' } }));
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-
-  // 2. CEK BRANKAS LOKAL (GHOST DATA PROTECTION)
   const authData = localStorage.getItem('orland-auth-client');
   let isValid = false;
   
   try {
     const parsed = JSON.parse(authData || '');
-    // Pastikan token ada DAN rolenya benar-benar client
+    // Harus ada token dan role wajib 'client'
     if (parsed?.state?.token && parsed?.state?.role === 'client') {
       isValid = true;
     }
   } catch (e) {}
 
   if (!isValid) {
-    // Hapus ghost data jika formatnya salah, lalu tendang ke SSO
+    // Sapu data hantu dan lempar ke SSO
     localStorage.removeItem('orland-auth-client');
     window.location.replace(`https://sso.orlandmanagement.com/?redirect=${encodeURIComponent(window.location.href)}`);
     return null;
@@ -54,6 +39,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// --- KOMPONEN UI BAWAH ---
 const BottomNav = () => {
   const location = useLocation();
   const navItems = [
@@ -94,6 +80,11 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         
+        {/* RUTE PENANGKAP TOKEN (TIDAK DILINDUNGI GATEKEEPER) */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/login" element={<ClientAuth />} />
+        
+        {/* SEMUA RUTE UTAMA DILINDUNGI GATEKEEPER */}
         <Route path="/dashboard" element={<ProtectedRoute><ClientLayout><ClientDashboard /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/projects" element={<ProtectedRoute><ClientLayout><ProjectsHub /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/projects/:id" element={<ProtectedRoute><ClientLayout><ProjectDetail /></ClientLayout></ProtectedRoute>} />

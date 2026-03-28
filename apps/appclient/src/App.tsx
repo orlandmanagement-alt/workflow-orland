@@ -82,6 +82,7 @@ export default function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/auth/callback" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         
         {/* SEMUA RUTE KINI DILINDUNGI GATEKEEPER */}

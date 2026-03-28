@@ -2,6 +2,7 @@
   "name": "orland-apptalent",
   "private": true,
   "version": "1.0.0",
+    "sync_id": "1774674781",
   "type": "module",
   "scripts": {
     "dev": "vite",

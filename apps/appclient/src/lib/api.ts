@@ -1,23 +1,34 @@
 import axios from 'axios';
 import { APP_CONFIG } from '@/config';
+import { useAuthStore } from '../store/useAppStore';
+import { performCleanLogout } from './auth/logout';
 
 export const api = axios.create({
   baseURL: APP_CONFIG.API_URL,
   timeout: APP_CONFIG.TIMEOUT,
 });
 
-// Interceptor: Otomatis sisipkan Token di setiap request
+// Request Interceptor: Otomatis sisipkan Token dari brankas resmi (Zustand)
 api.interceptors.request.use((config) => {
-  const authData = localStorage.getItem('orland-auth-client');
-  if (authData) {
-    try {
-      const { state } = JSON.parse(authData);
-      if (state?.token) {
-        config.headers.Authorization = `Bearer ${state.token}`;
-      }
-    } catch (e) {
-      console.error('Error parsing token:', e);
-    }
+  const token = useAuthStore.getState().token;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+// Response Interceptor: Menangani Lazy Validation (JWT Kadaluarsa)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Jika API Utama dengan jelas mengatakan Unauthorized (Kode 401)
+    if (error.response && error.response.status === 401) {
+      console.warn("API Gatekeeper: Token sudah basi / hangus! Logout darurat...");
+      performCleanLogout();
+    }
+    
+    // Meneruskan pesan error asli
+    const errorMsg = error.response?.data?.message || 'Terjadi kesalahan sistem.';
+    return Promise.reject(new Error(errorMsg));
+  }
+);

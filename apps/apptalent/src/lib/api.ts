@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/useAppStore';
+import { performCleanLogout } from '@/lib/auth/logout';
 
 const API_URL = 'https://api.orlandmanagement.com/api/v1';
 
@@ -14,9 +15,10 @@ api.interceptors.request.use((config: any) => {
 api.interceptors.response.use(
   (response: any) => response,
   (error: any) => {
+    // Jika JWT benar-benar basi setelah request Data API
     if (error.response && error.response.status === 401) {
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
+      console.warn("API Gatekeeper: Sesi Token (JWT) Kedaluwarsa. Meluncur ke SSO...");
+      performCleanLogout();
     }
     // Meneruskan pesan error asli dari API agar form bisa menampilkannya
     const errorMsg = error.response?.data?.message || 'Terjadi kesalahan sistem.';

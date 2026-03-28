@@ -8,7 +8,7 @@ export default function Helpdesk() {
             <LifeBuoy size={40} className="mb-4 opacity-80" />
             <h2 className="text-2xl font-bold mb-2">Butuh Bantuan Teknis?</h2>
             <p className="text-brand-100 text-sm mb-6">Tim support kami siap membantu masalah aplikasi, profil, atau pembayaran Anda.</p>
-            <button className="bg-white text-brand-700 font-bold px-6 py-2.5 rounded-xl text-sm">Buat Tiket Baru</button>
+            <button className="bg-white text-brand-700 font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-slate-50 transition-colors">Buat Tiket Baru</button>
         </div>
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-8 rounded-3xl flex flex-col justify-center">
             <AlertTriangle size={32} className="text-red-500 mb-3" />

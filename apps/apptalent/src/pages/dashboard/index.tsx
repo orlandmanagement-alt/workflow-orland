@@ -4,10 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { talentService } from '@/lib/services/talentService';
 import { useAuthStore } from '@/store/useAppStore';
-import '@/assets/css/profile.css'; // Menggunakan CSS asli Anda yang sudah modular
+import '@/assets/css/profile.css';
 
-// --- VALIDATION SCHEMA (ZOD) ---
-// Memastikan data yang dikirim ke API sudah bersih dan sesuai standar
 const profileSchema = z.object({
   full_name: z.string().min(3, "Nama lengkap minimal 3 karakter"),
   birth_date: z.string().min(1, "Tanggal lahir wajib diisi"),
@@ -24,22 +22,16 @@ const Dashboard = () => {
   const [isNewTalent, setIsNewTalent] = useState(false);
   const user = useAuthStore((state) => state.user);
 
-  // --- INITIAL LOAD ---
-  // Membaca API saat halaman dibuka
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const data = await talentService.getProfile();
-        // Backend memberikan data, tapi jika belum lengkap (misal height kosong), anggap NewTalent
         if (data && data.height) {
           setProfile(data);
         } else {
           setIsNewTalent(true);
-          // Pre-fill data nama dari SSO jika ada
-          if (data?.full_name) reset({ full_name: data.full_name });
         }
       } catch (err) {
-        // API error / 404: Anggap Talent baru
         setIsNewTalent(true);
       } finally {
         setLoading(false);
@@ -48,15 +40,18 @@ const Dashboard = () => {
     loadProfile();
   }, []);
 
-  // --- REACT HOOK FORM (Final Mode) ---
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      category: 'Model'
-    }
+    defaultValues: { category: 'Model' }
   });
 
-  // --- SUBMIT LOGIC ---
+  // Pre-fill data jika dari SSO sudah ada nama
+  useEffect(() => {
+      if (isNewTalent && user?.full_name) {
+          reset({ full_name: user.full_name });
+      }
+  }, [isNewTalent, user, reset]);
+
   const onSubmit = async (data: ProfileFormValues) => {
     try {
       const updatedProfile = await talentService.updateProfile(data);
@@ -64,69 +59,64 @@ const Dashboard = () => {
       setIsNewTalent(false);
       alert("Profil berhasil disimpan ke server Orland!");
     } catch (err) {
-      alert("Gagal menyimpan profil. Data Anda tetap aman di Draft lokal.");
+      alert("Gagal menyimpan profil. Periksa koneksi Anda.");
     }
   };
 
-  if (loading) return <div className="p-20 text-center font-bold text-gray-400">Menghubungi Server API Orland...</div>;
+  if (loading) return <div className="p-20 text-center font-bold text-slate-400 dark:text-slate-500">Menyinkronkan Data...</div>;
 
-  // ==========================================
-  // TAMPILAN 1: FORM PENDAFTARAN (New Talent)
-  // ==========================================
   if (isNewTalent) {
     return (
       <div className="profile-wrap animate-in fade-in duration-500 relative">
         <div className="max-w-xl mx-auto">
-          <div className="profile-card profile-main">
-            <h2 className="text-xl font-extrabold mb-1">Lengkapi Profil Talent Anda</h2>
-            <p className="text-gray-400 text-sm mb-6">Data ini dikelola sepenuhnya oleh Orland AppAPI untuk Katalog.</p>
+          <div className="profile-card profile-main dark:bg-dark-card dark:border-slate-800">
+            <h2 className="text-xl font-extrabold mb-1 dark:text-white">Lengkapi Profil Talent Anda</h2>
+            <p className="text-slate-400 text-sm mb-6">Data ini dikelola sepenuhnya oleh Orland AppAPI untuk Katalog.</p>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              
               <div className="profile-section">
-                <div className="profile-sectionHead">1. Data Fisik (Wajib)</div>
+                <div className="profile-sectionHead dark:text-slate-300">1. Data Fisik (Wajib)</div>
                 <div className="profile-sectionBody profile-formGrid">
                   <div className="profile-frow">
-                    <label>Nama Lengkap</label>
-                    <input type="text" {...register('full_name')} placeholder="Sesuai KTP" />
+                    <label className="dark:text-slate-400">Nama Lengkap</label>
+                    <input type="text" {...register('full_name')} placeholder="Sesuai KTP" className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                     {errors.full_name && <span className="text-red-500 text-xs">{errors.full_name.message}</span>}
                   </div>
                   <div className="profile-frow">
-                    <label>Tanggal Lahir</label>
-                    <input type="date" {...register('birth_date')} />
+                    <label className="dark:text-slate-400">Tanggal Lahir</label>
+                    <input type="date" {...register('birth_date')} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                     {errors.birth_date && <span className="text-red-500 text-xs">{errors.birth_date.message}</span>}
                   </div>
                   <div className="profile-frow">
-                    <label>Tinggi (cm)</label>
-                    <input type="number" {...register('height')} placeholder="Contoh: 170" />
+                    <label className="dark:text-slate-400">Tinggi (cm)</label>
+                    <input type="number" {...register('height')} placeholder="Contoh: 170" className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                     {errors.height && <span className="text-red-500 text-xs">{errors.height.message}</span>}
                   </div>
                   <div className="profile-frow">
-                    <label>Berat (kg)</label>
-                    <input type="number" {...register('weight')} placeholder="Contoh: 60" />
+                    <label className="dark:text-slate-400">Berat (kg)</label>
+                    <input type="number" {...register('weight')} placeholder="Contoh: 60" className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                     {errors.weight && <span className="text-red-500 text-xs">{errors.weight.message}</span>}
                   </div>
                 </div>
               </div>
 
               <div className="profile-section">
-                <div className="profile-sectionHead">2. Kategori</div>
+                <div className="profile-sectionHead dark:text-slate-300">2. Kategori</div>
                 <div className="profile-sectionBody">
                     <div className="profile-frow">
-                      <select {...register('category')}>
+                      <select {...register('category')} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white">
                         <option>Model</option><option>Actor</option><option>Influencer</option>
                       </select>
                     </div>
                 </div>
               </div>
 
-              {/* STICKY FOOTER SAVE BAR (Mode Pendaftaran) */}
-              <div className="sticky-save-bar visible" style={{zIndex: 10}}>
-                <div className="flex items-center gap-3 text-amber-600 font-bold text-sm">
+              <div className="sticky-save-bar visible dark:bg-dark-card dark:border-t-slate-800" style={{zIndex: 10}}>
+                <div className="flex items-center gap-3 text-amber-600 dark:text-amber-500 font-bold text-sm">
                   <span className="draft-dot"></span>
                   <span className="hidden sm:inline">Semua data dikendalikan penuh oleh AppAPI.</span>
                 </div>
-                <button type="submit" disabled={isSubmitting} className="px-6 py-2 text-sm font-bold text-white bg-orange-600 rounded-full shadow-lg hover:bg-orange-700 transition">
+                <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 text-sm font-bold text-white bg-brand-600 rounded-full shadow-lg shadow-brand-500/30 hover:bg-brand-700 transition">
                   {isSubmitting ? 'Menyimpan...' : 'Kirim Data & Buka Dashboard'}
                 </button>
               </div>
@@ -137,22 +127,19 @@ const Dashboard = () => {
     );
   }
 
-  // ==========================================
-  // TAMPILAN 2: REAL DASHBOARD STATS
-  // ==========================================
   return (
-    <div className="profile-wrap animate-in fade-in duration-500 p-8">
-      <h1 className="text-3xl font-extrabold">Halo, {profile.full_name}! 👋</h1>
-      <p className="text-gray-500 mt-2">Data Anda sudah aktif di katalog Orland Management.</p>
+    <div className="profile-wrap animate-in fade-in duration-500 p-2 sm:p-6">
+      <h1 className="text-3xl font-extrabold dark:text-white">Halo, {profile.full_name}! 👋</h1>
+      <p className="text-slate-500 dark:text-slate-400 mt-2">Data Anda sudah aktif di katalog Orland Management.</p>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xl shadow-gray-50">
-          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider">Status</p>
+        <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+          <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Status</p>
           <p className="text-2xl font-bold text-green-500 mt-1">Aktif & Terverifikasi</p>
         </div>
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xl shadow-gray-50">
-          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider">Kategori</p>
-          <p className="text-2xl font-bold mt-1">{profile.category}</p>
+        <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+          <p className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Kategori</p>
+          <p className="text-2xl font-bold dark:text-white mt-1">{profile.category}</p>
         </div>
       </div>
     </div>

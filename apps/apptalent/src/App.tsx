@@ -1,27 +1,73 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import DashboardLayout from '@/components/layout/DashboardLayout'
-import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import Login from '@/pages/auth/login'
-import SSOCallback from '@/pages/auth/callback' // Import halaman callback baru
-import DashboardHome from '@/pages/dashboard/index'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+
+// Layout & Auth
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import Login from '@/pages/auth/login';
+import AuthCallback from '@/pages/auth/callback';
+
+// Pages
+import Dashboard from '@/pages/dashboard';
+import Projects from '@/pages/projects';
+import ProjectDetail from '@/pages/projects/[id]';
+import Schedules from '@/pages/schedules';
+import Payouts from '@/pages/payouts';
+import MediaPortfolio from '@/pages/media';
+import Contracts from '@/pages/contracts';
+import Messages from '@/pages/messages';
+import AIMatch from '@/pages/jobs/match';
+import JobInvites from '@/pages/jobs/invites';
+import KYCVerification from '@/pages/kyc';
+import Helpdesk from '@/pages/help';
+import Settings from '@/pages/settings';
+import ProfileEditor from '@/pages/profile';
+import LiveBoardJoin from '@/pages/live-boards/[id]';
+import PublicProfile from '@/pages/p/[username]';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<SSOCallback />} /> {/* Rute Callback SSO */}
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes (Tanpa perlu login) */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/p/:username" element={<PublicProfile />} />
+          
+          {/* Live Casting Room (Bisa public/private tergantung setting nanti) */}
+          <Route path="/live-boards/:id" element={<LiveBoardJoin />} />
 
-        {/* Protected Dashboard Routes */}
-        <Route path="/dashboard" element={<ErrorBoundary><DashboardLayout /></ErrorBoundary>}>
-          <Route index element={<DashboardHome />} />
-          {/* Rute dinamis lainnya ditaruh di sini */}
-        </Route>
+          {/* Protected Routes (Harus Login - Dibungkus oleh DashboardLayout) */}
+          <Route element={<DashboardLayout />}>
+            {/* Redirect root ke dashboard */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
+            <Route path="/schedules" element={<Schedules />} />
+            <Route path="/payouts" element={<Payouts />} />
+            <Route path="/media" element={<MediaPortfolio />} />
+            <Route path="/contracts" element={<Contracts />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/jobs/match" element={<AIMatch />} />
+            <Route path="/jobs/invites" element={<JobInvites />} />
+            <Route path="/kyc" element={<KYCVerification />} />
+            <Route path="/help" element={<Helpdesk />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<ProfileEditor />} />
+          </Route>
 
-        {/* Fallback Route */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
-  )
+          {/* Fallback 404 Route */}
+          <Route path="*" element={
+            <div className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white">
+              <h1 className="text-6xl font-extrabold text-brand-600 mb-4">404</h1>
+              <p className="text-xl font-bold mb-6">Halaman tidak ditemukan</p>
+              <button onClick={() => window.location.href = '/dashboard'} className="px-6 py-2 bg-brand-600 text-white rounded-xl">Kembali ke Dashboard</button>
+            </div>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
+  );
 }

@@ -1,18 +1,14 @@
-import { LayoutDashboard, CalendarDays, Wallet, UserCircle, Briefcase, FileText, Bell } from 'lucide-react';
+import { LayoutDashboard, Briefcase, CalendarDays, Wallet, ImagePlus, FileSignature, MessageSquare, Sparkles, UserCheck } from 'lucide-react';
 
-export interface MenuItem {
-  path: string;
-  label: string;
-  icon: React.ElementType;
-  badge?: string; // Untuk notifikasi angka
-}
-
-export const MENU_ITEMS: MenuItem[] = [
+// Daftar menu ini akan otomatis dirender di DashboardLayout
+export const MENU_ITEMS = [
   { path: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
-  { path: '/dashboard/projects', label: 'Proyek Aktif', icon: Briefcase },
-  { path: '/dashboard/schedules', label: 'Jadwal Saya', icon: CalendarDays },
-  { path: '/dashboard/payouts', label: 'Dompet Pendapatan', icon: Wallet },
-  { path: '/dashboard/profile', label: 'Comp Card Pro', icon: UserCircle },
-  { path: '/dashboard/contracts', label: 'NDA & SPK', icon: FileText, badge: '2' }, // Contoh badge
-  { path: '/dashboard/messages', label: 'Kotak Masuk', icon: Bell, badge: '!' },
+  { path: '/jobs/match', label: 'Smart Match AI', icon: Sparkles, badge: 'New' },
+  { path: '/projects', label: 'Proyek Aktif', icon: Briefcase },
+  { path: '/schedules', label: 'Jadwal Saya', icon: CalendarDays },
+  { path: '/payouts', label: 'Dompet Pendapatan', icon: Wallet },
+  { path: '/media', label: 'Comp Card Pro', icon: ImagePlus },
+  { path: '/kyc', label: 'Verifikasi KYC', icon: UserCheck },
+  { path: '/contracts', label: 'NDA & SPK', icon: FileSignature, badge: '2' },
+  { path: '/messages', label: 'Kotak Masuk', icon: MessageSquare, badge: '!' },
 ];

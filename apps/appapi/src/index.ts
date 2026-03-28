@@ -97,4 +97,16 @@ app.route('/api/v1/system', systemToolsRouter)
 app.route('/api/v1/tools', miscToolsRouter)
 app.route('/api/v1', miscToolsRouter)
 
+// PUBLIC R2 MEDIA SERVER (Tanpa JWT)
+app.get("/api/v1/public/media/:key", async (c) => {
+  const key = c.req.param("key");
+  const object = await c.env.R2_MEDIA.get(key);
+  if (!object) return c.text("Gambar Tidak Ditemukan", 404);
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("Cache-Control", "public, max-age=31536000");
+  return new Response(object.body, { headers });
+});
+
 export default app

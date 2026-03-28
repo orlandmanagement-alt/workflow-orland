@@ -15,9 +15,10 @@ import Payouts from '@/pages/payouts';
 import MediaPortfolio from '@/pages/media';
 import Contracts from '@/pages/contracts';
 import Messages from '@/pages/messages';
-import AIMatch from '@/pages/jobs/match';
+import AIMatch from "@/pages/jobs/match/index";
 import JobInvites from '@/pages/jobs/invites';
 import KYCVerification from '@/pages/kyc';
+import Audition from "@/pages/audition";
 import Helpdesk from '@/pages/help';
 import Settings from '@/pages/settings';
 import ProfileEditor from '@/pages/profile';
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/jobs/match" element={<AIMatch />} />
             <Route path="/jobs/invites" element={<JobInvites />} />
             <Route path="/kyc" element={<KYCVerification />} />
+            <Route path="/audition" element={<Audition />} />
             <Route path="/help" element={<Helpdesk />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<ProfileEditor />} />

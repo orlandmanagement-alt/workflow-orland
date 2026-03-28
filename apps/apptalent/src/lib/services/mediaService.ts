@@ -1,19 +1,26 @@
-import { apiRequest } from '@/lib/api';
+import { api } from '../api';
 
 export const mediaService = {
-  // Ambil semua media milik talent
-  getMedia: () => apiRequest('/talents/me/media'),
-  
-  // Upload file media baru
-  uploadMedia: (file: File) => {
+  getMedia: async () => {
+    const res = await api.get('/media');
+    return res.data?.data || [];
+  },
+  uploadMedia: async (file: File) => {
+    // MENGIRIM FILE ASLI MENGGUNAKAN FORMDATA
     const formData = new FormData();
     formData.append('file', file);
-    return apiRequest('/talents/me/media', { method: 'POST', body: formData });
+    
+    const res = await api.post('/media', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
   },
-
-  // Hapus media
-  deleteMedia: (id: string) => apiRequest(`/talents/me/media/${id}`, { method: 'DELETE' }),
-
-  // Jadikan foto sebagai Sampul Utama (Main Profile Picture)
-  setMainMedia: (id: string) => apiRequest(`/talents/me/media/${id}/main`, { method: 'PATCH' }),
+  setMainMedia: async (mediaId: string) => {
+    const res = await api.patch(`/media/${mediaId}`);
+    return res.data;
+  },
+  deleteMedia: async (mediaId: string) => {
+    const res = await api.delete(`/media/${mediaId}`);
+    return res.data;
+  }
 };

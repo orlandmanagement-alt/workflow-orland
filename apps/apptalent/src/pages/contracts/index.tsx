@@ -1,22 +1,98 @@
-import { FileSignature } from 'lucide-react';
+import { useState } from 'react';
+import { FileSignature, ShieldCheck, PenTool, X, Loader2 } from 'lucide-react';
+import { useAuthStore } from '@/store/useAppStore';
+
 export default function Contracts() {
+  const user = useAuthStore((state) => state.user);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [signatureName, setSignatureName] = useState('');
+  const [isSigning, setIsSigning] = useState(false);
+  const [isSigned, setIsSigned] = useState(false);
+
+  const handleSign = () => {
+    if (signatureName.toLowerCase() !== user?.full_name?.toLowerCase()) {
+      return alert('Nama tanda tangan harus sesuai dengan nama profil Anda.');
+    }
+    
+    setIsSigning(true);
+    // Simulasi proses API keamanan blockchain/database
+    setTimeout(() => {
+      setIsSigning(false);
+      setIsSigned(true);
+      setIsModalOpen(false);
+      alert('Kontrak berhasil ditandatangani secara digital (E-Sign valid)!');
+    }, 2000);
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Dokumen Legal & SPK</h1>
-      <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      
+      <div className={`p-6 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 transition-all ${isSigned ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800' : 'bg-white dark:bg-dark-card border-slate-200 dark:border-slate-800'}`}>
         <div className="flex items-center">
-            <div className="h-12 w-12 rounded-xl bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center justify-center mr-4 shrink-0">
-                <FileSignature size={24} />
+            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mr-5 shrink-0 shadow-inner ${isSigned ? 'bg-green-100 text-green-600' : 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
+                {isSigned ? <ShieldCheck size={28} /> : <FileSignature size={28} />}
             </div>
             <div>
-                <h3 className="font-bold text-slate-900 dark:text-white">Kontrak Eksklusif Tahunan Orland</h3>
-                <p className="text-sm text-red-500 dark:text-red-400 font-medium mt-0.5">Membutuhkan Tanda Tangan Anda</p>
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Kontrak Eksklusif Tahunan</h3>
+                <p className={`text-sm font-medium mt-0.5 ${isSigned ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                    {isSigned ? 'Telah ditandatangani secara digital' : 'Membutuhkan Tanda Tangan Anda'}
+                </p>
             </div>
         </div>
-        <button className="px-6 py-2.5 w-full sm:w-auto bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl text-sm shadow-lg hover:scale-105 transition-transform">
-            Tinjau PDF
+        
+        <button 
+            onClick={() => !isSigned && setIsModalOpen(true)}
+            disabled={isSigned}
+            className={`px-8 py-3 w-full sm:w-auto font-bold rounded-xl text-sm shadow-lg transition-all ${isSigned ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 cursor-not-allowed shadow-none' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105'}`}
+        >
+            {isSigned ? 'Kontrak Aktif' : 'Tinjau & Tanda Tangani'}
         </button>
       </div>
+
+      {/* MODAL E-SIGNATURE */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white dark:bg-dark-card w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                    <h2 className="text-xl font-bold flex items-center dark:text-white"><PenTool size={20} className="mr-3 text-brand-600" /> E-Signature Kontrak</h2>
+                    <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-red-500"><X size={24} /></button>
+                </div>
+
+                <div className="p-8 overflow-y-auto flex-1 text-sm text-slate-600 dark:text-slate-400 space-y-4">
+                    <p>Dengan membubuhkan tanda tangan elektronik di bawah ini, saya, <strong>{user?.full_name || 'Talent'}</strong>, menyatakan bersedia terikat pada syarat dan ketentuan Orland Management.</p>
+                    <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl font-mono text-xs overflow-y-auto h-40 border border-slate-200 dark:border-slate-700">
+                        PASAL 1: RUANG LINGKUP<br/>
+                        1. Pihak Pertama (Orland) berhak mengelola jadwal Pihak Kedua (Talent).<br/>
+                        PASAL 2: PEMBAGIAN HONOR<br/>
+                        1. Talent menyetujui potongan agency fee sebesar 20% dari total nilai proyek sebelum pajak.<br/>
+                        [... Dokumen Legal Lengkap ...]
+                    </div>
+                    
+                    <div className="mt-6">
+                        <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">Ketik nama lengkap Anda sebagai Tanda Tangan Digital:</label>
+                        <input 
+                            type="text" 
+                            value={signatureName}
+                            onChange={(e) => setSignatureName(e.target.value)}
+                            placeholder={user?.full_name || "Nama Lengkap"} 
+                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 rounded-xl font-bold dark:text-white focus:ring-2 focus:ring-brand-500 outline-none"
+                        />
+                        <p className="text-xs text-slate-500 mt-2 flex items-center"><ShieldCheck size={14} className="mr-1 text-green-500" /> Tanda tangan ini mengikat secara hukum sesuai UU ITE.</p>
+                    </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-4">
+                    <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">Batal</button>
+                    <button onClick={handleSign} disabled={isSigning || signatureName.length < 3} className="px-8 py-3 font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-lg shadow-brand-600/30 flex items-center disabled:opacity-50 transition-all">
+                        {isSigning ? <><Loader2 size={18} className="animate-spin mr-2" /> Memvalidasi...</> : 'Setuju & Tanda Tangani'}
+                    </button>
+                </div>
+
+            </div>
+        </div>
+      )}
     </div>
   )
 }

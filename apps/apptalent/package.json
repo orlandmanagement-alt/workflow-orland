@@ -9,6 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "browser-image-compression": "^2.0.2",
+    "react-easy-crop": "^5.0.5",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1",
+    "browser-image-compression": "^2.0.2",
+    "react-easy-crop": "^5.0.5",
     "@hookform/resolvers": "^3.3.4",
     "@tanstack/react-query": "^5.28.9",
     "axios": "^1.6.8",

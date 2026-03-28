@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
-  user: any | null; // Tempat menyimpan data dari API (email, nama, dll)
+  user: any | null; 
   login: (token: string, userData?: any) => void;
   setUser: (userData: any) => void;
   logout: () => void;
@@ -18,9 +18,18 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       login: (token, userData = null) => set({ token, isAuthenticated: true, user: userData }),
       setUser: (userData) => set({ user: userData }),
+      // Saat logout dipanggil, HANCURKAN semua state ke null
       logout: () => set({ token: null, isAuthenticated: false, user: null }),
     }),
-    { name: 'orland-auth-storage' }
+    { 
+      name: 'orland-auth-storage',
+      // Cegah persist dari sinkronisasi otomatis jika state sudah null
+      onRehydrateStorage: () => (state) => {
+        if (!state?.token) {
+          state?.logout();
+        }
+      }
+    }
   )
 );
 
@@ -34,7 +43,6 @@ export const useThemeStore = create<ThemeState>()(
     (set) => ({
       isDark: false,
       toggleTheme: () => set((state) => {
-        // Otomatis inject class 'dark' ke elemen HTML
         if (!state.isDark) document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
         return { isDark: !state.isDark };

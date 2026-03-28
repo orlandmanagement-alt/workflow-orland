@@ -1,28 +1,35 @@
+// Import useAuthStore secara langsung
+import { useAuthStore } from '../../store/useAppStore';
+
 export const performCleanLogout = async () => {
-  console.log("Memulai pembersihan total...");
+  console.log("Memulai eksekusi Logout Klien...");
+
   try {
-    // Beritahu backend untuk menghapus cookie sesi
+    // 1. Pukul Backend SSO
     await fetch('https://api.orlandmanagement.com/api/v1/auth/logout', { 
         method: 'POST', 
         credentials: 'include' 
     });
   } catch (e) {
-    console.error("Logout API gagal, lanjut pembersihan lokal...");
+    console.error("SSO API Logout gagal (mungkin offline), lanjut lokal...");
   }
 
-  // Daftar key yang tidak boleh dihapus (misal: tema gelap/terang)
+  // 2. MATIKAN ZUSTAND AUTH STORE DARI DALAM!
+  useAuthStore.getState().logout();
+
+  // 3. DAFTAR KEY YANG AMAN (Jangan hapus tema)
   const safeKeys = ['orland-theme-storage', 'vite-ui-theme', 'theme'];
 
-  // SAPU BERSIH LOCAL STORAGE
+  // 4. PEMBANTAIAN LOKAL STORAGE
   Object.keys(localStorage).forEach((key) => {
     if (!safeKeys.includes(key)) {
       localStorage.removeItem(key);
     }
   });
 
-  // SAPU BERSIH SESSION STORAGE
+  // 5. PEMBANTAIAN SESSION STORAGE
   sessionStorage.clear();
 
-  // Tendang paksa ke SSO
+  // 6. Eksekusi Pengusiran Paksa tanpa jejak riwayat belakang
   window.location.replace('https://sso.orlandmanagement.com/');
 };

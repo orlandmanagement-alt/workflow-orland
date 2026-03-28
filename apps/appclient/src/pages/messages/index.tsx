@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Send, CheckCheck, User, Paperclip, MoreVertical, Phone, Video } from 'lucide-react';
+import { Search, Send, CheckCheck, User, Paperclip, MoreVertical, Phone, Video, ArrowRight } from 'lucide-react';
 
 const MOCK_CHATS = [
   { id: 'CH-1', name: 'Sarah Lee', role: 'Talent (Main)', project: 'TVC Glow Soap', lastMsg: 'Baik pak, kostum putih sudah saya siapkan.', time: '10:45', unread: 2, avatar: 'bg-indigo-500' },

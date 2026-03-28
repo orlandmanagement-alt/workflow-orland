@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarDays, MapPin, Clock, CalendarSync, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateICS } from '@/utils/calendarSync';
 
 export default function Schedules() {
@@ -81,7 +81,7 @@ export default function Schedules() {
                     </div>
 
                     <button onClick={() => handleSyncCalendar(activeSchedule)} className="w-full py-3.5 bg-white text-slate-900 font-bold rounded-xl flex items-center justify-center hover:bg-brand-50 hover:text-brand-600 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                        <CalendarSync size={18} className="mr-2" /> Ekspor ke Kalender
+                        <CalendarPlus size={18} className="mr-2" /> Ekspor ke Kalender
                     </button>
                 </div>
             ) : (

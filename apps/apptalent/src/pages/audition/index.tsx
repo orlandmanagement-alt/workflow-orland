@@ -11,7 +11,7 @@ export default function Audition() {
   const [showPrompter, setShowPrompter] = useState(true);
   const [recordingTime, setRecordingTime] = useState(0);
   
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   const scriptText = "Halo, nama saya [Sebutkan Nama]. Saya berusia [Umur] tahun. Tinggi badan saya [Tinggi] cm. Saya memiliki ketertarikan besar di dunia akting dan modeling. Karakter wajah saya sangat adaptif untuk berbagai peran. Saya sangat siap untuk bekerja sama dalam project ini. Terima kasih Orland Management!";

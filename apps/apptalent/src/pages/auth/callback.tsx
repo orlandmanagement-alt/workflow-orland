@@ -1,46 +1,41 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthStore } from '@/store/useAppStore';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function AuthCallback() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const login = useAuthStore((state) => state.login);
+  const location = useLocation();
 
   useEffect(() => {
-    // Tangkap token dari URL (menangani React Router maupun native window search)
-    let token = searchParams.get('token');
-    if (!token && window.location.search) {
-       const urlParams = new URLSearchParams(window.location.search);
-       token = urlParams.get('token');
-    }
-    
-    if (token) {
-      console.log("✅ Token JWT berhasil ditangkap dari SSO!");
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const role = params.get('role');
+
+    if (token && role) {
+      // STRICT CROSS-ROLE CHECK
+      if (role.toLowerCase() !== 'talent') {
+        alert("Akses Ditolak: Anda bukan Talent.");
+        localStorage.clear();
+        window.location.replace('https://sso.orlandmanagement.com/');
+        return;
+      }
+
+      // Simpan token jika benar Talent
+      localStorage.setItem('orland-auth-talent', JSON.stringify({ state: { token, role: 'talent' } }));
       
-      // 🧹 SAPU BERSIH: Hapus semua cache/ghost data dari arsitektur lama
-      localStorage.removeItem('auth-storage');
-      localStorage.removeItem('orland_comms_settings');
-      localStorage.removeItem('talent_profile');
-      
-      // Tanamkan Token JWT ke sistem Zustand yang baru
-      login(token); 
-      
-      // Beri waktu 800ms agar I/O LocalStorage selesai menulis data sebelum pindah halaman
-      setTimeout(() => {
-         navigate('/dashboard', { replace: true });
-      }, 800);
+      // Bersihkan URL dan masuk ke Dashboard
+      navigate('/dashboard', { replace: true });
     } else {
-      console.error("❌ Token JWT tidak ditemukan di URL!");
-      navigate('/login', { replace: true });
+      // Jika nyasar ke halaman ini tanpa token
+      window.location.replace('https://sso.orlandmanagement.com/');
     }
-  }, [searchParams, navigate, login]);
+  }, [navigate, location]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-      <h2 className="text-xl font-bold text-slate-800">Menyinkronkan Sesi...</h2>
-      <p className="text-slate-500 text-sm">Mempersiapkan Enterprise Portal Anda</p>
+    <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-[#071122]">
+      <div className="text-center animate-pulse">
+        <h2 className="text-xl font-bold text-brand-600 mb-2">Memverifikasi Akses...</h2>
+        <p className="text-slate-500 text-sm">Menyiapkan Studio Virtual Anda</p>
+      </div>
     </div>
   );
 }

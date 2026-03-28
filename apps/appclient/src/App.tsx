@@ -12,32 +12,42 @@ import ClientMessages from "./pages/messages/index";
 import TalentDiscovery from "./pages/talents/search";
 import ProjectDetail from "./pages/projects/detail";
 
-// --- MIDDLEWARE: GATEKEEPER & TOKEN CATCHER ---
+// --- STRICT GATEKEEPER: ANTI CROSS-ROLE ---
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  // 1. TANGKAP TOKEN DARI URL SECARA SINKRON
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get('token');
+  const urlRole = params.get('role'); // Ambil role dari SSO
   
-  if (urlToken) {
-    // Simpan ke brankas LocalStorage
-    localStorage.setItem('orland-auth-client', JSON.stringify({ state: { token: urlToken, role: 'CLIENT' } }));
-    // Bersihkan URL agar klien tidak melihat token panjang
+  // 1. TANGKAP & VERIFIKASI URL
+  if (urlToken && urlRole) {
+    // Jika Talent mencoba masuk ke URL Client, TENDANG!
+    if (urlRole.toLowerCase() !== 'client') {
+        localStorage.clear(); // Bersihkan sisa-sisa data
+        window.location.replace('https://sso.orlandmanagement.com/');
+        return null;
+    }
+    
+    // Jika benar Client, simpan ke brankas
+    localStorage.setItem('orland-auth-client', JSON.stringify({ state: { token: urlToken, role: 'client' } }));
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
-  // 2. CEK STATUS LOGIN
+  // 2. CEK BRANKAS LOKAL (GHOST DATA PROTECTION)
   const authData = localStorage.getItem('orland-auth-client');
-  let isAuthenticated = false;
+  let isValid = false;
   
   try {
-    if (authData && JSON.parse(authData).state?.token) {
-      isAuthenticated = true;
+    const parsed = JSON.parse(authData || '');
+    // Pastikan token ada DAN rolenya benar-benar client
+    if (parsed?.state?.token && parsed?.state?.role === 'client') {
+      isValid = true;
     }
   } catch (e) {}
 
-  if (!isAuthenticated) {
-    // Jika tidak punya token, paksa ke SSO Orland
-    window.location.href = `https://sso.orlandmanagement.com/?redirect=${encodeURIComponent(window.location.origin + '/dashboard')}`;
+  if (!isValid) {
+    // Hapus ghost data jika formatnya salah, lalu tendang ke SSO
+    localStorage.removeItem('orland-auth-client');
+    window.location.replace(`https://sso.orlandmanagement.com/?redirect=${encodeURIComponent(window.location.href)}`);
     return null;
   }
   
@@ -82,10 +92,8 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/auth/callback" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         
-        {/* SEMUA RUTE KINI DILINDUNGI GATEKEEPER */}
         <Route path="/dashboard" element={<ProtectedRoute><ClientLayout><ClientDashboard /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/projects" element={<ProtectedRoute><ClientLayout><ProjectsHub /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/projects/:id" element={<ProtectedRoute><ClientLayout><ProjectDetail /></ClientLayout></ProtectedRoute>} />

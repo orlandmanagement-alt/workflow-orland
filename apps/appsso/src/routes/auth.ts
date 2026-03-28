@@ -11,7 +11,7 @@ const COOKIE_OPTS = { domain: '.orlandmanagement.com', path: '/', httpOnly: true
 // MODIFIKASI: Menambahkan token ke URL agar ditangkap Appclient
 const getPortalUrl = (role: string, token: string) => {
   const baseUrl = role === 'client' ? 'https://client.orlandmanagement.com/dashboard' : 'https://talent.orlandmanagement.com/dashboard';
-  return `${baseUrl}?token=${token}`;
+  return `${baseUrl}?token=${token}&role=${role}`;
 }
 
 const getNow = () => Math.floor(Date.now() / 1000)

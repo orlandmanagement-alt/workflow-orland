@@ -1,32 +1,64 @@
 import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Loader2, ShieldCheck, Mail, X, Building2 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '@/store/useAppStore';
+import axios from 'axios';
 
 export default function Payouts() {
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787/api/v1';
   
   // State Dompet
-  const [hasBankAccount, setHasBankAccount] = useState(false); // Default simulasi belum punya
+  const [hasBankAccount, setHasBankAccount] = useState(false); 
   const [showSetupModal, setShowSetupModal] = useState(false);
+  
+  // State Form Bank
+  const [bankName, setBankName] = useState('BCA');
+  const [accountNumber, setAccountNumber] = useState('');
   
   // State Proses Setup
   const [step, setStep] = useState<'setup' | 'otp' | 'success'>('setup');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Saat Tarik Dana Ditekan
-  const handleWithdrawClick = () => {
+  const handleWithdrawClick = async () => {
       if (!hasBankAccount) {
           setShowSetupModal(true);
           setStep('setup');
       } else {
-          // Logika jika sudah punya bank (Tarik uang asli)
-          alert('Permintaan pencairan dana berhasil dikirim ke tim Finance Orland.');
+          try {
+              await axios.post(`${API_URL}/payouts`, {
+                  talent_id: user?.id,
+                  booking_id: 'ALL',
+                  amount: 12500000
+              }, { headers: { Authorization: `Bearer ${token}` } });
+              alert('Permintaan pencairan dana berhasil dikirim ke tim Finance Orland.');
+          } catch(err) {
+              alert('Gagal meminta pencairan dana.');
+          }
       }
   }
 
-  const simulateProcess = (nextStep: any) => {
+  const simulateProcess = async (nextStep: any) => {
       setIsProcessing(true);
-      setTimeout(() => { setIsProcessing(false); setStep(nextStep); }, 1500);
+      try {
+          if (step === 'setup') {
+              // Simulate OTP sending
+              setTimeout(() => { setIsProcessing(false); setStep('otp'); }, 1000);
+          } else if (step === 'otp') {
+              // Simpan rekening ke API asli
+              await axios.post(`${API_URL}/talents/${user?.id}/bank-accounts`, {
+                  bank_name: bankName,
+                  account_number: accountNumber,
+                  account_name: user?.full_name || 'TALENT'
+              }, { headers: { Authorization: `Bearer ${token}` } });
+              setIsProcessing(false);
+              setStep('success');
+          }
+      } catch (err) {
+          setIsProcessing(false);
+          alert("Gagal menghubungi server");
+      }
   };
 
   return (
@@ -110,9 +142,22 @@ export default function Payouts() {
                               <h3 className="text-xl font-black dark:text-white mb-2">Setup Keamanan Penarikan</h3>
                               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Hubungkan rekening bank dan buat 6-Digit PIN demi keamanan dana Anda.</p>
                               
-                              <div><label className="text-xs font-bold text-slate-500 uppercase">Nama Bank</label><select className="w-full mt-1 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none dark:text-white"><option>BCA</option><option>Mandiri</option><option>BRI</option></select></div>
-                              <div><label className="text-xs font-bold text-slate-500 uppercase">Nomor Rekening</label><input type="number" placeholder="Contoh: 8736152..." className="w-full mt-1 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none dark:text-white" /></div>
-                              <div><label className="text-xs font-bold text-slate-500 uppercase">Buat 6-Digit PIN</label><input type="password" maxLength={6} placeholder="••••••" className="w-full mt-1 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none dark:text-white text-center text-xl tracking-[1em]" /></div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase">Nama Bank</label>
+                                <select value={bankName} onChange={(e) => setBankName(e.target.value)} className="w-full mt-1 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none dark:text-white">
+                                  <option value="BCA">BCA</option>
+                                  <option value="Mandiri">Mandiri</option>
+                                  <option value="BRI">BRI</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase">Nomor Rekening</label>
+                                <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} type="number" placeholder="Contoh: 8736152..." className="w-full mt-1 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none dark:text-white" />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase">Buat 6-Digit PIN</label>
+                                <input type="password" maxLength={6} placeholder="••••••" className="w-full mt-1 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none dark:text-white text-center text-xl tracking-[1em]" />
+                              </div>
                               
                               <button onClick={() => simulateProcess('otp')} disabled={isProcessing} className="w-full mt-6 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl flex items-center justify-center hover:scale-105 transition-transform">
                                   {isProcessing ? <Loader2 className="animate-spin" size={20}/> : 'Lanjut Verifikasi Email'}

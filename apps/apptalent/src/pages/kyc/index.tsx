@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { ShieldAlert, CreditCard, ScanFace, CheckCircle, Loader2, AlertTriangle, UploadCloud } from 'lucide-react';
+import { useAuthStore } from '@/store/useAppStore';
+import axios from 'axios';
 
 export default function KYCVerification() {
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -7,13 +9,16 @@ export default function KYCVerification() {
   const [uploadType, setUploadType] = useState<'document' | 'liveness' | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Karena ini tahap UI Placeholder, kita buat status simulasi
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787/api/v1';
+
   const [docStatus, setDocStatus] = useState<'unverified' | 'pending' | 'verified'>('unverified');
   const [livenessStatus, setLivenessStatus] = useState<'unverified' | 'pending' | 'verified'>('unverified');
   const status = (docStatus === 'verified' && livenessStatus === 'verified') ? 'verified' : 
                  (docStatus === 'pending' || livenessStatus === 'pending') ? 'pending' : 'unverified';
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'document' | 'liveness') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'document' | 'liveness') => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -22,14 +27,31 @@ export default function KYCVerification() {
     setUploadType(type);
     setIsUploading(true);
     
-    // Simulasi loading upload 2 detik
-    setTimeout(() => {
+    // Convert to real API calls instead of setTimeout
+    try {
+        if (type === 'document') {
+            await axios.post(`${API_URL}/talents/${user?.id}/documents`, {
+               id_card_url: 'https://cdn.orlandmanagement.com/mock/ktp.jpg',
+               selfie_url: 'https://cdn.orlandmanagement.com/mock/selfie.jpg'
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            
+            setDocStatus('pending');
+            alert('Dokumen KTP berhasil diunggah! Menunggu verifikasi tim.');
+            
+        } else if (type === 'liveness') {
+            const res = await axios.post(`${API_URL}/talents/${user?.id}/liveness`, {
+               liveness_video_url: 'https://cdn.orlandmanagement.com/mock/liveness.mp4'
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            
+            setLivenessStatus(res.data.verification_status === 'Passed' ? 'verified' : 'pending');
+            alert(`Foto Selfie berhasil diunggah! Liveness Status: ${res.data.verification_status}`);
+        }
+    } catch(err) {
+        alert('Gagal mengunggah file ke server. Pastikan API dan DB D1 berjalan.');
+    } finally {
         setIsUploading(false);
         setUploadType(null);
-        if (type === 'document') setDocStatus('pending');
-        if (type === 'liveness') setLivenessStatus('pending');
-        alert(`${type === 'document' ? 'Dokumen KTP' : 'Foto Selfie'} berhasil diunggah! Menunggu verifikasi tim.`);
-    }, 2000);
+    }
   };
 
   return (

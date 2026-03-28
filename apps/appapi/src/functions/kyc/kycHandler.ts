@@ -31,11 +31,9 @@ router.put('/talents/:talent_id/approve', requireRole(['admin', 'superadmin']), 
   const body = c.req.valid('json')
   const talentId = c.req.param('talent_id')
   
-  // D1 Batch: Update status di profil utama talent & tabel verifikasi
-  await c.env.DB_CORE.batch([
-    c.env.DB_CORE.prepare('UPDATE talents SET kyc_status = ? WHERE talent_id = ?').bind(body.status, talentId),
-    c.env.DB_LOGS.prepare('UPDATE kyc_verifications SET status = ? WHERE talent_id = ?').bind(body.status, talentId)
-  ])
+  // Update status di profil utama talent & tabel verifikasi (dieksekusi terpisah karena beda DB)
+  await c.env.DB_CORE.prepare('UPDATE talents SET kyc_status = ? WHERE talent_id = ?').bind(body.status, talentId).run()
+  await c.env.DB_LOGS.prepare('UPDATE kyc_verifications SET status = ? WHERE talent_id = ?').bind(body.status, talentId).run()
   return c.json({ status: 'ok', message: `Talent KYC ${body.status}` })
 })
 

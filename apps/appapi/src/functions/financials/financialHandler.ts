@@ -27,4 +27,14 @@ router.put('/invoices/:invoice_id/upload-proof', requireRole(['client']), zValid
   return c.json({ status: 'ok', message: 'Proof uploaded and status set to Escrow' })
 })
 
+// POST: Request Payout
+router.post('/payouts', requireRole(['talent']), zValidator('json', import('./financialSchemas').then(s => s.processPayoutSchema)), async (c) => {
+  const body = c.req.valid('json')
+  const payoutId = crypto.randomUUID()
+  await c.env.DB_CORE.prepare(
+    "INSERT INTO payouts (payout_id, talent_id, booking_id, amount, status) VALUES (?, ?, ?, ?, 'Pending')"
+  ).bind(payoutId, body.talent_id, body.booking_id || 'ALL', body.amount).run()
+  return c.json({ status: 'ok', payout_id: payoutId }, 201)
+})
+
 export default router

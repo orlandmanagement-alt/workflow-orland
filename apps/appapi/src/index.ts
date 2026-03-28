@@ -62,6 +62,7 @@ app.use('/api/v1/*', async (c, next) => {
 })
 
 app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 30 }))
+app.get('/api/v1/auth/verify-session', (c) => c.json({ status: 'ok', userId: c.get('userId'), userRole: c.get('userRole') }))
 
 app.route('/api/v1/talents', talentRouter)
 app.route('/api/v1/talents', experienceRouter)

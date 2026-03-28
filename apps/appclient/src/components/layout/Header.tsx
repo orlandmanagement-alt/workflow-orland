@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Menu, User, Shield, LogOut, X, Settings, CheckCircle2 } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
 import { performCleanLogout } from '../../lib/auth/logout';
+import { useAuthStore } from '../../store/useAppStore';
 
 export default function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -9,19 +10,14 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userName, setUserName] = useState('OM');
 
-  // Mengambil inisial nama dari brankas LocalStorage
+  const user = useAuthStore(state => state.user);
+
+  // Mengambil inisial nama dari Zustand
   useEffect(() => {
-    try {
-      const authData = localStorage.getItem('orland-auth-client');
-      if (authData) {
-        const parsed = JSON.parse(authData);
-        if (parsed?.state?.user?.name) {
-          const name = parsed.state.user.name;
-          setUserName(name.substring(0, 2).toUpperCase());
-        }
-      }
-    } catch (e) {}
-  }, []);
+    if (user?.name) {
+      setUserName(user.name.substring(0, 2).toUpperCase());
+    }
+  }, [user]);
 
   return (
     <>

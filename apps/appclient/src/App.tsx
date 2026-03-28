@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } f
 import { LayoutDashboard, Briefcase, Users, FileText, Settings } from 'lucide-react';
 import Header from './components/layout/Header';
 import OmniSearch from "./components/layout/OmniSearch";
+import { useAuthStore } from './store/useAppStore';
 
 // Pages
 import AuthCallback from './pages/auth/callback';
@@ -18,20 +19,10 @@ import ProjectDetail from "./pages/projects/detail";
 
 // --- STRICT GATEKEEPER: HANYA MENGECEK BRANKAS ---
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const authData = localStorage.getItem('orland-auth-client');
-  let isValid = false;
-  
-  try {
-    const parsed = JSON.parse(authData || '');
-    // Harus ada token dan role wajib 'client'
-    if (parsed?.state?.token && parsed?.state?.role === 'client') {
-      isValid = true;
-    }
-  } catch (e) {}
+  const isAuthorized = useAuthStore(state => state.isAuthenticated);
 
-  if (!isValid) {
+  if (!isAuthorized) {
     // Sapu data hantu dan lempar ke SSO
-    localStorage.removeItem('orland-auth-client');
     window.location.replace(`https://sso.orlandmanagement.com/?redirect=${encodeURIComponent(window.location.href)}`);
     return null;
   }

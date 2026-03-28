@@ -21,26 +21,15 @@ export default function DashboardLayout() {
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   
   // STATE UNTUK GATEKEEPER & USER DATA
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
+  const isAuthorized = useAuthStore(state => state.isAuthenticated);
+  const userData = useAuthStore(state => state.user);
 
   // --- STRICT GATEKEEPER & DATA FETCHER ---
   useEffect(() => {
-    const authData = localStorage.getItem('orland-auth-talent');
-    try {
-      const parsed = JSON.parse(authData || '');
-      // Pastikan token ada dan role adalah talent
-      if (parsed?.state?.token && parsed?.state?.role === 'talent') {
-        setUserData(parsed.state.user); // Tarik data dari brankas (Rich Payload)
-        setIsAuthorized(true);
-      } else {
-        throw new Error("Invalid Role or Token");
-      }
-    } catch (e) {
-      // Jika nyasar atau Ghost Data, sapu bersih!
+    if (!isAuthorized) {
       performCleanLogout();
     }
-  }, []);
+  }, [isAuthorized]);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);

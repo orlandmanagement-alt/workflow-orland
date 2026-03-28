@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, Users, FileText, Settings } from 'lucide-react';
-import Header from '@/components/layout/Header';
-import OmniSearch from "@/components/layout/OmniSearch";
+import Header from './components/layout/Header';
+import OmniSearch from "./components/layout/OmniSearch";
 import ClientDashboard from '@/pages/dashboard/index';
 import ProjectsHub from '@/pages/projects/index';
 import FinanceHub from "@/pages/finance/invoices";

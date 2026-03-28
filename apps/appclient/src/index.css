@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-800/50;
+  }
+  
+  .saas-button {
+    @apply transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg hover:shadow-brand-500/20;
+  }
+  
+  .bento-grid {
+    @apply grid grid-cols-1 md:grid-cols-12 gap-6;
+  }
+}
+
+body {
+  @apply bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-100 antialiased;
+}

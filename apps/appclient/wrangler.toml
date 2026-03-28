@@ -1,6 +1,6 @@
+#:schema node_modules/wrangler/config-schema.json
 name = "orland-appclient"
-main = "src/index.ts"
-compatibility_date = "2024-03-26"
-[[services]]
-binding = "CORE_API"
-service = "orland-appapi"
+pages_build_output_dir = "./dist"
+
+[vars]
+API_URL = "https://api.orlandmanagement.com/api/v1"

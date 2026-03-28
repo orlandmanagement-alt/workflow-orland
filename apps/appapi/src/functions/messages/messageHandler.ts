@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { threadQuerySchema, sendMessageSchema } from './messageSchemas'
 import { Bindings, Variables } from '../../index'
+import { sanitizeMessage } from '../../utils/wordFilter';
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 

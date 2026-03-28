@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, Users, FileText, Settings } from 'lucide-react';
 import Header from './components/layout/Header';
@@ -7,12 +8,42 @@ import ProjectsHub from './pages/projects/index';
 import FinanceHub from "./pages/finance/invoices";
 import ContractsHub from "./pages/contracts/index";
 import TeamSettings from "./pages/settings/team";
-import ClientAuth from "./pages/auth/client-login";
 import ClientMessages from "./pages/messages/index";
 import TalentDiscovery from "./pages/talents/search";
 import ProjectDetail from "./pages/projects/detail";
 
-// B2B Bottom Navigation (Mobile)
+// --- MIDDLEWARE: GATEKEEPER & TOKEN CATCHER ---
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  // 1. TANGKAP TOKEN DARI URL SECARA SINKRON
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get('token');
+  
+  if (urlToken) {
+    // Simpan ke brankas LocalStorage
+    localStorage.setItem('orland-auth-client', JSON.stringify({ state: { token: urlToken, role: 'CLIENT' } }));
+    // Bersihkan URL agar klien tidak melihat token panjang
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // 2. CEK STATUS LOGIN
+  const authData = localStorage.getItem('orland-auth-client');
+  let isAuthenticated = false;
+  
+  try {
+    if (authData && JSON.parse(authData).state?.token) {
+      isAuthenticated = true;
+    }
+  } catch (e) {}
+
+  if (!isAuthenticated) {
+    // Jika tidak punya token, paksa ke SSO Orland
+    window.location.href = `https://sso.orlandmanagement.com/?redirect=${encodeURIComponent(window.location.origin + '/dashboard')}`;
+    return null;
+  }
+  
+  return <>{children}</>;
+};
+
 const BottomNav = () => {
   const location = useLocation();
   const navItems = [
@@ -52,15 +83,16 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/login" element={<ClientAuth />} />
-        <Route path="/dashboard" element={<ClientLayout><ClientDashboard /></ClientLayout>} />
-        <Route path="/dashboard/projects" element={<ClientLayout><ProjectsHub /></ClientLayout>} />
-        <Route path="/dashboard/projects/:id" element={<ClientLayout><ProjectDetail /></ClientLayout>} />
-        <Route path="/dashboard/talents" element={<ClientLayout><TalentDiscovery /></ClientLayout>} />
-        <Route path="/dashboard/finance" element={<ClientLayout><FinanceHub /></ClientLayout>} />
-        <Route path="/dashboard/contracts" element={<ClientLayout><ContractsHub /></ClientLayout>} />
-        <Route path="/dashboard/settings" element={<ClientLayout><TeamSettings /></ClientLayout>} />
-        <Route path="/dashboard/messages" element={<ClientLayout><ClientMessages /></ClientLayout>} />
+        
+        {/* SEMUA RUTE KINI DILINDUNGI GATEKEEPER */}
+        <Route path="/dashboard" element={<ProtectedRoute><ClientLayout><ClientDashboard /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/projects" element={<ProtectedRoute><ClientLayout><ProjectsHub /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/projects/:id" element={<ProtectedRoute><ClientLayout><ProjectDetail /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/talents" element={<ProtectedRoute><ClientLayout><TalentDiscovery /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/finance" element={<ProtectedRoute><ClientLayout><FinanceHub /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/contracts" element={<ProtectedRoute><ClientLayout><ContractsHub /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/settings" element={<ProtectedRoute><ClientLayout><TeamSettings /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/messages" element={<ProtectedRoute><ClientLayout><ClientMessages /></ClientLayout></ProtectedRoute>} />
       </Routes>
     </Router>
   );

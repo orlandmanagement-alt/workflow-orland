@@ -1,27 +1,18 @@
 import { api } from '../api';
 
 export const projectService = {
-  // Ambil semua proyek dari D1
-  getAll: async () => {
-    const { data } = await api.get('/projects');
-    return data;
+  // Fungsi ini yang nanti dipanggil oleh tombol + Project
+  createProject: async (projectData: any) => {
+    try {
+      const response = await api.post('/projects', projectData);
+      return response.data;
+    } catch (error) {
+      console.error('Gagal membuat project:', error);
+      throw error;
+    }
   },
-  
-  // Ambil detail 1 proyek
-  getById: async (id: string) => {
-    const { data } = await api.get(`/projects/${id}`);
-    return data;
-  },
-
-  // Simpan Brief Baru ke D1
-  create: async (projectData: any) => {
-    const { data } = await api.post('/projects', projectData);
-    return data;
-  },
-
-  // Update Status Kanban di D1
-  updateStatus: async (id: string, status: string) => {
-    const { data } = await api.put(`/projects/${id}/status`, { status });
-    return data;
+  getDashboardStats: async () => {
+    const response = await api.get('/dashboard/client-stats');
+    return response.data;
   }
 };

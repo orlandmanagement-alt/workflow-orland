@@ -1,16 +1,23 @@
 import axios from 'axios';
-
-// URL API Worker Cloudflare Anda (appapi)
-const API_URL = 'https://appapi.orlandmanagement.workers.dev/api/v1';
+import { APP_CONFIG } from '@/config';
 
 export const api = axios.create({
-  baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' }
+  baseURL: APP_CONFIG.API_URL,
+  timeout: APP_CONFIG.TIMEOUT,
 });
 
-// Interceptor untuk menyuntikkan Token JWT dari SSO secara otomatis
+// Interceptor: Otomatis sisipkan Token di setiap request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const authData = localStorage.getItem('orland-auth-client');
+  if (authData) {
+    try {
+      const { state } = JSON.parse(authData);
+      if (state?.token) {
+        config.headers.Authorization = `Bearer ${state.token}`;
+      }
+    } catch (e) {
+      console.error('Error parsing token:', e);
+    }
+  }
   return config;
 });

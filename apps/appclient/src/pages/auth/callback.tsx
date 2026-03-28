@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { useAuthStore } from '@/store/useAppStore';
+import { useAuthStore } from '../../store/useAppStore';
 
 export default function AuthCallback() {
   const navigate = useNavigate();

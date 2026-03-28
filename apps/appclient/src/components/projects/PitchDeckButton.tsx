@@ -1,10 +1,12 @@
 import { FileDown, Sparkles } from 'lucide-react';
 
-interface PDBProps { projectId: string }
+interface PDBProps {
+  projectId: string;
+}
+
 export default function PitchDeckButton({ projectId }: PDBProps) {
   const handleExport = () => {
-    alert(`Sedang menyusun Pitch Deck untuk ${projectId}... AI sedang melayout foto talent ke format PDF presentasi.`);
-    // Logika: Ambil data talent dari project_talents -> Generate PDF
+    alert(`Sedang menyusun Pitch Deck untuk ${projectId}...`);
   };
 
   return (

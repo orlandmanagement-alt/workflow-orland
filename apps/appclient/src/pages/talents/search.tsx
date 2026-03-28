@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Camera, Loader2, Sparkles, MapPin, Users } from 'lucide-react';
-import { useDebounce } from '@/hooks/useDebounce';
-import { formatIDR } from '@/utils/formatters';
+import { useDebounce } from '../../hooks/useDebounce';
+import { formatIDR } from '../../utils/formatters';
 
 export default function TalentDiscovery() {
   const [searchTerm, setSearchTerm] = useState('');

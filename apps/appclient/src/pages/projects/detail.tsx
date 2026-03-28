@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Image as ImageIcon, DollarSign, MessageSquare, Settings, Plus } from 'lucide-react';
-import PitchDeckButton from '@/components/projects/PitchDeckButton';
+import PitchDeckButton from '../../components/projects/PitchDeckButton';
 
 export default function ProjectDetail() {
   const { id } = useParams();

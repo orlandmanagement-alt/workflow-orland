@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import authRoutes from './routes/auth'
 
-type Bindings = { DB_SSO: D1Database }
+type Bindings = { DB_SSO: D1Database; JWT_SECRET: string; }
 const app = new Hono<{ Bindings: Bindings }>()
 
 // Translasi _middleware.js (CORS Dinamis)

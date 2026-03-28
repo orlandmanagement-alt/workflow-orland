@@ -1,4 +1,4 @@
-import { Building2, Lock, Receipt, ChevronRight, BellRing } from 'lucide-react';
+import { Building2, Lock, Receipt, ChevronRight, BellRing, QrCode } from 'lucide-react';
 import { useAuthStore } from '@/store/useAppStore';
 import { useState, useEffect } from 'react';
 
@@ -7,88 +7,63 @@ export default function Settings() {
   const [pushStatus, setPushStatus] = useState<string>('default');
 
   useEffect(() => {
-      if ('Notification' in window) {
-          setPushStatus(Notification.permission);
-      } else {
-          setPushStatus('unsupported');
-      }
+      if ('Notification' in window) setPushStatus(Notification.permission);
   }, []);
 
   const enableNotifications = async () => {
-      if (!('Notification' in window)) return alert('Browser HP Anda tidak mendukung Web Push Notifications.');
-      
+      if (!('Notification' in window)) return;
       const permission = await Notification.requestPermission();
       setPushStatus(permission);
-
-      if (permission === 'granted') {
-          new Notification('Orland Management', {
-              body: 'Hebat! Notifikasi Real-Time berhasil diaktifkan. Anda tidak akan ketinggalan info casting lagi.',
-          });
-      } else {
-          alert('Izin notifikasi ditolak. Anda bisa mengubahnya di pengaturan browser.');
-      }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pengaturan Akun & Sistem</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pengaturan Akun & Keamanan</h1>
       
       <div className="bg-white dark:bg-dark-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800/60 overflow-hidden">
         
-        {/* PUSH NOTIFICATIONS (FITUR BARU) */}
-        <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group gap-4">
-            <div className="flex items-start sm:items-center">
-                <div className={`h-12 w-12 rounded-xl flex items-center justify-center mr-4 shrink-0 ${pushStatus === 'granted' ? 'bg-brand-50 text-brand-600 dark:bg-brand-900/20 dark:text-brand-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'}`}>
-                    <BellRing size={24} />
-                </div>
-                <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">Notifikasi Real-Time (OS Push)</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Dapatkan pemberitahuan pop-up instan saat ada tawaran casting atau pesan sutradara.</p>
-                </div>
+        {/* PUSH NOTIFICATIONS */}
+        <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors gap-4">
+            <div className="flex items-center">
+                <div className="h-12 w-12 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl flex items-center justify-center mr-4 shrink-0"><BellRing size={24} /></div>
+                <div><h3 className="font-bold text-slate-900 dark:text-white">Notifikasi Real-Time (OS Push)</h3><p className="text-sm text-slate-500 dark:text-slate-400">Pemberitahuan pop-up instan saat ada tawaran atau pesan.</p></div>
             </div>
-            <button 
-                onClick={enableNotifications}
-                disabled={pushStatus === 'granted' || pushStatus === 'unsupported'}
-                className={`flex items-center font-bold text-sm px-5 py-2.5 rounded-xl transition-all w-fit ${pushStatus === 'granted' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 cursor-not-allowed' : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:scale-105 shadow-lg'}`}
-            >
-                {pushStatus === 'granted' ? 'Aktif' : pushStatus === 'denied' ? 'Ditolak Browser' : 'Aktifkan'} 
-            </button>
+            <button onClick={enableNotifications} className={`font-bold text-sm px-5 py-2.5 rounded-xl ${pushStatus === 'granted' ? 'bg-green-100 text-green-700' : 'bg-slate-900 text-white shadow-lg'}`}>{pushStatus === 'granted' ? 'Aktif' : 'Aktifkan'}</button>
         </div>
 
-        {/* REKENING BANK */}
-        <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group gap-4">
-            <div className="flex items-start sm:items-center">
-                <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mr-4 shrink-0"><Building2 size={24} /></div>
-                <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">Rekening Bank Penerima</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">BCA •••• 1234 a.n {user?.full_name || 'Talent'}</p>
+        {/* KEAMANAN AKUN (UPGRADED: Menampilkan Detail Bank) */}
+        <div className="p-6 flex flex-col hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+                <div className="flex items-center">
+                    <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mr-4 shrink-0"><Lock size={24} /></div>
+                    <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Keamanan & Data Autentikasi (SSO)</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Kelola login SSO, PIN Dompet, dan Sinkronisasi No Rekening Bank.</p>
+                    </div>
+                </div>
+                <button className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-sm group-hover:underline w-fit">Kelola <ChevronRight size={16} className="ml-1" /></button>
+            </div>
+            
+            {/* Box Detail Bank di dalam kartu Keamanan (Visual) */}
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 ml-0 sm:ml-16 mt-2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Building2 size={13}/> Rekening Bank Terkoneksi</p>
+                <div className="flex justify-between items-center text-sm">
+                    <div>
+                        <p className="font-black text-slate-900 dark:text-white text-base tracking-tighter">BCA •••• 1234</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">a.n {user?.full_name || 'Endang Wira Surya'}</p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">Tersinkron SSO</span>
                 </div>
             </div>
-            <button className="flex items-center text-brand-600 dark:text-brand-400 font-bold text-sm group-hover:underline w-fit">Ubah Data <ChevronRight size={16} className="ml-1" /></button>
         </div>
 
-        {/* INFORMASI PAJAK */}
-        <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group gap-4">
-            <div className="flex items-start sm:items-center">
-                <div className="h-12 w-12 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-500 rounded-xl flex items-center justify-center mr-4 shrink-0"><Receipt size={24} /></div>
-                <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">Informasi Pajak (NPWP)</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-sm">Belum diatur. Honor akan dipotong pajak 20% lebih tinggi jika tanpa NPWP.</p>
-                </div>
+        {/* INFORMASI PAJAK (Disederhanakan) */}
+        <div className="p-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30">
+            <div className="flex items-center">
+                <div className="h-12 w-12 bg-amber-50 dark:bg-amber-900/20 text-amber-600 rounded-xl flex items-center justify-center mr-4 shrink-0"><Receipt size={24} /></div>
+                <div><h3 className="font-bold text-slate-900 dark:text-white">Informasi Pajak (NPWP)</h3><p className="text-sm text-slate-500 dark:text-slate-400">Belum diatur. Potongan honor 20% lebih tinggi.</p></div>
             </div>
-            <button className="flex items-center text-brand-600 dark:text-brand-400 font-bold text-sm group-hover:underline w-fit">Upload NPWP <ChevronRight size={16} className="ml-1" /></button>
-        </div>
-
-        {/* KEAMANAN AKUN */}
-        <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group gap-4">
-            <div className="flex items-start sm:items-center">
-                <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mr-4 shrink-0"><Lock size={24} /></div>
-                <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">Keamanan Akun (SSO)</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Ubah password atau aktifkan Autentikasi 2 Langkah (2FA).</p>
-                </div>
-            </div>
-            <button className="flex items-center text-brand-600 dark:text-brand-400 font-bold text-sm group-hover:underline w-fit">Kelola Keamanan <ChevronRight size={16} className="ml-1" /></button>
+            <button className="text-amber-600 font-bold text-sm">Upload <ChevronRight size={16} className="inline ml-1" /></button>
         </div>
 
       </div>

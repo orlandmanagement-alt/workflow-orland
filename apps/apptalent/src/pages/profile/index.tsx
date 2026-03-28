@@ -31,8 +31,10 @@ const ProfileEditor = () => {
         <aside className="profile-card profile-side dark:bg-dark-card dark:border-slate-800">
           <h4 className="text-xs font-bold tracking-widest text-slate-600 dark:text-slate-400 mb-3">HEADSHOT</h4>
           <div className="profile-ph dark:bg-slate-800">
-            <div className="profile-avatar border dark:border-slate-700 bg-slate-100" style={{ backgroundImage: data.profile_picture ? `url(${data.profile_picture})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-              {!data.profile_picture && <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold">Upload (Di Galeri)</span>}
+            <input type="file" id="profile-upload" accept="image/*" className="hidden" onChange={(e) => { if(e.target.files?.[0]) { alert("Sistem siap mengunggah: " + e.target.files[0].name); /* Integrasi API Upload di sini */ } }} />
+            <div onClick={() => document.getElementById("profile-upload")?.click()} className="profile-avatar border dark:border-slate-700 bg-slate-100 cursor-pointer group hover:opacity-80 transition-opacity relative" style={{ backgroundImage: data.profile_picture ? `url(${data.profile_picture})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+              {!data.profile_picture {!data.profile_picture && <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold">Upload (Di Galeri)</span>}{!data.profile_picture && <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold">Upload (Di Galeri)</span>} <span className="absolute inset-0 flex items-center justify-center text-brand-500 font-bold text-xs">Ketuk untuk Upload</span>}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full"><span className="text-white text-xs font-bold">Ubah Foto</span></div>
             </div>
           </div>
           

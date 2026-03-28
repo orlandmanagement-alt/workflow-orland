@@ -6,7 +6,7 @@ export async function apiCall(endpoint, payload) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      credentials: 'omit' // Cloudflare Pages di domain yang sama otomatis akan menyertakan/menyimpan cookie HttpOnly
+      credentials: 'omit'
     });
     return await res.json();
   } catch (error) {

@@ -53,4 +53,47 @@ auth.post('/logout', async (c) => {
   return c.json({ status: "ok", message: "Logout Sukses" })
 })
 
+
+// --- ENDPOINT REGISTRASI BARU ---
+auth.post('/register', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { fullName, email, phone, password, role, turnstile_token } = body;
+
+    // 1. Validasi Keamanan (Captcha)
+    const ip = c.req.header('CF-Connecting-IP') || '';
+    const isHuman = await verifyTurnstile(turnstile_token, ip, c.env.TURNSTILE_SECRET);
+    if (!isHuman) {
+      return c.json({ status: "error", message: "Verifikasi keamanan (Captcha) gagal." }, 400);
+    }
+
+    // 2. Cek Duplikat Akun (Anti-Crash)
+    const idEmail = (email || "").trim().toLowerCase();
+    const existing = await c.env.DB_SSO.prepare("SELECT id FROM users WHERE email=? OR phone=?").bind(idEmail, phone).first();
+    if (existing) {
+      return c.json({ status: "error", message: "Email atau Nomor HP sudah terdaftar." }, 400);
+    }
+
+    // 3. Enkripsi Password & Siapkan Token Aktivasi
+    const passHash = await hashData(password);
+    const newId = crypto.randomUUID(); // Buat ID Unik
+    const actToken = crypto.randomUUID();
+    const userRole = role ? role.toUpperCase() : 'CLIENT';
+
+    // 4. Simpan ke Database D1
+    await c.env.DB_SSO.prepare(
+      "INSERT INTO users (id, full_name, email, phone, password_hash, role, status, activation_token) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)"
+    ).bind(newId, fullName, idEmail, phone, passHash, userRole, actToken).run();
+
+    // 5. Kirim Email Aktivasi (Menggunakan utils.ts)
+    await sendMail(c.env, idEmail, actToken, 'activation');
+
+    return c.json({ status: "ok", message: "Registrasi berhasil, silakan cek email." });
+
+  } catch (err) {
+    console.error("Register API Error:", err);
+    return c.json({ status: "error", message: "Terjadi kesalahan pada server database." }, 500);
+  }
+});
+
 export default auth

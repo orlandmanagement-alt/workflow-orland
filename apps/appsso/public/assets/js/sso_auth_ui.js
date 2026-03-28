@@ -46,7 +46,10 @@ window.resetTurnstile = function() { if (window.turnstile) window.turnstile.rese
 async function sendApi(action, payload) { 
     try { 
         const res = await fetch(`/api/auth/${action}`, { 
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload),
+            credentials: 'include' // <- KUNCI: Memaksa JWT Cookie terkirim
         }); 
         const contentType = res.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) return await res.json();
@@ -67,15 +70,19 @@ function startOtpTimer() {
 }
 
 // ==========================================
-// FUNGSI AUTO DIRECT (DENGAN HITUNG MUNDUR)
+// FUNGSI AUTO DIRECT EKSKLUSIF
 // ==========================================
 function doRedirectCountdown(role, title = "Anda Sudah Login!", targetUrl) {
     document.getElementById('success-title').innerText = title;
     const roleEl = document.getElementById('logged-in-role');
     if (roleEl) roleEl.innerText = role || 'USER';
     
+    // Simpan ke LocalStorage agar kebal Refresh dan Tab Baru
+    localStorage.setItem('sso_fallback_url', targetUrl);
+    localStorage.setItem('sso_fallback_role', role);
+
     window.showView('view-success-redirect');
-    let count = 3; // Hitung mundur 3 detik agar terlihat elegan
+    let count = 3; 
     const timerEl = document.getElementById('redirect-timer');
     if(timerEl) timerEl.innerText = count;
 
@@ -90,17 +97,17 @@ function doRedirectCountdown(role, title = "Anda Sudah Login!", targetUrl) {
 }
 
 // ==========================================
-// SISTEM LOGOUT TOTAL
+// SISTEM LOGOUT (MENGHAPUS SEMUA JEJAK)
 // ==========================================
 window.doLogout = async function() { 
     window.showToast("Logout...", "info"); 
-    await fetch('/api/auth/logout', { method: 'POST' }); 
-    sessionStorage.removeItem('sso_fallback_url'); // Hapus memori amnesia
-    sessionStorage.removeItem('sso_fallback_role');
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); 
+    localStorage.removeItem('sso_fallback_url'); 
+    localStorage.removeItem('sso_fallback_role');
     window.location.href = "/"; 
 }
 
-// --- FUNGSI LOGIN / REGISTER ASLI DIKEMBALIKAN ---
+// --- FUNGSI AUTH ---
 window.handleRegisterSubmit = async function() {
     const ts = document.querySelector('#turnstile-register [name="cf-turnstile-response"]')?.value; if(!ts && window.turnstile) return window.showToast("Centang Captcha", "error");
     if(document.getElementById('reg-pass').value.length < 8) return window.showToast("Password minimal 8 karakter", "error");
@@ -151,7 +158,6 @@ window.loginWithPin = async function() {
     const res = await sendApi('login-pin', { identifier: id, pin: pin });
     if(res.status === 'ok') { 
         window.showToast("Login Sukses!", "success"); 
-        sessionStorage.setItem('sso_fallback_url', res.redirect_url);
         doRedirectCountdown('Verified', "Login Sukses!", res.redirect_url); 
     } else window.showToast(res.message, "error");
 }
@@ -165,7 +171,6 @@ window.submitOtp = async function() {
     const res = await sendApi(endpoint, payload);
     if(res.status === 'ok') { 
         clearInterval(otpInterval); window.showToast("Akses Diberikan!", "success"); 
-        sessionStorage.setItem('sso_fallback_url', res.redirect_url);
         doRedirectCountdown('Verified', "Akses Diberikan!", res.redirect_url); 
     } else window.showToast(res.message, "error");
 }
@@ -183,12 +188,7 @@ window.handleRegularLogin = async function() {
     window.resetTurnstile();
     if(res.status === 'ok') { 
         window.showToast("Login Berhasil!", "success"); 
-        
-        // SIMPAN FALLBACK DI BROWSER JIKA COOKIE GAGAL TERBACA
-        sessionStorage.setItem('sso_fallback_url', res.redirect_url);
-        sessionStorage.setItem('sso_fallback_role', 'Active User');
-        
-        doRedirectCountdown('Active User', "Login Sukses!", res.redirect_url); 
+        doRedirectCountdown(res.role || 'Active User', "Login Sukses!", res.redirect_url); 
     } else window.showToast(res.message, "error");
 }
 
@@ -204,7 +204,6 @@ window.handleGoogleLogin = async function(response) {
             window.showView('view-social-role'); 
         } else { 
             window.showToast("Login Berhasil! Mengalihkan...", "success"); 
-            sessionStorage.setItem('sso_fallback_url', res.redirect_url);
             doRedirectCountdown('Google User', "Login Sukses!", res.redirect_url); 
         }
     } else window.showToast(res.message, "error");
@@ -219,51 +218,40 @@ window.processSocialRegistration = async function() {
     const res = await sendApi('social-complete', payload);
     if(res.status === 'ok') { 
         window.showToast("Sukses! Membuka Portal...", "success"); 
-        sessionStorage.setItem('sso_fallback_url', res.redirect_url);
         doRedirectCountdown(roleEl.value.toUpperCase(), "Ruang Kerja Siap!", res.redirect_url); 
     } else window.showToast(res.message, "error");
 }
 
 // ==========================================
-// PENGECEKAN SAAT HALAMAN DIBUKA (AMNESIA FIX)
+// PENGECEKAN CERDAS SAAT HALAMAN DIBUKA (AMNESIA FIX)
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => { 
     setTimeout(window.renderTurnstileWidgets, 500); 
     const urlParams = new URLSearchParams(window.location.search);
     
-    if (urlParams.get('activation_token')) {
-        window.showToast("Memverifikasi Aktivasi...", "info");
-        const res = await sendApi('verify-activation', { token: urlParams.get('activation_token') });
-        if(res.status === 'ok') { 
-            sessionStorage.setItem('sso_fallback_url', res.redirect_url);
-            doRedirectCountdown(res.role, "Aktivasi Berhasil!", res.redirect_url); 
-            window.history.replaceState({}, document.title, window.location.pathname); return; 
-        } else { window.showToast(res.message, "error"); window.history.replaceState({}, document.title, window.location.pathname); }
-    }
-    
-    if (urlParams.get('reset_token')) {
-        document.getElementById('reset-token-hidden').value = urlParams.get('reset_token'); window.showView('view-reset-password'); window.history.replaceState({}, document.title, window.location.pathname); return;
-    }
-
-    // TAHAP 1: Cek Session Storage (Solusi Browser Ketat/Amnesia)
-    const fallbackUrl = sessionStorage.getItem('sso_fallback_url');
-    const fallbackRole = sessionStorage.getItem('sso_fallback_role');
-    if (fallbackUrl) {
-        console.log("Memulihkan sesi dari memori lokal...");
-        doRedirectCountdown(fallbackRole || 'User', "Memulihkan Sesi...", fallbackUrl);
-        return;
-    }
-
-    // TAHAP 2: Cek Cookie ke Backend D1 (Normal Flow)
+    // PENGECEKAN 1: TANYA BACKEND D1 (SUMBER KEBENARAN UTAMA)
     try { 
-        const meRes = await fetch('/api/auth/me', { credentials: 'same-origin' }); 
+        const meRes = await fetch('/api/auth/me', { credentials: 'include' }); 
         if (meRes.ok) { 
             const data = await meRes.json(); 
-            // Otomatis pindah dengan hitung mundur
-            doRedirectCountdown(data.user?.role || 'User', "Anda Sudah Login!", data.redirect_url); 
+            // Otomatis pindah dengan hitung mundur karena JWT valid
+            doRedirectCountdown(data.user?.role || 'User', "Sesi Aktif Ditemukan!", data.redirect_url); 
             return; 
-        } 
-    } catch(e) {}
+        } else if (meRes.status === 401) {
+            // Jika backend bilang kadaluarsa, BERSIHKAN LOKAL MEMORI agar tidak terjadi looping
+            localStorage.removeItem('sso_fallback_url');
+            localStorage.removeItem('sso_fallback_role');
+        }
+    } catch(e) {
+        // PENGECEKAN 2: JIKA KONEKSI ERROR, TANYA LOCALSTORAGE (FALLBACK)
+        console.log("Pengecekan backend gagal, memutar fallback lokal...");
+        const fallbackUrl = localStorage.getItem('sso_fallback_url');
+        const fallbackRole = localStorage.getItem('sso_fallback_role');
+        if (fallbackUrl) {
+            doRedirectCountdown(fallbackRole || 'User', "Memulihkan Sesi...", fallbackUrl);
+            return;
+        }
+    }
 });
 
 window.addEventListener('resize', () => { if(!document.getElementById('view-register')?.classList.contains('hidden') && window.innerWidth > 767) { document.getElementById('main-container')?.classList.add('flex-row-reverse'); document.getElementById('blue-panel')?.classList.add('reverse'); } });

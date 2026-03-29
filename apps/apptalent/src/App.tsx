@@ -13,10 +13,15 @@ import ProjectDetail from '@/pages/projects/[id]';
 import Schedules from '@/pages/schedules';
 import Payouts from '@/pages/payouts';
 import MediaPortfolio from '@/pages/media';
+import ProfileBuilder from './pages/profile/builder';
+import MessagesHub from './pages/messages/index';
+import PayoutsHub from './pages/payouts/index';
 import Contracts from '@/pages/contracts';
 import Messages from '@/pages/messages';
 import AIMatch from "@/pages/jobs/match/index";
 import JobInvites from '@/pages/jobs/invites';
+import JobBoard from '@/pages/jobs/board/index';
+import JobDetail from '@/pages/jobs/board/[id]';
 import KYCVerification from '@/pages/kyc';
 import Audition from "@/pages/audition";
 import Helpdesk from '@/pages/help';
@@ -50,12 +55,17 @@ export default function App() {
             <Route path="/contracts" element={<Contracts />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/jobs/match" element={<AIMatch />} />
+            <Route path="/jobs/board" element={<JobBoard />} />
+            <Route path="/jobs/board/:id" element={<JobDetail />} />
             <Route path="/jobs/invites" element={<JobInvites />} />
             <Route path="/kyc" element={<KYCVerification />} />
             <Route path="/audition" element={<Audition />} />
             <Route path="/help" element={<Helpdesk />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<ProfileEditor />} />
+            <Route path="/messages" element={<ProtectedRoute><TalentLayout><MessagesHub /></TalentLayout></ProtectedRoute>} />
+            <Route path="/payouts" element={<ProtectedRoute><TalentLayout><PayoutsHub /></TalentLayout></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><TalentLayout><ProfileBuilder /></TalentLayout></ProtectedRoute>} />
           </Route>
 
           {/* Fallback 404 Route */}

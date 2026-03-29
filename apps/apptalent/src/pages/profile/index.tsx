@@ -6,6 +6,7 @@ import {
   Instagram, Youtube, Twitter, Link as LinkIcon, 
   ChevronDown, X, PlusCircle, Trash2, Camera
 } from 'lucide-react';
+import { processImage } from '@/utils/imageCompressor';
 
 export default function ProfileDashboard() {
   const [activeTab, setActiveTab] = useState('info');
@@ -14,11 +15,15 @@ export default function ProfileDashboard() {
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
 
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>, photoType: 'headshot' | 'sideView' | 'fullHeight') => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+      const rawFile = e.target.files?.[0];
+      if (!rawFile) return;
 
       try {
           setUploading(prev => ({ ...prev, [photoType]: true }));
+
+          // 0. Kompresi Khusus Sisi Klien (Bypass Size Asli)
+          const ratio = photoType === 'headshot' ? 4/5 : 3/4;
+          const file = await processImage(rawFile, ratio);
 
           // 1. Minta Presigned URL dari Backend
           const presignedRes: any = await apiRequest('/media/upload-url', {

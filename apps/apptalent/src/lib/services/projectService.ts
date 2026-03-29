@@ -17,5 +17,25 @@ export const projectService = {
     } catch (error) {
       return { id, title: 'Proyek Tidak Ditemukan', status: 'Unknown' };
     }
+  },
+  getAvailableProjects: async () => {
+    try {
+      const res = await apiRequest('/projects/available');
+      return res?.data || [];
+    } catch (error) {
+      console.warn("Gagal menarik daftar open casting.");
+      return [];
+    }
+  },
+  getMatchScore: async (profileData: any) => {
+    try {
+      const res = await apiRequest('/projects/match-score', {
+        method: 'POST',
+        data: profileData
+      });
+      return res?.data || { score: 0 };
+    } catch (error) {
+      return { score: 0 };
+    }
   }
 };

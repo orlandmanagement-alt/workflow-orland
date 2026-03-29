@@ -10,6 +10,9 @@ import { MENU_ITEMS } from '@/config/menuConfig';
 import { performCleanLogout } from '@/lib/auth/logout';
 import { apiRequest } from '@/lib/api';
 
+// IMPORT NOTIFICATION BELL
+import { NotificationBell } from './NotificationBell';
+
 // IMPORT PROFILE WIZARD
 import ProfileWizard from '@/components/wizard/ProfileWizard';
 
@@ -23,11 +26,7 @@ export default function DashboardLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
-  
-  // STATE NOTIFIKASI API
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   
   // STATE PROFILE WIZARD (ONBOARDING)
   const [showWizard, setShowWizard] = useState(false);
@@ -42,16 +41,6 @@ export default function DashboardLayout() {
     if (!isAuthorized) {
       performCleanLogout();
     } else {
-      // 1. Lazy Fetch Notifications
-      apiRequest('/notifications?limit=5&offset=0')
-        .then((res: any) => {
-           if (res.status === 'ok') {
-             setNotifications(res.data || []);
-             setUnreadCount(res.unread_count || 0);
-           }
-        })
-        .catch(() => console.error("Gagal menarik lonceng notifikasi"));
-        
       // 2. Cek Apakah Profil Baru Saja Dibuat (Butuh Onboarding)
       apiRequest('/talents/me')
         .then((res: any) => {
@@ -174,41 +163,10 @@ export default function DashboardLayout() {
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
             
-            <div className="relative">
-              <button onClick={() => { setIsNotifOpen(!isNotifOpen); setUserMenuOpen(false); }} className="relative p-2.5 rounded-xl text-slate-500 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors">
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white dark:border-dark-card animate-pulse"></span>
-                )}
-              </button>
-
-              {isNotifOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                    <h4 className="font-bold text-sm dark:text-white">Notifikasi Talent</h4>
-                    <span className="text-[10px] text-brand-500 font-bold cursor-pointer">Tandai dibaca</span>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto p-2">
-                    {notifications.length === 0 ? (
-                        <div className="p-4 text-center text-slate-500 dark:text-slate-400 text-xs">Belum ada notifikasi baru.</div>
-                    ) : (
-                        notifications.map((notif, idx) => (
-                            <div key={idx} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl cursor-pointer flex gap-3 transition-colors">
-                            <div className="mt-0.5"><CheckCircle2 size={16} className={notif.is_read ? "text-slate-400" : "text-brand-500"}/></div>
-                            <div>
-                                <p className={`text-xs ${notif.is_read ? "font-medium text-slate-600 dark:text-slate-300" : "font-bold text-slate-900 dark:text-white"}`}>{notif.title}</p>
-                                <p className="text-[10px] text-slate-500 mt-1">{notif.message}</p>
-                            </div>
-                            </div>
-                        ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationBell />
 
             <div className="relative">
-                <button onClick={() => { setUserMenuOpen(!isUserMenuOpen); setIsNotifOpen(false); }} className="flex items-center space-x-3 p-1.5 pl-3 rounded-full bg-slate-50 border border-slate-200 hover:border-brand-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600 transition-colors">
+                <button onClick={() => setUserMenuOpen(!isUserMenuOpen)} className="flex items-center space-x-3 p-1.5 pl-3 rounded-full bg-slate-50 border border-slate-200 hover:border-brand-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600 transition-colors">
                     <span className="text-sm font-semibold text-slate-900 dark:text-white">{userData?.name?.split(' ')[0] || 'Talent'}</span>
                     <div className="h-8 w-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold text-sm">
                         {userData?.name?.charAt(0) || 'T'}

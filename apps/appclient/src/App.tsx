@@ -4,6 +4,8 @@ import { LayoutDashboard, Briefcase, Users, FileText, Settings } from 'lucide-re
 import Header from './components/layout/Header';
 import OmniSearch from "./components/layout/OmniSearch";
 import { useAuthStore } from './store/useAppStore';
+import { getMenuItems } from './config/menuConfig';
+import { CategoryModal } from './components/onboarding/CategoryModal';
 
 // Pages
 import AuthCallback from './pages/auth/callback';
@@ -16,6 +18,8 @@ import TeamSettings from "./pages/settings/team";
 import ClientMessages from "./pages/messages/index";
 import TalentDiscovery from "./pages/talents/search";
 import ProjectDetail from "./pages/projects/detail";
+import CreateProjectWizard from "./pages/projects/create";
+import WorkspaceHost from "./pages/projects/workspace";
 
 // --- STRICT GATEKEEPER: HANYA MENGECEK BRANKAS ---
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -33,13 +37,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 // --- KOMPONEN UI BAWAH ---
 const BottomNav = () => {
   const location = useLocation();
-  const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-    { path: '/dashboard/projects', icon: Briefcase, label: 'Projects' },
-    { path: '/dashboard/talents', icon: Users, label: 'Talents' },
-    { path: '/dashboard/finance', icon: FileText, label: 'Finance' },
-    { path: '/dashboard/settings', icon: Settings, label: 'Settings' },
-  ];
+  const { companyCategory } = useAuthStore();
+  const rawItems = getMenuItems(companyCategory);
+  
+  // Ambil max 5 item utama untuk Bottom Navigation Mobile (Home selalu ada)
+  const navItems = rawItems.filter(menu => !menu.path.includes('/dashboard/casting') && !menu.path.includes('/dashboard/pipeline')).slice(0, 5);
 
   return (
     <div className="fixed bottom-0 w-full bg-white dark:bg-[#0b141a] border-t border-slate-200 dark:border-slate-800 flex justify-around p-3 z-50 sm:hidden">
@@ -48,7 +50,7 @@ const BottomNav = () => {
         return (
           <Link key={item.path} to={item.path} className={`flex flex-col items-center gap-1 ${isActive ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>
             <item.icon size={20} className={isActive ? 'fill-brand-600/20' : ''} />
-            <span className="text-[10px] font-bold">{item.label}</span>
+            <span className="text-[10px] font-bold truncate">{item.title}</span>
           </Link>
         );
       })}
@@ -58,6 +60,7 @@ const BottomNav = () => {
 
 const ClientLayout = ({ children }: { children: React.ReactNode }) => (
   <div className="min-h-screen bg-slate-50 dark:bg-[#071122]">
+    <CategoryModal />
     <Header />
     <OmniSearch />
     <main className="pb-24 sm:pb-10">{children}</main>
@@ -78,7 +81,9 @@ export default function App() {
         {/* SEMUA RUTE UTAMA DILINDUNGI GATEKEEPER */}
         <Route path="/dashboard" element={<ProtectedRoute><ClientLayout><ClientDashboard /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/projects" element={<ProtectedRoute><ClientLayout><ProjectsHub /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/projects/new" element={<ProtectedRoute><ClientLayout><CreateProjectWizard /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/projects/:id" element={<ProtectedRoute><ClientLayout><ProjectDetail /></ClientLayout></ProtectedRoute>} />
+        <Route path="/dashboard/projects/:id/workspace" element={<ProtectedRoute><ClientLayout><WorkspaceHost /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/talents" element={<ProtectedRoute><ClientLayout><TalentDiscovery /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/finance" element={<ProtectedRoute><ClientLayout><FinanceHub /></ClientLayout></ProtectedRoute>} />
         <Route path="/dashboard/contracts" element={<ProtectedRoute><ClientLayout><ContractsHub /></ClientLayout></ProtectedRoute>} />

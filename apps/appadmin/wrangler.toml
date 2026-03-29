@@ -1,6 +1,0 @@
-name = "orland-appadmin"
-main = "src/index.ts"
-compatibility_date = "2024-03-26"
-[[services]]
-binding = "CORE_API"
-service = "orland-appapi"

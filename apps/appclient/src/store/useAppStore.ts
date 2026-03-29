@@ -1,12 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type CompanyCategory = 'PH' | 'EO' | 'KOL' | 'BRAND' | null;
+
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   user: any | null; 
+  companyCategory: CompanyCategory;
   login: (token: string, userData?: any) => void;
   setUser: (userData: any) => void;
+  setCategory: (category: CompanyCategory) => void;
   logout: () => void;
 }
 
@@ -16,10 +20,12 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       user: null,
+      companyCategory: null,
       login: (token, userData = null) => set({ token, isAuthenticated: true, user: userData }),
       setUser: (userData) => set({ user: userData }),
+      setCategory: (category) => set({ companyCategory: category }),
       // Saat logout dipanggil, HANCURKAN semua state ke null
-      logout: () => set({ token: null, isAuthenticated: false, user: null }),
+      logout: () => set({ token: null, isAuthenticated: false, user: null, companyCategory: null }),
     }),
     { 
       name: 'orland-auth-storage',

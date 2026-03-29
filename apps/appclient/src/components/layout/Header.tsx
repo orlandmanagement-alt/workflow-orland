@@ -3,6 +3,7 @@ import { Bell, Search, Menu, User, Shield, LogOut, X, Settings, CheckCircle2 } f
 import ThemeToggle from '../ui/ThemeToggle';
 import { performCleanLogout } from '../../lib/auth/logout';
 import { useAuthStore } from '../../store/useAppStore';
+import { apiRequest } from '../../lib/api';
 
 export default function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -11,6 +12,10 @@ export default function Header() {
   const [userName, setUserName] = useState('OM');
 
   const user = useAuthStore(state => state.user);
+  
+  // STATE NOTIFIKASI API
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   // Mengambil inisial nama dari Zustand
   useEffect(() => {
@@ -18,6 +23,18 @@ export default function Header() {
       setUserName(user.name.substring(0, 2).toUpperCase());
     }
   }, [user]);
+
+  // Fetch Notifikasi
+  useEffect(() => {
+    apiRequest('/notifications?limit=5&offset=0')
+      .then((res: any) => {
+         if (res.status === 'ok') {
+           setNotifications(res.data || []);
+           setUnreadCount(res.unread_count || 0);
+         }
+      })
+      .catch(() => console.error("Gagal menarik lonceng notifikasi klien"));
+  }, []);
 
   return (
     <>
@@ -54,7 +71,9 @@ export default function Header() {
               className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl relative transition-colors"
             >
               <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+              {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>
+              )}
             </button>
 
             {isNotifOpen && (
@@ -64,13 +83,19 @@ export default function Header() {
                   <span className="text-[10px] text-brand-500 font-bold cursor-pointer">Tandai dibaca</span>
                 </div>
                 <div className="max-h-64 overflow-y-auto p-2">
-                  <div className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl cursor-pointer flex gap-3 transition-colors">
-                    <div className="mt-0.5"><CheckCircle2 size={16} className="text-green-500"/></div>
-                    <div>
-                      <p className="text-xs font-bold dark:text-white">Invoice #INV-2026 Lunas</p>
-                      <p className="text-[10px] text-slate-500">Pembayaran proyek TVC Glow Up telah kami terima.</p>
-                    </div>
-                  </div>
+                    {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-slate-500 dark:text-slate-400 text-xs">Bersih. Tidak ada notifikasi.</div>
+                    ) : (
+                        notifications.map((notif, idx) => (
+                            <div key={idx} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl cursor-pointer flex gap-3 transition-colors">
+                            <div className="mt-0.5"><CheckCircle2 size={16} className={notif.is_read ? "text-slate-400" : "text-green-500"}/></div>
+                            <div>
+                                <p className={`text-xs ${notif.is_read ? "font-medium text-slate-600 dark:text-slate-300" : "font-bold text-slate-900 dark:text-white"}`}>{notif.title}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">{notif.message}</p>
+                            </div>
+                            </div>
+                        ))
+                    )}
                 </div>
               </div>
             )}

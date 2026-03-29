@@ -32,3 +32,17 @@ api.interceptors.response.use(
     return Promise.reject(new Error(errorMsg));
   }
 );
+
+export const apiRequest = async (url: string, options: any = {}) => {
+  try {
+    const response = await api({ 
+      url, 
+      method: options.method || 'GET', 
+      data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : options.data, 
+      headers: options.headers 
+    });
+    return response.data;
+  } catch (error) { 
+    throw error; 
+  }
+};

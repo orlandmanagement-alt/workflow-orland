@@ -6,7 +6,7 @@ export const performCleanLogout = async () => {
 
   try {
     // 1. Pukul Backend SSO
-    await fetch('https://api.orlandmanagement.com/api/v1/auth/logout', { 
+    await fetch('https://sso.orlandmanagement.com/api/auth/logout', { 
         method: 'POST', 
         credentials: 'include' 
     });

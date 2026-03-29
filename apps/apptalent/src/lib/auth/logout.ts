@@ -1,7 +1,7 @@
 export const performCleanLogout = async () => {
   console.log("Memulai pembersihan total Apptalent...");
   try {
-    await fetch('https://api.orlandmanagement.com/api/v1/auth/logout', { 
+    await fetch('https://sso.orlandmanagement.com/api/auth/logout', { 
         method: 'POST', 
         credentials: 'include' 
     });

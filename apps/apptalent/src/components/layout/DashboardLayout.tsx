@@ -31,6 +31,7 @@ export default function DashboardLayout() {
   
   // STATE PROFILE WIZARD (ONBOARDING)
   const [showWizard, setShowWizard] = useState(false);
+  const [showAbandonBanner, setShowAbandonBanner] = useState(false);
 
   // STATE UNTUK GATEKEEPER & USER DATA
   const isAuthorized = useAuthStore(state => state.isAuthenticated);
@@ -54,12 +55,13 @@ export default function DashboardLayout() {
       // 2. Cek Apakah Profil Baru Saja Dibuat (Butuh Onboarding)
       apiRequest('/talents/me')
         .then((res: any) => {
-            // is_new dipasok langsung dari backend API (talentHandler.ts)
-            if (res.is_new) {
-                setShowWizard(true);
-            } else if (!res.data.category || !res.data.height) {
-                // Walaupun profil ada, bila belum diisi (aborted di tgh jalan)
-                setShowWizard(true);
+            if (res.is_new || !res.data.category || !res.data.height) {
+                const isAbandoned = sessionStorage.getItem('hide_wizard') === 'true';
+                if (isAbandoned) {
+                    setShowAbandonBanner(true);
+                } else {
+                    setShowWizard(true);
+                }
             }
         })
         .catch(() => console.log("Gagal verifikasi status profil talent"));
@@ -236,6 +238,17 @@ export default function DashboardLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10 animate-fade-in relative bg-slate-100 dark:bg-dark-bg">
+          {showAbandonBanner && (
+             <div className="flex flex-wrap items-center justify-between gap-3 bg-red-50 text-red-700 border border-red-200/50 p-3 px-4 rounded-xl text-sm font-medium mb-6 animate-in slide-in-from-top-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_0_4px_rgba(220,38,38,0.15)] flex-shrink-0 animate-pulse" />
+                  <span><strong>Profil Anda Bersembunyi!</strong> Klien belum bisa melihat Anda. Selesaikan portofolio Anda.</span>
+                </div>
+                <Link to="/profile" className="flex-shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-4 rounded-lg shadow-sm transition-colors text-xs whitespace-nowrap">
+                  Lengkapi Sekarang ➔
+                </Link>
+             </div>
+          )}
           <Outlet />
         </main>
       </div>
@@ -250,7 +263,11 @@ export default function DashboardLayout() {
       )}
       
       {/* RENDER PROFILE WIZARD MODAL KALAU HARUS ONBOARDING */}
-      {showWizard && <ProfileWizard onClose={() => setShowWizard(false)} />}
+      {showWizard && <ProfileWizard onClose={() => {
+          sessionStorage.setItem('hide_wizard', 'true');
+          setShowWizard(false);
+          setShowAbandonBanner(true);
+      }} />}
     </div>
   )
 }

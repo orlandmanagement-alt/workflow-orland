@@ -30,19 +30,41 @@ router.put('/me', async (c) => {
   const weight = body.weight || null;
   const birthDate = body.birth_date || null;
   const gender = body.gender || null;
+  
+  // SUPPORT AVATAR / MEDIA PORTFOLIO URLS
+  const headshot = body.headshot || null;
+  const sideView = body.side_view || body.sideView || null;
+  const fullHeight = body.full_height || body.fullHeight || null;
+  
+  // OPTIONAL SOCIAL & CONTACTS (jika ditarik dari tab profile)
+  const instagram = body.instagram || null;
+  const tiktok = body.tiktok || null;
+  const twitter = body.twitter || null;
+  const phone = body.phone || null;
+  const email = body.email || null;
 
   try {
     const existing = await c.env.DB_CORE.prepare('SELECT talent_id FROM talents WHERE user_id = ?').bind(userId).first()
 
     if (existing) {
-      // Update jika profil sudah ada
-      await c.env.DB_CORE.prepare(`UPDATE talents SET full_name=?, category=?, height=?, weight=?, birth_date=?, gender=? WHERE user_id=?`)
-        .bind(fullName, category, height, weight, birthDate, gender, userId).run()
+      // Update jika profil sudah ada (Termasuk field media & kontak)
+      await c.env.DB_CORE.prepare(`
+        UPDATE talents SET 
+          full_name=?, category=?, height=?, weight=?, birth_date=?, gender=?, 
+          headshot=?, side_view=?, full_height=?, 
+          instagram=?, tiktok=?, twitter=?, phone=?, email=? 
+        WHERE user_id=?
+      `).bind(fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, instagram, tiktok, twitter, phone, email, userId).run()
     } else {
       // Insert jika profil baru
       const newTalentId = crypto.randomUUID()
-      await c.env.DB_CORE.prepare(`INSERT INTO talents (talent_id, user_id, full_name, category, height, weight, birth_date, gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-        .bind(newTalentId, userId, fullName, category, height, weight, birthDate, gender).run()
+      await c.env.DB_CORE.prepare(`
+        INSERT INTO talents (
+          talent_id, user_id, full_name, category, height, weight, birth_date, gender, 
+          headshot, side_view, full_height, instagram, tiktok, twitter, phone, email
+        ) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(newTalentId, userId, fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, instagram, tiktok, twitter, phone, email).run()
     }
     
     // Ambil ulang data terbaru setelah disimpan

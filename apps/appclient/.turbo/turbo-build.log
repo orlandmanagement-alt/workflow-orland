@@ -2,11 +2,3 @@
 > appclient@1.0.0 build
 > tsc && vite build
 
-src/components/layout/Header.tsx(6,10): error TS2305: Module '"../../lib/api"' has no exported member 'apiRequest'.
-npm error Lifecycle script `build` failed with error:
-npm error code 2
-npm error path C:\Users\USER\Documents\antigravity\workflow-orland\apps\appclient
-npm error workspace appclient@1.0.0
-npm error location C:\Users\USER\Documents\antigravity\workflow-orland\apps\appclient
-npm error command failed
-npm error command C:\WINDOWS\system32\cmd.exe /d /s /c tsc && vite build

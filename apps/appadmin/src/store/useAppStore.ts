@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface UserData {
   id: string;
@@ -15,28 +16,45 @@ interface AuthState {
   logout: () => void;
 }
 
-// Simulasi Store, di produksi mungkin menggunakan persist middleware
-export const useAuthStore = create<AuthState>((set) => ({
-  user: { id: 'admin-01', email: 'admin@orland.id', name: 'Master Admin', role: 'admin' }, // MOCK DEFAULT
-  token: 'mock-token',
-  isAuthenticated: true, 
-  login: (userData, userToken) => {
-    localStorage.setItem('orland-auth-admin', userToken);
-    set({ user: userData, token: userToken, isAuthenticated: true });
-  },
-  logout: () => {
-    localStorage.removeItem('orland-auth-admin');
-    set({ user: null, token: null, isAuthenticated: false });
-    window.location.href = 'https://sso.orlandmanagement.com?redirect_url=' + window.location.origin;
-  }
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+
+      login: (userData, userToken) => {
+        set({ user: userData, token: userToken, isAuthenticated: true });
+      },
+
+      logout: () => {
+        set({ user: null, token: null, isAuthenticated: false });
+        // Redirect ke SSO setelah logout
+        window.location.href = `https://sso.orlandmanagement.com?redirect_url=${encodeURIComponent(window.location.origin)}`;
+      },
+    }),
+    {
+      name: 'orland-admin-auth', // key di localStorage
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    }
+  )
+);
 
 interface ThemeState {
   isDark: boolean;
   toggleTheme: () => void;
 }
 
-export const useThemeStore = create<ThemeState>((set) => ({
-  isDark: false,
-  toggleTheme: () => set((state) => ({ isDark: !state.isDark }))
-}));
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set) => ({
+      isDark: true, // Admin default dark mode
+      toggleTheme: () => set((state) => ({ isDark: !state.isDark })),
+    }),
+    { name: 'orland-admin-theme' }
+  )
+);

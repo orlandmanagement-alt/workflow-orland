@@ -5,15 +5,9 @@ import AuthCallback from '@/pages/auth/callback';
 import UsersCRM from '@/pages/users';
 import FinanceTreasury from '@/pages/finance';
 import ProjectOverwatch from '@/pages/projects';
+import DisputeResolution from '@/pages/disputes';
+import AdminDashboard from '@/pages/dashboard';
 import { useThemeStore } from '@/store/useAppStore';
-
-// Temporary Mock Dashboard Component
-const DashboardHome = () => (
-  <div className="flex flex-col items-center justify-center h-full text-slate-400">
-     <h1 className="text-4xl font-black text-slate-800 dark:text-slate-100 mb-2">ORLAND GOD MODE</h1>
-     <p>Select a module from the Master Controls sidebar.</p>
-  </div>
-);
 
 function App() {
   const isDark = useThemeStore(state => state.isDark);
@@ -30,16 +24,17 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/admin" replace />} />
-        
-        {/* Auth Route untuk menerima JWT dari SSO */}
+
+        {/* Auth Route: Menerima JWT dari SSO */}
         <Route path="/auth/callback" element={<AuthCallback />} />
-        
+
         {/* STRICT ADMIN ROUTES */}
         <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-          <Route index element={<DashboardHome />} />
+          <Route index element={<AdminDashboard />} />
           <Route path="users" element={<UsersCRM />} />
           <Route path="finance" element={<FinanceTreasury />} />
           <Route path="projects" element={<ProjectOverwatch />} />
+          <Route path="disputes" element={<DisputeResolution />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/admin" replace />} />

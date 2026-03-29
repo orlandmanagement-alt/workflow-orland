@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useThemeStore } from '@/store/useAppStore';
 import { ShieldAlert, Users, LayoutDashboard, Wallet, Gavel, LogOut, Search, Moon, Sun, Settings } from 'lucide-react';
 
@@ -8,14 +8,18 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // THE ULTIMATE GATEKEEPER - BLOCKED ANYONE EXCEPT ADMIN
   if (!isAuthenticated || !user) {
-    return <Navigate to="/auth/login" replace />;
+    // Redirect ke SSO dengan return URL
+    window.location.replace(
+      `https://sso.orlandmanagement.com?redirect_url=${encodeURIComponent(window.location.origin + '/auth/callback')}`
+    );
+    return null;
   }
 
   if (user.role !== 'admin') {
     // If client or talent tries to enter Admin panel, nuke their token and kick to SSO
-    alert("CRITICAL ACCESS VIOLATION: Role is not Admin. Force Logging Out.");
+    console.error('CRITICAL ACCESS VIOLATION: Role is not Admin. Force Logging Out.');
     logout();
-    return null; 
+    return null;
   }
 
   return <>{children}</>;
@@ -25,7 +29,8 @@ const MENU = [
   { path: '/admin', label: 'God Dashboard', icon: LayoutDashboard },
   { path: '/admin/users', label: 'User & Identity', icon: Users },
   { path: '/admin/finance', label: 'Treasury & Payouts', icon: Wallet },
-  { path: '/admin/projects', label: 'Overwatch & Disputes', icon: Gavel },
+  { path: '/admin/projects', label: 'Overwatch', icon: Gavel },
+  { path: '/admin/disputes', label: 'Dispute Center', icon: ShieldAlert },
 ];
 
 export const AdminLayout = () => {

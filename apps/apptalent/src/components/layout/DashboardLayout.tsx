@@ -10,6 +10,9 @@ import { MENU_ITEMS } from '@/config/menuConfig';
 import { performCleanLogout } from '@/lib/auth/logout';
 import { apiRequest } from '@/lib/api';
 
+// IMPORT PROFILE WIZARD
+import ProfileWizard from '@/components/wizard/ProfileWizard';
+
 export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
 export default function DashboardLayout() {
@@ -25,6 +28,9 @@ export default function DashboardLayout() {
   // STATE NOTIFIKASI API
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  
+  // STATE PROFILE WIZARD (ONBOARDING)
+  const [showWizard, setShowWizard] = useState(false);
 
   // STATE UNTUK GATEKEEPER & USER DATA
   const isAuthorized = useAuthStore(state => state.isAuthenticated);
@@ -35,7 +41,7 @@ export default function DashboardLayout() {
     if (!isAuthorized) {
       performCleanLogout();
     } else {
-      // Lazy Fetch Notifications
+      // 1. Lazy Fetch Notifications
       apiRequest('/notifications?limit=5&offset=0')
         .then((res: any) => {
            if (res.status === 'ok') {
@@ -44,6 +50,19 @@ export default function DashboardLayout() {
            }
         })
         .catch(() => console.error("Gagal menarik lonceng notifikasi"));
+        
+      // 2. Cek Apakah Profil Baru Saja Dibuat (Butuh Onboarding)
+      apiRequest('/talents/me')
+        .then((res: any) => {
+            // is_new dipasok langsung dari backend API (talentHandler.ts)
+            if (res.is_new) {
+                setShowWizard(true);
+            } else if (!res.data.category || !res.data.height) {
+                // Walaupun profil ada, bila belum diisi (aborted di tgh jalan)
+                setShowWizard(true);
+            }
+        })
+        .catch(() => console.log("Gagal verifikasi status profil talent"));
     }
   }, [isAuthorized]);
 
@@ -229,6 +248,9 @@ export default function DashboardLayout() {
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
+      
+      {/* RENDER PROFILE WIZARD MODAL KALAU HARUS ONBOARDING */}
+      {showWizard && <ProfileWizard onClose={() => setShowWizard(false)} />}
     </div>
   )
 }

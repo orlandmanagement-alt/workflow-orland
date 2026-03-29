@@ -13,9 +13,6 @@ import ProjectDetail from '@/pages/projects/[id]';
 import Schedules from '@/pages/schedules';
 import Payouts from '@/pages/payouts';
 import MediaPortfolio from '@/pages/media';
-import ProfileBuilder from './pages/profile/builder';
-import MessagesHub from './pages/messages/index';
-import PayoutsHub from './pages/payouts/index';
 import Contracts from '@/pages/contracts';
 import Messages from '@/pages/messages';
 import AIMatch from "@/pages/jobs/match/index";
@@ -63,9 +60,7 @@ export default function App() {
             <Route path="/help" element={<Helpdesk />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<ProfileEditor />} />
-            <Route path="/messages" element={<ProtectedRoute><TalentLayout><MessagesHub /></TalentLayout></ProtectedRoute>} />
-            <Route path="/payouts" element={<ProtectedRoute><TalentLayout><PayoutsHub /></TalentLayout></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><TalentLayout><ProfileBuilder /></TalentLayout></ProtectedRoute>} />
+
           </Route>
 
           {/* Fallback 404 Route */}

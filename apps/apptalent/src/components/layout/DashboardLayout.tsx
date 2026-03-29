@@ -26,7 +26,6 @@ export default function DashboardLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isUserMenuOpen, setUserMenuOpen] = useState(false);
-  const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   
   // STATE PROFILE WIZARD (ONBOARDING)
   const [showWizard, setShowWizard] = useState(false);

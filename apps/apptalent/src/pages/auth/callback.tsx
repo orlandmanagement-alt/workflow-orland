@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAppStore';
 
@@ -9,8 +9,14 @@ export default function AuthCallback() {
   
   const [errorStatus, setErrorStatus] = useState<'talent' | 'client' | null>(null);
   const [countdown, setCountdown] = useState(5);
+  
+  // Gunakan useRef agar proses ini hanya dijalankan 1 kali (mencegah loop)
+  const isProcessed = useRef(false);
 
   useEffect(() => {
+    if (isProcessed.current) return;
+    isProcessed.current = true;
+
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
     const role = (params.get('role') || '').toLowerCase();
@@ -34,12 +40,15 @@ export default function AuthCallback() {
         return () => clearInterval(interval);
       }
 
+      // Simpan data dan pindah ke dashboard
       login(token, { id: userId, name, email, role: 'talent' });
       navigate('/dashboard', { replace: true });
+      
     } else {
+      // Hanya tendang ke SSO jika benar-benar tidak ada token saat pertama kali buka callback
       window.location.replace('https://sso.orlandmanagement.com/');
     }
-  }, [navigate, location, login]);
+  }, []); // <-- Dikosongkan agar hanya jalan 1x saat Mount
 
   if (errorStatus === 'client') {
       return (

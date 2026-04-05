@@ -1,4 +1,6 @@
 import { api } from '../api';
+import axios from 'axios';
+import { useAuthStore } from '@/store/useAppStore';
 
 const CDN_URL = 'https://cdn.orlandmanagement.com';
 
@@ -11,20 +13,28 @@ export const mediaService = {
 
   /**
    * Upload media ke R2 via CDN Bridge (2 langkah):
-   * 1. Minta presigned URL ke CDN Worker
+   * 1. Minta presigned URL LANGSUNG ke CDN Worker
    * 2. Upload file langsung ke R2 dengan PUT ke presigned URL
    * 3. Simpan publicUrl ke DB via API
    */
   uploadMedia: async (file: File, folder: 'talents' | 'clients' | 'kyc' | 'misc' = 'talents') => {
-    // Step 1: Minta presigned URL dari CDN
-    const presignedRes = await api.post('/media/upload-url', {
+    // Ambil token dari Zustand Store
+    const token = useAuthStore.getState().token;
+
+    // Step 1: Minta presigned URL dari CDN (Bypass api.orlandmanagement.com)
+    const presignedRes = await axios.post(`${CDN_URL}/upload-url`, {
       fileName: file.name,
       contentType: file.type,
       folder,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-    const { uploadUrl, publicUrl, fileKey, headers } = presignedRes.data;
 
-    // Step 2: Upload file langsung ke R2 (tanpa melewati API Worker)
+    const { uploadUrl, publicUrl, fileKey } = presignedRes.data;
+
+    // Step 2: Upload file langsung ke R2
     const uploadRes = await fetch(uploadUrl, {
       method: 'PUT',
       headers: { 'Content-Type': file.type },
@@ -35,7 +45,7 @@ export const mediaService = {
       throw new Error(`Upload ke R2 gagal: ${uploadRes.statusText}`);
     }
 
-    // Step 3: Catat URL ke database via API
+    // Step 3: Catat URL ke database via API Bisnis
     const recordRes = await api.post('/media', {
       file_key: fileKey,
       public_url: publicUrl,
@@ -47,21 +57,18 @@ export const mediaService = {
     return recordRes.data?.data ?? { public_url: publicUrl, file_key: fileKey };
   },
 
-  // Tandai foto sebagai foto utama
   setMainMedia: async (mediaId: string) => {
     const res = await api.patch(`/media/${mediaId}`, { is_main: true });
     return res.data;
   },
 
-  // Hapus media
   deleteMedia: async (mediaId: string, fileKey?: string) => {
     const res = await api.delete(`/media/${mediaId}`);
     return res.data;
   },
 
-  // Helper: buat URL gambar publik dari fileKey
   getPublicUrl: (fileKey: string): string => {
-    if (fileKey.startsWith('http')) return fileKey; // sudah full URL
+    if (fileKey.startsWith('http')) return fileKey; 
     return `${CDN_URL}/media/${fileKey}`;
   },
 };

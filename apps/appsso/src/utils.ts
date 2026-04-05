@@ -21,7 +21,7 @@ export async function verifyTurnstile(token: string | undefined, ip: string, sec
 }
 
 export async function sendMail(env: any, toEmail: string, token: string, purpose: string): Promise<{ success: boolean }> {
-  const host = "https://sso.orlandmanagement.com";
+  const host = "https://orlandmanagement.com";
   let subject, html;
 
   if (purpose === 'activation') {

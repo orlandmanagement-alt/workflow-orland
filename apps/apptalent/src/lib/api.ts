@@ -4,19 +4,11 @@ import { performCleanLogout } from '@/lib/auth/logout';
 
 const API_URL = 'https://api.orlandmanagement.com/api/v1';
 
-// PERBAIKAN: Tambahkan withCredentials: true agar Cookie lintas domain terbawa
-export const api = axios.create({ 
-  baseURL: API_URL, 
-  withCredentials: true, 
-  headers: { 'Content-Type': 'application/json' }
-});
+export const api = axios.create({ baseURL: API_URL, headers: { 'Content-Type': 'application/json' }});
 
 api.interceptors.request.use((config: any) => {
   const token = useAuthStore.getState().token;
-  if (token) { 
-    config.headers = config.headers || {}; 
-    config.headers.Authorization = `Bearer ${token}`; 
-  }
+  if (token) { config.headers = config.headers || {}; config.headers.Authorization = `Bearer ${token}`; }
   return config;
 });
 
@@ -36,12 +28,7 @@ api.interceptors.response.use(
 
 export const apiRequest = async (url: string, options: any = {}) => {
   try {
-    const response = await api({ 
-      url, 
-      method: options.method || 'GET', 
-      data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : options.data, 
-      headers: options.headers 
-    });
+    const response = await api({ url, method: options.method || 'GET', data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : options.data, headers: options.headers });
     return response.data;
   } catch (error) { throw error; }
 };

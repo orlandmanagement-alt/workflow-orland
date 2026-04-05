@@ -15,9 +15,11 @@ export default function JobDetail() {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   
-  // Gatekeeper state
+// Gatekeeper state
   const profileProgress = useProfileProgress();
-  const canApply = profileProgress >= 70;
+  // Perbaikan tipe data: Ambil angka percentage dari dalam object
+  const progressValue = typeof profileProgress === 'number' ? profileProgress : (profileProgress as any).percentage || 0;
+  const canApply = progressValue >= 70;
 
   const { data: project, isLoading, isError } = useQuery({
     queryKey: ['available-project', id],
@@ -111,7 +113,7 @@ export default function JobDetail() {
                 {!canApply && (
                   <div className="absolute top-16 right-0 w-64 p-3 bg-red-600 text-white text-xs font-bold rounded-xl shadow-2xl opacity-0 peer-hover:opacity-100 transition-opacity pointer-events-none flex items-start gap-2 z-10">
                     <ShieldAlert size={16} className="shrink-0 mt-0.5" />
-                    Lengkapi profil Anda minimal 70% untuk dapat melamar. (Saat ini: {profileProgress}%)
+                    Lengkapi profil Anda minimal 70% untuk dapat melamar. (Saat ini: {progressValue}%)
                   </div>
                 )}
               </div>

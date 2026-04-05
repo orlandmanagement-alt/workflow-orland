@@ -1,15 +1,13 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, Users, FileText, Settings } from 'lucide-react';
-import Header from './components/layout/Header';
-import OmniSearch from "./components/layout/OmniSearch";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/useAppStore';
-import { getMenuItems } from './config/menuConfig';
-import { CategoryModal } from './components/onboarding/CategoryModal';
+
+// Layout
+import ClientLayout from './components/layout/ClientLayout';
 
 // Pages
 import AuthCallback from './pages/auth/callback';
-import ClientAuth from "./pages/auth/client-login"; // Jika masih ada
+import ClientAuth from "./pages/auth/client-login";
 import ClientDashboard from './pages/dashboard/index';
 import ProjectsHub from './pages/projects/index';
 import FinanceHub from "./pages/finance/invoices";
@@ -21,52 +19,25 @@ import ProjectDetail from "./pages/projects/detail";
 import CreateProjectWizard from "./pages/projects/create";
 import WorkspaceHost from "./pages/projects/workspace";
 
-// --- STRICT GATEKEEPER: HANYA MENGECEK BRANKAS ---
+// Dynamic Tools (Import directly or dynamically in a real app)
+import PHScripts from "./pages/tools/ph/scripts";
+import KOLBriefBuilder from "./pages/tools/kol/brief-builder";
+import KOLDrafts from "./pages/tools/kol/drafts";
+import BrandSafety from "./pages/tools/brand/safety";
+import WORundown from "./pages/tools/wo/rundown";
+import EORiders from "./pages/tools/eo/riders"; // Kita akan buat file ini setelahnya
+
+// --- STRICT GATEKEEPER ---
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthorized = useAuthStore(state => state.isAuthenticated);
 
   if (!isAuthorized) {
-    // Sapu data hantu dan lempar ke SSO
     window.location.replace(`https://sso.orlandmanagement.com/?redirect=${encodeURIComponent(window.location.href)}`);
     return null;
   }
   
   return <>{children}</>;
 };
-
-// --- KOMPONEN UI BAWAH ---
-const BottomNav = () => {
-  const location = useLocation();
-  const { companyCategory } = useAuthStore();
-  const rawItems = getMenuItems(companyCategory);
-  
-  // Ambil max 5 item utama untuk Bottom Navigation Mobile (Home selalu ada)
-  const navItems = rawItems.filter(menu => !menu.path.includes('/dashboard/casting') && !menu.path.includes('/dashboard/pipeline')).slice(0, 5);
-
-  return (
-    <div className="fixed bottom-0 w-full bg-white dark:bg-[#0b141a] border-t border-slate-200 dark:border-slate-800 flex justify-around p-3 z-50 sm:hidden">
-      {navItems.map((item) => {
-        const isActive = location.pathname.includes(item.path) && (item.path !== '/dashboard' || location.pathname === '/dashboard');
-        return (
-          <Link key={item.path} to={item.path} className={`flex flex-col items-center gap-1 ${isActive ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>
-            <item.icon size={20} className={isActive ? 'fill-brand-600/20' : ''} />
-            <span className="text-[10px] font-bold truncate">{item.title}</span>
-          </Link>
-        );
-      })}
-    </div>
-  );
-};
-
-const ClientLayout = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen bg-slate-50 dark:bg-[#071122]">
-    <CategoryModal />
-    <Header />
-    <OmniSearch />
-    <main className="pb-24 sm:pb-10">{children}</main>
-    <BottomNav />
-  </div>
-);
 
 export default function App() {
   return (
@@ -78,17 +49,32 @@ export default function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/login" element={<ClientAuth />} />
         
-        {/* SEMUA RUTE UTAMA DILINDUNGI GATEKEEPER */}
-        <Route path="/dashboard" element={<ProtectedRoute><ClientLayout><ClientDashboard /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/projects" element={<ProtectedRoute><ClientLayout><ProjectsHub /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/projects/new" element={<ProtectedRoute><ClientLayout><CreateProjectWizard /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/projects/:id" element={<ProtectedRoute><ClientLayout><ProjectDetail /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/projects/:id/workspace" element={<ProtectedRoute><ClientLayout><WorkspaceHost /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/talents" element={<ProtectedRoute><ClientLayout><TalentDiscovery /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/finance" element={<ProtectedRoute><ClientLayout><FinanceHub /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/contracts" element={<ProtectedRoute><ClientLayout><ContractsHub /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/settings" element={<ProtectedRoute><ClientLayout><TeamSettings /></ClientLayout></ProtectedRoute>} />
-        <Route path="/dashboard/messages" element={<ProtectedRoute><ClientLayout><ClientMessages /></ClientLayout></ProtectedRoute>} />
+        {/* SEMUA RUTE UTAMA DILINDUNGI GATEKEEPER & DI DALAM CLIENT LAYOUT */}
+        <Route element={<ProtectedRoute><ClientLayout /></ProtectedRoute>}>
+          {/* Core Routes */}
+          <Route path="/dashboard" element={<ClientDashboard />} />
+          <Route path="/dashboard/projects" element={<ProjectsHub />} />
+          <Route path="/dashboard/projects/new" element={<CreateProjectWizard />} />
+          <Route path="/dashboard/projects/:id" element={<ProjectDetail />} />
+          <Route path="/dashboard/projects/:id/workspace" element={<WorkspaceHost />} />
+          <Route path="/dashboard/talents" element={<TalentDiscovery />} />
+          <Route path="/dashboard/finance" element={<FinanceHub />} />
+          <Route path="/dashboard/contracts" element={<ContractsHub />} />
+          <Route path="/dashboard/settings" element={<TeamSettings />} />
+          <Route path="/dashboard/messages" element={<ClientMessages />} />
+
+          {/* Dynamic Tools Routes */}
+          <Route path="/dashboard/tools/ph/scripts" element={<PHScripts />} />
+          <Route path="/dashboard/tools/kol/brief-builder" element={<KOLBriefBuilder />} />
+          <Route path="/dashboard/tools/kol/drafts" element={<KOLDrafts />} />
+          <Route path="/dashboard/tools/brand/safety" element={<BrandSafety />} />
+          <Route path="/dashboard/tools/wo/rundown" element={<WORundown />} />
+          <Route path="/dashboard/tools/eo/riders" element={<EORiders />} />
+          
+          {/* Missing route stubs to prevent 404 on layout click */}
+          <Route path="/dashboard/casting" element={<div className="p-10"><h1 className="text-2xl font-bold dark:text-white">Live Casting Board</h1></div>} />
+          <Route path="/dashboard/staffing" element={<div className="p-10"><h1 className="text-2xl font-bold dark:text-white">Event Staffing</h1></div>} />
+        </Route>
       </Routes>
     </Router>
   );

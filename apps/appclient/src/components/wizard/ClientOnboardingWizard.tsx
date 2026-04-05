@@ -44,12 +44,21 @@ export const ClientOnboardingWizard = ({ onClose }: { onClose: () => void }) => 
 
   const handleNext = async () => {
     setIsSaving(true);
-    // Mock Save-As-You-Go API Call: PUT /profile/xxx
-    await new Promise(res => setTimeout(res, 800));
-    
-    setIsSaving(false);
-    if (step < 5) {
+    try {
+      if (step === 4) {
+        // Final Submission
+        const { apiRequest } = await import('@/lib/api');
+        await apiRequest('/clients/me', {
+          method: 'PUT',
+          body: JSON.stringify(formData)
+        });
+      }
       setStep(step + 1);
+    } catch (error) {
+      console.error("Gagal menyimpan data onboarding", error);
+      alert("Terjadi kesalahan saat menyimpan data. Silakan coba lagi.");
+    } finally {
+      setIsSaving(false);
     }
   };
 

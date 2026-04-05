@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout, ProtectedRoute } from '@/components/layout/AdminLayout';
 import AuthCallback from '@/pages/auth/callback';
+import AdminLogin from '@/pages/auth/login';
 import UsersCRM from '@/pages/users';
 import FinanceTreasury from '@/pages/finance';
 import ProjectOverwatch from '@/pages/projects';
@@ -26,6 +27,7 @@ function App() {
         <Route path="/" element={<Navigate to="/admin" replace />} />
 
         {/* Auth Route: Menerima JWT dari SSO */}
+        <Route path="/auth/login" element={<AdminLogin />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* STRICT ADMIN ROUTES */}

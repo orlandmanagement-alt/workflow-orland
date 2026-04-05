@@ -1,144 +1,80 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Users, Briefcase, DollarSign, ShieldAlert, TrendingUp,
-  Activity, Globe, AlertTriangle, CheckCircle2, Clock
-} from 'lucide-react';
-import { api } from '@/lib/api';
-
-interface DashboardStats {
-  total_users: number;
-  total_talents: number;
-  total_clients: number;
-  active_projects: number;
-  total_revenue: number;
-  pending_payouts: number;
-  open_disputes: number;
-  kyc_pending: number;
-  new_users_today: number;
-  revenue_this_month: number;
-}
-
-const DEFAULT_STATS: DashboardStats = {
-  total_users: 0, total_talents: 0, total_clients: 0,
-  active_projects: 0, total_revenue: 0, pending_payouts: 0,
-  open_disputes: 0, kyc_pending: 0, new_users_today: 0, revenue_this_month: 0,
-};
+import React from 'react';
+import { Users, Activity, DollarSign, AlertTriangle, ShieldAlert, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>(DEFAULT_STATS);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await api.get('/stats/admin-dashboard');
-        setStats({ ...DEFAULT_STATS, ...res.data?.data });
-      } catch {
-        // pakai default 0
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  const formatIDR = (n: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
-
-  const PRIMARY_CARDS = [
-    { label: 'Total User Terdaftar', value: stats.total_users.toLocaleString(), icon: Users, color: 'text-brand-400', bg: 'bg-brand-500/10 border-brand-500/20' },
-    { label: 'Proyek Aktif', value: stats.active_projects.toLocaleString(), icon: Briefcase, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
-    { label: 'Total Revenue (All Time)', value: formatIDR(stats.total_revenue), icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-    { label: 'Dispute Terbuka', value: stats.open_disputes.toLocaleString(), icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
-  ];
-
-  const SECONDARY_CARDS = [
-    { label: 'Total Talent', value: stats.total_talents, icon: Activity },
-    { label: 'Total Client', value: stats.total_clients, icon: Globe },
-    { label: 'KYC Menunggu Review', value: stats.kyc_pending, icon: Clock },
-    { label: 'User Baru Hari Ini', value: stats.new_users_today, icon: TrendingUp },
-    { label: 'Payout Tertunda', value: formatIDR(stats.pending_payouts), icon: AlertTriangle },
-    { label: 'Revenue Bulan Ini', value: formatIDR(stats.revenue_this_month), icon: CheckCircle2 },
+  const stats = [
+    { label: 'Total Talents', value: '4,821', change: '+12.5%', isPositive: true, icon: Users },
+    { label: 'Active Projects', value: '342', change: '+5.2%', isPositive: true, icon: Activity },
+    { label: 'Escrow Volume', value: 'Rp 4.2B', change: '-2.4%', isPositive: false, icon: DollarSign },
+    { label: 'Pending Disputes', value: '14', change: '+4', isPositive: false, icon: AlertTriangle },
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="p-6 md:p-8 space-y-8 animate-in fade-in zoom-in-95 duration-500">
+      
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-black text-white tracking-tight">God Mode Dashboard</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Orland Management — Ringkasan Ekosistem Real-Time
-          {isLoading && <span className="ml-2 text-xs text-slate-600 animate-pulse">• memuat data...</span>}
-        </p>
-      </div>
-
-      {/* Critical Alert Box */}
-      {stats.open_disputes > 0 && (
-        <div className="flex items-center gap-4 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl">
-          <ShieldAlert size={20} className="text-red-400 shrink-0" />
-          <div>
-            <p className="text-sm font-bold text-red-400">{stats.open_disputes} Dispute Memerlukan Perhatian</p>
-            <p className="text-xs text-red-400/70">Resolusi segera diperlukan untuk menjaga reputasi platform.</p>
-          </div>
-          <a href="/admin/disputes" className="ml-auto text-xs font-bold text-red-400 hover:text-red-300 transition-colors whitespace-nowrap">
-            Tangani →
-          </a>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-1 flex items-center gap-3">
+             <ShieldAlert className="text-red-500" />
+             God Mode <span className="text-red-500 font-light">Dashboard</span>
+          </h1>
+          <p className="text-slate-400 font-mono text-xs uppercase tracking-widest">OVERWATCH COMMAND CENTER • ORLAND MANAGEMENT</p>
         </div>
-      )}
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm tracking-widest uppercase shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all">
+          <BarChart3 size={16} /> Generate Core Report
+        </button>
+      </div>
 
-      {/* Primary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {PRIMARY_CARDS.map(card => (
-          <div key={card.label} className={`border ${card.bg} rounded-2xl p-5 relative overflow-hidden`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
-                <p className={`text-2xl font-black ${card.color} ${isLoading ? 'animate-pulse opacity-50' : ''}`}>
-                  {isLoading ? '—' : card.value}
-                </p>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, idx) => (
+          <div key={idx} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-red-900/50 transition-colors">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
+               <stat.icon size={64} className="text-white" />
+            </div>
+            <div className="relative z-10 flex flex-col h-full justify-between">
+              <span className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">{stat.label}</span>
+              <div className="flex items-end justify-between">
+                <span className="text-3xl font-black text-white">{stat.value}</span>
+                <span className={`text-xs font-bold flex items-center gap-1 ${stat.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                  {stat.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                  {stat.change}
+                </span>
               </div>
-              <card.icon size={32} className={`${card.color} opacity-30`} />
             </div>
           </div>
         ))}
       </div>
 
-      {/* Secondary Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {SECONDARY_CARDS.map(card => (
-          <div key={card.label} className="bg-white/5 border border-slate-800 rounded-2xl p-4 flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
-              <card.icon size={18} className="text-slate-400" />
-            </div>
-            <div>
-              <p className="text-xl font-black text-white">
-                {isLoading ? '—' : (typeof card.value === 'number' ? card.value.toLocaleString() : card.value)}
-              </p>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">{card.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Quick Navigation */}
-      <div className="bg-white/5 border border-slate-800 rounded-2xl p-6">
-        <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Aksi Cepat</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Kelola Users', href: '/admin/users', icon: Users },
-            { label: 'Treasury', href: '/admin/finance', icon: DollarSign },
-            { label: 'Proyek Overwatch', href: '/admin/projects', icon: Briefcase },
-            { label: 'Dispute Center', href: '/admin/disputes', icon: ShieldAlert },
-          ].map(action => (
-            <a
-              key={action.label}
-              href={action.href}
-              className="flex flex-col items-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors text-center group"
-            >
-              <action.icon size={22} className="text-slate-400 group-hover:text-white transition-colors" />
-              <span className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">{action.label}</span>
-            </a>
-          ))}
+      {/* Charts & Activity Stub */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl h-96 flex flex-col">
+           <h3 className="text-white font-bold uppercase tracking-widest text-sm mb-6 flex justify-between items-center">
+             System Activity
+             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(220,38,38,1)]"></span>
+           </h3>
+           <div className="flex-1 flex items-center justify-center border border-dashed border-slate-800 rounded-xl relative overflow-hidden">
+               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+               <p className="text-slate-600 font-mono text-xs z-10">[ VISUALIZATION ENGINE STUB - CONNECT TO D3.JS / CHART.JS ]</p>
+           </div>
+        </div>
+        <div className="lg:col-span-1 bg-slate-900 border border-slate-800 p-6 rounded-2xl h-96 flex flex-col">
+           <h3 className="text-white font-bold uppercase tracking-widest text-sm mb-6 border-b border-slate-800 pb-4">
+             Recent Incidents
+           </h3>
+           <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+              {[1, 2, 3, 4, 5].map(i => (
+                 <div key={i} className="flex gap-4 items-start pb-4 border-b border-slate-800/50 last:border-0 hover:bg-white/5 p-2 rounded-lg transition-colors cursor-pointer">
+                    <div className="mt-1 w-2 h-2 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.8)]"></div>
+                    <div>
+                      <p className="text-sm font-bold text-white mb-1">Payment Delayed - PROJ-{800+i}</p>
+                      <p className="text-xs font-mono text-slate-500">Client B2B has not released escrow funds for more than 48 hours.</p>
+                      <p className="text-[10px] text-slate-400 mt-2">2 hours ago</p>
+                    </div>
+                 </div>
+              ))}
+           </div>
         </div>
       </div>
     </div>

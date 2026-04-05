@@ -1,210 +1,117 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowLeft, Users, Image as ImageIcon, DollarSign, MessageSquare,
-  Settings, Plus, Loader2, AlertCircle, CheckCircle2, Clock, FileText
-} from 'lucide-react';
-import { api } from '@/lib/api';
-import { RosterManager } from '@/components/projects/RosterManager';
-import PitchDeckButton from '@/components/projects/PitchDeckButton';
-import SharedNotes from '@/components/projects/SharedNotes';
-
-type TabId = 'roster' | 'moodboard' | 'budget' | 'notes' | 'settings';
-
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  draft:      { label: 'Draft',           color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
-  casting:    { label: 'Casting',          color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  production: { label: 'Produksi',         color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  completed:  { label: 'Selesai',          color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  cancelled:  { label: 'Dibatalkan',       color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-};
+import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, MapPin, Calendar, Clock, Lock, Users, Briefcase, FileText, Activity, ShieldCheck, Download, MoreVertical } from 'lucide-react';
 
 export default function ProjectDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>('roster');
-
-  const { data: project, isLoading, isError } = useQuery({
-    queryKey: ['project-detail', id],
-    queryFn: async () => {
-      const res = await api.get(`/projects/${id}`);
-      return res.data?.data;
-    },
-    enabled: !!id,
-    staleTime: 1000 * 60 * 2,
-  });
-
-  const tabs: Array<{ id: TabId; label: string; icon: React.ElementType }> = [
-    { id: 'roster',    label: 'Roster',    icon: Users },
-    { id: 'moodboard', label: 'Moodboard', icon: ImageIcon },
-    { id: 'budget',    label: 'Budget',    icon: DollarSign },
-    { id: 'notes',     label: 'Notes',     icon: MessageSquare },
-    { id: 'settings',  label: 'Settings',  icon: Settings },
-  ];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="animate-spin text-brand-600" size={40} />
-      </div>
-    );
-  }
-
-  if (isError || !project) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 mt-12 text-center">
-        <AlertCircle size={48} className="mx-auto text-red-400 mb-4" />
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Proyek tidak ditemukan</h2>
-        <button onClick={() => navigate(-1)} className="mt-4 text-brand-600 font-bold text-sm">
-          ← Kembali
-        </button>
-      </div>
-    );
-  }
-
-  const statusInfo = STATUS_MAP[project.status?.toLowerCase()] ?? STATUS_MAP['draft'];
+  const { id } = useParams();
+  const [activeTab, setActiveTab] = useState<'overview'|'talents'|'finance'|'documents'>('overview');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 mt-6 pb-20 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <button onClick={() => navigate(-1)} className="flex items-center text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white mb-3 transition-colors">
-            <ArrowLeft size={14} className="mr-1" /> Kembali ke Proyek
-          </button>
-          <h1 className="text-3xl font-black dark:text-white tracking-tight">{project.title}</h1>
-          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-slate-500 dark:text-slate-400">
-            <span>#{project.id?.slice(0, 8) || id}</span>
-            {project.category && <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">{project.category}</span>}
-            {project.location && <span>📍 {project.location}</span>}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950/50 pb-20">
+       {/* Hero Cover */}
+       <div className="h-48 md:h-64 bg-slate-900 border-b border-slate-800 relative bg-[url('https://images.unsplash.com/photo-1540317580384-e5d43616b9aa?auto=format&fit=crop&q=80')] bg-cover bg-center">
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div>
+          <div className="absolute top-6 left-6 z-10">
+             <Link to="/dashboard/projects" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-white rounded-xl text-sm font-bold transition-colors">
+                <ArrowLeft size={16} /> Back to Hub
+             </Link>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.color}`}>
-            {statusInfo.label}
-          </span>
-          <PitchDeckButton projectId={id!} />
-          <button className="px-4 py-2 bg-slate-900 dark:bg-brand-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md">
-            <Plus size={14} /> Tambah Talent
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Slot', value: project.total_slots ?? '-', icon: Users, color: 'text-brand-600' },
-          { label: 'Terisi', value: project.filled_slots ?? '0', icon: CheckCircle2, color: 'text-green-600' },
-          { label: 'Deadline', value: project.casting_deadline ? new Date(project.casting_deadline).toLocaleDateString('id-ID') : '-', icon: Clock, color: 'text-amber-600' },
-          { label: 'Budget', value: project.total_budget ? `Rp ${(project.total_budget / 1_000_000).toFixed(0)}jt` : '-', icon: DollarSign, color: 'text-emerald-600' },
-        ].map(stat => (
-          <div key={stat.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center ${stat.color}`}>
-              <stat.icon size={20} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">{stat.label}</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white">{stat.value}</p>
-            </div>
+          
+          <div className="absolute bottom-6 px-6 md:px-10 w-full flex flex-col md:flex-row md:items-end justify-between gap-4">
+             <div>
+                <span className="px-3 py-1 bg-brand-500 text-white font-bold uppercase tracking-widest text-[10px] rounded mb-3 inline-block">Casting in Progress</span>
+                <h1 className="text-3xl md:text-4xl font-black text-white mb-2 drop-shadow-lg">Corporate TVC Nusantara</h1>
+                <div className="flex flex-wrap items-center gap-4 text-slate-300 text-sm font-medium">
+                   <span className="flex items-center gap-1"><MapPin size={14}/> Jakarta</span>
+                   <span className="flex items-center gap-1"><Calendar size={14}/> 12 Oct 2026 - 15 Oct 2026</span>
+                   <span className="flex items-center gap-1"><Clock size={14}/> 08:00 WIB</span>
+                </div>
+             </div>
+             
+             <div className="flex gap-3">
+                <button className="px-4 py-2.5 bg-white text-slate-900 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-100 transition-colors text-sm shadow-xl">
+                    <Users size={18}/> Manage Roster
+                </button>
+             </div>
           </div>
-        ))}
-      </div>
+       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-2xl w-fit overflow-x-auto">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <tab.icon size={14} /> {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="min-h-[400px]">
-        {activeTab === 'roster' && (
-          <RosterManager projectId={id!} />
-        )}
-
-        {activeTab === 'moodboard' && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold dark:text-white">Moodboard & Reference</h2>
-              <button className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-xs font-bold rounded-xl">
-                <Plus size={14} /> Upload Gambar
-              </button>
+       <div className="max-w-7xl mx-auto px-4 md:px-10 mt-8 mb-6 flex flex-col md:flex-row gap-8 items-start relative z-20">
+         
+         {/* LEFT CONTENT MAIN */}
+         <div className="flex-1 w-full space-y-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2 flex overflow-x-auto hide-scrollbar sticky top-20 z-30 shadow-sm">
+               {['overview', 'talents', 'finance', 'documents'].map(tab => (
+                 <button 
+                   key={tab} 
+                   onClick={() => setActiveTab(tab as any)}
+                   className={`px-6 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wider whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                 >
+                   {tab}
+                 </button>
+               ))}
             </div>
-            {project.moodboard_urls?.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {project.moodboard_urls.map((url: string, i: number) => (
-                  <img key={i} src={url} alt={`Moodboard ${i+1}`} className="rounded-2xl aspect-square object-cover" />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-slate-400">
-                <ImageIcon size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Belum ada gambar referensi. Upload untuk menginspirasi tim casting.</p>
+
+            {activeTab === 'overview' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8">
+                   <h3 className="font-black text-slate-900 dark:text-white text-lg mb-4 flex items-center gap-2"><Briefcase size={20} className="text-brand-500"/> Project Brief</h3>
+                   <div className="prose dark:prose-invert prose-brand max-w-none prose-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                      <p>Mencari talenta lokal dari berbagai ras dan etnis di nusantara untuk membintangi kampanye "Merayakan Perbedaan Nusantara". Proses produksi akan memakan waktu 3 hari di studio indoor dan 1 hari di area GBK (outdoor).</p>
+                      <ul>
+                        <li>Diperlukan talent pria/wanita usia 18-35 tahun.</li>
+                        <li>Sanggup melakukan koreografi ringan.</li>
+                        <li>Non-exclusivity agreements (bisa lintas brand/kompetitor setelah 6 bulan).</li>
+                      </ul>
+                   </div>
+                </div>
               </div>
             )}
-          </div>
-        )}
 
-        {activeTab === 'budget' && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8">
-            <h2 className="text-lg font-bold dark:text-white mb-6">Alokasi Budget Proyek</h2>
-            <div className="space-y-4">
-              {[
-                { label: 'Total Budget', value: project.total_budget, color: 'bg-emerald-500' },
-                { label: 'Talent Fees', value: project.talent_fee_budget, color: 'bg-brand-500' },
-                { label: 'Production Cost', value: project.production_budget, color: 'bg-amber-500' },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span className={`w-3 h-3 rounded-full ${item.color}`} />
-                    {item.label}
-                  </span>
-                  <span className="text-sm font-black text-slate-900 dark:text-white">
-                    {item.value ? `Rp ${Number(item.value).toLocaleString('id-ID')}` : '—'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'notes' && (
-          <SharedNotes projectId={id!} />
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-4">
-            <h2 className="text-lg font-bold dark:text-white mb-2">Pengaturan Proyek</h2>
-            {[
-              { label: 'Judul Proyek', value: project.title },
-              { label: 'Kategori', value: project.category },
-              { label: 'Lokasi', value: project.location },
-              { label: 'Dibuat', value: project.created_at ? new Date(project.created_at).toLocaleDateString('id-ID') : '-' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{item.label}</span>
-                <span className="text-sm font-semibold text-slate-800 dark:text-white">{item.value || '—'}</span>
+            {activeTab === 'talents' && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden animate-in fade-in duration-300">
+                 <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="font-black text-slate-900 dark:text-white text-lg flex items-center gap-2"><Users size={20} className="text-brand-500"/> Roster Talents</h3>
+                    <button className="text-brand-600 dark:text-brand-400 text-sm font-bold uppercase tracking-wider">Add Talent +</button>
+                 </div>
+                 <div className="p-10 flex flex-col justify-center items-center text-center">
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-400"><Users size={28}/></div>
+                    <p className="font-bold text-slate-900 dark:text-white mb-2">Belum ada Talent di Roster</p>
+                    <p className="text-sm text-slate-500 max-w-sm">Mulai invite talent dari Live Board atau pilih dari Talent Search untuk memasukkan mereka ke proyek ini.</p>
+                 </div>
               </div>
-            ))}
-            <button className="w-full mt-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 text-sm rounded-2xl hover:border-brand-400 hover:text-brand-600 transition-colors font-bold">
-              Edit Proyek
-            </button>
-          </div>
-        )}
-      </div>
+            )}
+            
+            {/* OTHER TABS STUB */}
+         </div>
+
+         {/* RIGHT SIDEBAR DETAILS */}
+         <div className="w-full md:w-[340px] shrink-0 space-y-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+               <h3 className="font-black text-slate-900 dark:text-white text-base mb-6 uppercase tracking-wider">Project State</h3>
+               <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-slate-500 flex items-center gap-2"><Activity size={16}/> Status</span>
+                     <span className="font-bold text-slate-900 dark:text-white">Live Casting</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-slate-500 flex items-center gap-2"><Lock size={16}/> Escrow Status</span>
+                     <span className="font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded text-xs uppercase tracking-widest border border-amber-200 dark:border-amber-900/50">Awaiting Funds</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-slate-500 flex items-center gap-2"><Users size={16}/> Slots Filled</span>
+                     <span className="font-bold text-slate-900 dark:text-white">0 / 15 Talents</span>
+                  </div>
+               </div>
+               
+               <div className="h-px bg-slate-200 dark:bg-slate-800 w-full my-6"></div>
+               
+               <button className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 rounded-xl shadow-lg hover:scale-105 transition-transform text-sm uppercase tracking-widest flex items-center justify-center gap-2">
+                  <Lock size={16}/> Fund Escrow
+               </button>
+            </div>
+         </div>
+       </div>
     </div>
   );
 }

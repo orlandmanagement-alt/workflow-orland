@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verify } from 'hono/jwt'
+import { getCookie } from 'hono/cookie'
 
 import talentRouter from './functions/talents/talentHandler'
 import experienceRouter from './functions/talents/experienceHandler'
@@ -39,25 +39,59 @@ export type Variables = { userId: string; userRole: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] }))
+// 1. UPDATE CORS: Dinamis dan mengizinkan Credentials (Cookie)
+app.use('*', cors({ 
+  origin: (origin) => {
+    // Daftar domain Orland Management yang diizinkan mengakses API
+    const allowedDomains = [
+      'https://www.orlandmanagement.com',
+      'https://sso.orlandmanagement.com',
+      'https://admin.orlandmanagement.com',
+      'https://talent.orlandmanagement.com',
+      'https://client.orlandmanagement.com',
+      'http://localhost:8787', // Opsional: untuk testing lokal
+      'http://localhost:3000'
+    ];
+    return allowedDomains.includes(origin) ? origin : null;
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
+  allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // <-- SANGAT PENTING UNTUK CROSS-DOMAIN COOKIE
+}))
 
+// 2. UPDATE MIDDLEWARE: Membaca HttpOnly Cookie 'sid' dan memvalidasi ke Database
 app.use('/api/v1/*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return await next()
   if (c.req.path.startsWith('/api/v1/verify/') || c.req.path.startsWith('/api/v1/public/')) return await next()
   
-  const authHeader = c.req.header('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ status: "error", message: "Unauthorized" }, 401)
+  // Ambil cookie 'sid' yang dikirim otomatis oleh browser
+  const sid = getCookie(c, 'sid')
+  if (!sid) {
+      return c.json({ status: "error", message: "Unauthorized: Sesi tidak ditemukan" }, 401)
   }
   
   try {
-    const jwtToken = authHeader.split(' ')[1]
-    const payload = await verify(jwtToken, c.env.JWT_SECRET || 'orland-rahasia-utama-123', 'HS256')
-    c.set('userId', payload.sub as string)
-    c.set('userRole', payload.role as string)
+    const now = Math.floor(Date.now() / 1000)
+    
+    // Cek apakah sesi valid di database
+    const session = await c.env.DB_SSO.prepare("SELECT user_id FROM sessions WHERE id=? AND expires_at > ?").bind(sid, now).first<any>()
+    if (!session) {
+        return c.json({ status: "error", message: "Unauthorized: Sesi telah kadaluarsa" }, 401)
+    }
+
+    // Cek status user (Blokir akses jika akun dihapus/di-suspend secara real-time)
+    const user = await c.env.DB_SSO.prepare("SELECT id, role, status FROM users WHERE id=?").bind(session.user_id).first<any>()
+    if (!user || user.status === 'deleted' || user.status === 'pending') {
+        return c.json({ status: "error", message: "Unauthorized: Akun ditangguhkan atau tidak ditemukan" }, 401)
+    }
+
+    // Set variable agar bisa dibaca oleh authRole.ts dan router lainnya
+    c.set('userId', user.id)
+    c.set('userRole', user.role)
+    
     await next()
   } catch (err) { 
-    return c.json({ status: "error", message: "Unauthorized" }, 401) 
+    return c.json({ status: "error", message: "Internal Server Error saat validasi sesi" }, 500) 
   }
 })
 
@@ -109,4 +143,5 @@ app.get("/api/v1/public/media/:key", async (c) => {
   return new Response(object.body, { headers });
 });
 
+export { ChatRoom } from './functions/messages/ChatRoom';
 export default app

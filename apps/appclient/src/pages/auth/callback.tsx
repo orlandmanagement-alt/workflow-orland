@@ -65,8 +65,18 @@ export default function AuthCallback() {
 
   return (
     <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-      <div className="text-center animate-pulse">
-        <h2 className="text-xl font-bold text-brand-600 mb-2">Sinkronisasi SSO Klien Berlangsung...</h2>
+      <div className="flex flex-col items-center text-center animate-pulse">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 bg-brand-500 rounded-full blur-[20px] opacity-20 animate-pulse"></div>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 relative z-10">
+            <svg width="40" height="40" viewBox="0 0 32 32" fill="none" className="animate-[spin_3s_linear_infinite]">
+              <rect width="32" height="32" rx="8" fill="currentColor" className="text-brand-600"/>
+              <path d="M8 16L14 22L24 10" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Sinkronisasi SSO Klien Berlangsung...</h2>
+        <p className="text-sm border-t border-slate-200 dark:border-slate-800 pt-3 mt-1 text-slate-500 dark:text-slate-400">Menyiapkan workspace enterprise Anda</p>
       </div>
     </div>
   );

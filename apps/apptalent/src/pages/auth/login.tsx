@@ -1,13 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAppStore';
 
 export default function Login() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Langsung ke root domain SSO, tanpa path /login atau parameter yang bikin 404
-  const ssoUrl = 'https://sso.orlandmanagement.com';
+  // Endpoint SSO dengan identifikasi asal aplikasi
+  const ssoUrl = 'https://sso.orlandmanagement.com?app=talent';
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -15,22 +16,66 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
+  const handleLogin = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setIsRedirecting(true);
+    setTimeout(() => {
+      window.location.href = ssoUrl;
+    }, 800);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100 text-center max-w-md w-full">
-        <h1 className="text-3xl font-extrabold text-slate-900 mb-1">
-          ORLAND<span className="text-blue-600">TALENT</span>
-        </h1>
-        <h2 className="text-lg font-bold text-slate-700 mb-4 mt-6">Enterprise Portal</h2>
-        <p className="text-slate-500 text-sm mb-8 px-4">
-          Gunakan Akun SSO Orland Management Anda untuk masuk.
-        </p>
-        <a 
-          href={ssoUrl} 
-          className="flex items-center justify-center w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all"
-        >
-          Masuk dengan Orland SSO &rarr;
-        </a>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#071122] p-4 font-sans transition-colors duration-300">
+      <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl p-10 rounded-[2rem] shadow-2xl border border-slate-200/50 dark:border-slate-800/50 text-center max-w-md w-full relative overflow-hidden">
+        {/* Background Glow */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-brand-500/10 dark:bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="relative z-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-2xl mb-6 shadow-inner pointer-events-none">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect width="32" height="32" rx="8" fill="currentColor" className="text-blue-600 dark:text-blue-500"/>
+              <path d="M16 8L8 16L16 24" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M24 8L16 16L24 24" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-1 tracking-tight">
+            ORLAND<span className="text-blue-600 dark:text-blue-500">TALENT</span>
+          </h1>
+          <div className="h-1 w-12 bg-blue-600 rounded-full mx-auto mb-6 opacity-80"></div>
+          
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-3">Enterprise Portal</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-10 px-2 leading-relaxed">
+            Akses aman ke ekosistem Orland Management. Masuk menggunakan gateway SSO (Single Sign-On) tersentralisasi.
+          </p>
+          
+          <a 
+            href={ssoUrl} 
+            onClick={handleLogin}
+            className="group relative flex items-center justify-center w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-[0_8px_30px_rgb(37,99,235,0.25)] hover:shadow-[0_8px_30px_rgb(37,99,235,0.4)] transition-all duration-300 overflow-hidden"
+          >
+            <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></span>
+            {isRedirecting ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Menyambungkan ke SSO...
+              </span>
+            ) : (
+              <span className="flex items-center">
+                Masuk via Orland SSO
+                <svg className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </span>
+            )}
+          </a>
+          
+          <p className="text-xs text-slate-400 dark:text-slate-600 mt-8">
+            &copy; {new Date().getFullYear()} Orland Management. All rights reserved.
+          </p>
+        </div>
       </div>
     </div>
   );

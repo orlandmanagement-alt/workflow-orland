@@ -38,9 +38,20 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
 
   const goNext = () => setCurrentStep(prev => Math.min(prev + 1, 6));
   const goBack = () => setCurrentStep(prev => Math.max(prev - 1, 1));
-  const finishWizard = () => {
-    if (onClose) onClose();
-    window.location.reload(); // Refresh untuk melihat update di dashboard
+  const finishWizard = async () => {
+    try {
+      setLoadingInitial(true);
+      await apiRequest('/talents/me', {
+         method: 'PUT',
+         body: JSON.stringify(formData)
+      });
+      if (onClose) onClose();
+      window.location.reload(); 
+    } catch (error) {
+      console.error("Gagal menyimpan profil akhir", error);
+      alert("Gagal menyimpan profil. Silakan coba lagi.");
+      setLoadingInitial(false);
+    }
   };
 
   if (loadingInitial) {

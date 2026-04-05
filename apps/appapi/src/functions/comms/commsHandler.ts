@@ -31,19 +31,27 @@ router.post('/whatsapp/blast', requireRole(['admin', 'superadmin']), async (c) =
     new Date().toISOString()
   ).run();
 
-  // TODO: Integrasikan dengan WhatsApp Business API / WATI / Fonnte
-  // Contoh payload untuk Fonnte:
-  // await fetch('https://api.fonnte.com/send', {
-  //   method: 'POST',
-  //   headers: { 'Authorization': c.env.FONNTE_TOKEN },
-  //   body: JSON.stringify({ target: recipients.join(','), message, delay: 2 })
-  // });
+  if (c.env.FONNTE_TOKEN) {
+    try {
+      const res = await fetch('https://api.fonnte.com/send', {
+        method: 'POST',
+        headers: { 'Authorization': c.env.FONNTE_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: recipients.join(','), message, delay: 2 })
+      });
+      if(res.ok) {
+         await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('sent', blastId).run();
+      }
+    } catch(err) {
+      console.error("Blast Fonnte Error:", err);
+      await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('failed', blastId).run();
+    }
+  }
 
   return c.json({
     status: 'ok',
     blast_id: blastId,
     queued_count: recipients.length,
-    message: `Blast WA ke ${recipients.length} penerima berhasil dijadwalkan`,
+    message: `Blast WA ke ${recipients.length} penerima dijadwalkan via Fonnte.`,
   }, 201);
 });
 
@@ -87,19 +95,43 @@ router.post('/email/newsletters', requireRole(['admin', 'superadmin']), async (c
     new Date().toISOString()
   ).run();
 
-  // TODO: Integrasikan dengan Resend.com
-  // await fetch('https://api.resend.com/emails', {
-  //   method: 'POST',
-  //   headers: { 'Authorization': `Bearer ${c.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ from: 'noreply@orlandmanagement.com', to: recipients, subject, html: html_body })
-  // });
+  if (c.env.RESEND_API_KEY) {
+    // Get actual emails if not provided
+    let emails = to || [];
+    if (!to?.length && recipientCount > 0) {
+       const segmentMap: Record<string, string> = {
+          all_talents: 'SELECT email FROM users WHERE role = \'talent\' AND is_active = 1',
+          all_clients: 'SELECT email FROM users WHERE role = \'client\' AND is_active = 1',
+          all: 'SELECT email FROM users WHERE is_active = 1',
+       };
+       const query = segmentMap[segment] ?? segmentMap['all'];
+       const { results } = await c.env.DB_SSO.prepare(query).all<{ email: string }>();
+       emails = results.map(r => r.email);
+    }
+    
+    if (emails.length > 0) {
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${c.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from: 'noreply@orlandmanagement.com', to: emails, subject, html: html_body })
+        });
+        if(res.ok) {
+           await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('sent', newsletterId).run();
+        }
+      } catch (err) {
+        console.error("Resend API Error:", err);
+        await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('failed', newsletterId).run();
+      }
+    }
+  }
 
   return c.json({
     status: 'ok',
     newsletter_id: newsletterId,
     recipient_count: recipientCount,
     segment,
-    message: `Newsletter berhasil dijadwalkan untuk ${recipientCount} penerima`,
+    message: `Newsletter dikirim ke ${recipientCount} penerima via Resend.`,
   }, 201);
 });
 

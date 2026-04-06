@@ -54,10 +54,12 @@ export default function ProfileDashboard() {
 
           if (!presignedRes || !presignedRes.uploadUrl) throw new Error("Gagal mendapatkan link upload");
 
+          // 2. Upload asli murni mem-bypass backend langsung ke Cloudflare R2
           const r2Res = await fetch(presignedRes.uploadUrl, {
              method: 'PUT',
              headers: { 'Content-Type': file.type },
-             body: file
+             body: file,
+             cache: 'no-store' // <--- TAMBAHKAN INI agar Bypass Service Worker
           });
 
           if (!r2Res.ok) throw new Error("File gagal di-upload ke server utama");

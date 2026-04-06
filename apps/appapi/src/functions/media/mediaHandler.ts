@@ -1,31 +1,27 @@
 import { Hono } from 'hono'
 import { requireRole } from '../../middleware/authRole'
 import { Bindings, Variables } from '../../index'
-import { AwsClient } from 'aws4fetch' // Library standar untuk S3/R2 di Workers
+import { AwsClient } from 'aws4fetch'
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// Generate Presigned URL untuk Upload Langsung ke R2
 router.post('/upload-url', requireRole(['admin', 'client', 'talent']), async (c) => {
   try {
     const { fileName, contentType, folder } = await c.req.json()
-    const key = `${folder || 'misc'}/${Date.now()}-${fileName}`
     
-    // Ambil variabel dari Environment (Cloudflare Settings)
+    // 1. Bersihkan nama file dari spasi agar URL tidak rusak
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const key = `${folder || 'misc'}/${Date.now()}-${safeFileName}`;
+    
     const accessKey = c.env.R2_ACCESS_KEY_ID;
     const secretKey = c.env.R2_SECRET_ACCESS_KEY;
     const accountId = c.env.CF_ACCOUNT_ID;
-    const bucketName = c.env.R2_BUCKET_NAME || 'orland-media'; // Perbaikan Error .name
+    const bucketName = c.env.R2_BUCKET_NAME || 'orland-media';
 
-    // Proteksi jika variabel belum diisi di dashboard Cloudflare
     if (!accessKey || !secretKey || !accountId) {
-        return c.json({ 
-            status: 'error', 
-            message: 'Konfigurasi Rahasia R2 (Access Key/Account ID) di Worker appapi belum lengkap.' 
-        }, 500);
+        return c.json({ status: 'error', message: 'Rahasia R2 belum lengkap' }, 500);
     }
 
-    // Konfigurasi R2 (S3 Compatible)
     const r2 = new AwsClient({
       accessKeyId: accessKey,
       secretAccessKey: secretKey,
@@ -35,19 +31,22 @@ router.post('/upload-url', requireRole(['admin', 'client', 'talent']), async (c)
 
     const url = new URL(`https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${key}`)
     
-    // Generate URL yang diizinkan untuk method PUT
+    // 2. KUNCI PERBAIKAN: Beri tahu R2 bahwa isi file tidak ikut ditandatangani (UNSIGNED-PAYLOAD)
     const signedRequest = await r2.sign(
       new Request(url, {
         method: 'PUT',
-        headers: { 'Content-Type': contentType },
+        headers: { 
+            'Content-Type': contentType,
+            'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD' // <--- INI PENYELAMATNYA
+        },
       }),
-      { awsSigV4: { expiration: 300 } } // Berlaku 5 menit
+      { awsSigV4: { expiration: 300 } }
     )
 
     return c.json({
       status: 'ok',
       uploadUrl: signedRequest.url,
-      // Perbaikan: publicUrl diarahkan ke CDN yang sudah kita buat sebelumnya
+      // 3. ALUR URL: Menggunakan Custom Domain cdn.orlandmanagement.com
       publicUrl: `https://cdn.orlandmanagement.com/media/${key}`,
       fileKey: key,
       headers: { 'Content-Type': contentType }
@@ -55,10 +54,7 @@ router.post('/upload-url', requireRole(['admin', 'client', 'talent']), async (c)
 
   } catch (error: any) {
       console.error("Presigned URL Error:", error);
-      return c.json({ 
-          status: 'error', 
-          message: error.message || 'Sistem gagal memproses tautan R2.' 
-      }, 500);
+      return c.json({ status: 'error', message: error.message }, 500);
   }
 })
 

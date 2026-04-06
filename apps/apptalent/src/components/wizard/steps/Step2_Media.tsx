@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { processImage } from '@/utils/imageCompressor';
@@ -14,18 +14,15 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   
-  // State File yang dipilih
   const [headshot, setHeadshot] = useState<File | null>(null);
   const [sideView, setSideView] = useState<File | null>(null);
   const [fullHeight, setFullHeight] = useState<File | null>(null);
 
   const performR2Upload = async (file: File, type: string) => {
-      // 1. Kompres file di sisi browser
       setLoadingText(`Mengompresi ${type}...`);
       const ratio = type === 'Headshot' ? 4/5 : 3/4;
       const compressedFile = await processImage(file, ratio);
 
-      // 2. Minta Presigned URL dari backend
       setLoadingText(`Konfigurasi Upload ${type}...`);
       const presignedRes: any = await apiRequest('/media/upload-url', {
           method: 'POST',
@@ -38,12 +35,14 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
 
       if (!presignedRes || !presignedRes.uploadUrl) throw new Error("Gagal mengambil Presigned URL");
 
-      // 3. Modus bypass: Upload dari Browser -> Cloudflare R2
       setLoadingText(`Mengunggah ${type} ke Cloudflare...`);
       const r2Res = await fetch(presignedRes.uploadUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': compressedFile.type },
-          body: compressedFile
+          headers: { 
+              'Content-Type': compressedFile.type 
+          },
+          body: compressedFile,
+          cache: 'no-store' // Mencegah service worker mencegat
       });
 
       if (!r2Res.ok) throw new Error(`Gagal mengunggah ${type}`);
@@ -60,7 +59,7 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
 
         setLoadingText("Mengompresi & Mengunggah Media...");
 
-        // UPGRADE: Eksekusi Upload Secara Paralel (Bersamaan)
+        // UPGRADE: Eksekusi Upload Secara Paralel (Bersamaan agar cepat)
         const uploadTasks = [];
 
         if (headshot) {
@@ -73,7 +72,6 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
             uploadTasks.push(performR2Upload(fullHeight, 'Full Height').then(url => finalFullHeight = url));
         }
 
-        // Tunggu semua selesai secara bersamaan
         if (uploadTasks.length > 0) {
             await Promise.all(uploadTasks);
         }
@@ -102,20 +100,17 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
   };
 
   const UploadSlot = ({ label, desc, file, setFile }: any) => {
-      // State untuk menyimpan URL Preview secara aman
-      const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+      // Pencegah Memory Leak
+      const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-      React.useEffect(() => {
+      useEffect(() => {
           if (!file) {
               setPreviewUrl(null);
               return;
           }
-          // Buat URL Preview
           const objectUrl = URL.createObjectURL(file);
           setPreviewUrl(objectUrl);
-
-          // CLEANUP: Bebaskan memori saat komponen di-unmount atau gambar diganti
-          return () => URL.revokeObjectURL(objectUrl);
+          return () => URL.revokeObjectURL(objectUrl); // Bersihkan memori saat ganti gambar
       }, [file]);
       
       const backgroundSource = previewUrl || data[label.toLowerCase().replace(' ', '')];
@@ -135,7 +130,14 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
                   </div>
               ) : (
                   <>
-                     {/* ... (Sisa kode UploadCloud sama seperti sebelumnya) ... */}
+                      {/* --- TOMBOL UPLOAD YANG KEMBALI MUNCUL --- */}
+                      <UploadCloud size={36} className="text-slate-400 mb-3" />
+                      <h4 className="font-bold text-slate-800 dark:text-white text-sm mb-1">{label}</h4>
+                      <p className="text-[10px] text-slate-500 mb-4 px-2">{desc}</p>
+                      <label className="px-5 py-2.5 bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-500/10 dark:hover:bg-brand-500/20 dark:text-brand-400 text-xs font-bold rounded-xl cursor-pointer transition-colors border border-brand-200 dark:border-brand-500/30">
+                          Pilih Berkas
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => { if(e.target.files?.length) setFile(e.target.files[0]) }} />
+                      </label>
                   </>
               )}
           </div>

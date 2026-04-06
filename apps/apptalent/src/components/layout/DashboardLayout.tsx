@@ -43,7 +43,7 @@ export default function DashboardLayout() {
       // 2. Cek Apakah Profil Baru Saja Dibuat (Butuh Onboarding)
       apiRequest('/talents/me')
         .then((res: any) => {
-            if (res.is_new || !res.data.category || !res.data.height) {
+            if (res.is_new || !res.data.category || !res.data.headshot) {
                 const isAbandoned = sessionStorage.getItem('hide_wizard') === 'true';
                 if (isAbandoned) {
                     setShowAbandonBanner(true);
@@ -174,12 +174,12 @@ export default function DashboardLayout() {
 
                 {isUserMenuOpen && (
                   <div className="absolute right-0 mt-3 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50 py-1">
-                    <button className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center transition-colors">
-                      <User size={14} className="mr-2 opacity-70" /> Profil Publik
-                    </button>
-                    <button className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center transition-colors">
-                      <Settings size={14} className="mr-2 opacity-70" /> Pengaturan
-                    </button>
+                    <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center transition-colors">
+                      <User size={14} className="mr-2 opacity-70" /> Profil Publik / Edit
+                    </Link>
+                    <Link to="/settings" onClick={() => setUserMenuOpen(false)} className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center transition-colors">
+                      <Settings size={14} className="mr-2 opacity-70" /> Pengaturan Akun
+                    </Link>
                     <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
                     
                     <button 

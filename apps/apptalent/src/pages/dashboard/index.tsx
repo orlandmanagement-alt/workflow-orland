@@ -1,3 +1,4 @@
+import { useProfileProgress } from '@/hooks/useProfileProgress';
 import React, { useState, useEffect } from 'react';
 import { talentService } from '@/lib/services/talentService';
 import { useAuthStore } from '@/store/useAppStore';
@@ -10,6 +11,8 @@ export default function Dashboard() {
   const [showVIPCard, setShowVIPCard] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const profileProgressData = useProfileProgress();
+  const progressValue = typeof profileProgressData === 'number' ? profileProgressData : (profileProgressData as any)?.percentage || 0;
 
   useEffect(() => {
     talentService.getProfile().then((data) => {
@@ -41,9 +44,9 @@ export default function Dashboard() {
               </div>
               
               <div className="w-full md:w-auto bg-slate-900/50 backdrop-blur-xl border border-white/10 p-5 rounded-2xl text-white min-w-[200px] shadow-inner">
-                  <p className="text-xs text-brand-300 font-bold uppercase tracking-wider mb-2 flex justify-between">Profile Strength <span>85%</span></p>
+                  <p className="text-xs text-brand-300 font-bold uppercase tracking-wider mb-2 flex justify-between">Profile Strength <span>{progressValue}%</span></p>
                   <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-3">
-                      <div className="h-full bg-gradient-to-r from-amber-400 to-green-400 w-[85%] rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)]"></div>
+                      <div className="h-full bg-gradient-to-r from-amber-400 to-green-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)] transition-all duration-1000" style={{ width: `${progressValue}%` }}></div>
                   </div>
                   <Link to="/profile" className="text-xs font-bold text-white hover:text-amber-300 flex items-center transition-colors">Lengkapi Portofolio <ChevronRight size={14}/></Link>
               </div>

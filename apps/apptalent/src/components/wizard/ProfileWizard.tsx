@@ -16,14 +16,25 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
   const [loadingInitial, setLoadingInitial] = useState(true);
 
   // Mengambil profile draft sebelumnya (jika ada yang terputus)
+// Mengambil profile draft sebelumnya dan menentukan langkah terakhir
   useEffect(() => {
     const fetchDraft = async () => {
       try {
         const res = await apiRequest('/talents/me');
         if (res.status === 'ok' && res.data) {
-           setFormData(res.data);
-           // Jika profile sudah ada tapi is_active 0 atau blm selesai, mungkin kita bisa tentukan currentStep scr dinamis
-           // Tapi untuk amannya kita mulai dari Step 1 dengan data pre-filled
+           const d = res.data;
+           setFormData(d);
+           
+           // LOGIKA AUTO-RESUME (Cek mana yang masih kosong)
+           if (!d.full_name || !d.category || !d.height || !d.weight || !d.gender) {
+               setCurrentStep(1); // Balik ke Info Dasar
+           } else if (!d.headshot || !d.sideView || !d.fullHeight) {
+               setCurrentStep(2); // Lanjut ke Upload Media
+           } else if (!d.showreel && !d.voiceOver && (!d.experiences || d.experiences.length === 0)) {
+               setCurrentStep(3); // Lanjut ke Social/Assets
+           } else {
+               setCurrentStep(6); // Jika sudah lengkap, langsung ke Review
+           }
         }
       } catch (err) {
         console.error("Gagal menarik draft awal profil");
@@ -33,7 +44,6 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
     };
     fetchDraft();
   }, []);
-
   const updateFormData = (data: any) => setFormData((prev: any) => ({...prev, ...data}));
 
   const goNext = () => setCurrentStep(prev => Math.min(prev + 1, 6));

@@ -47,15 +47,33 @@ api.interceptors.response.use(
   }
 );
 
+// ====================================================================
+// PERBAIKAN 3: Mencegah Error "GET/HEAD method cannot have body"
+// ====================================================================
 export const apiRequest = async (url: string, options: any = {}) => {
   try {
-    const response = await api({ 
+    const method = (options.method || 'GET').toUpperCase();
+
+    // 1. Siapkan konfigurasi dasar (SENGAJA DIBUAT TANPA DATA/BODY)
+    const config: any = { 
       url, 
-      method: options.method || 'GET', 
-      data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : options.data, 
-      headers: options.headers 
-    });
+      method, 
+      headers: options.headers || {}
+    };
+
+    // 2. KUNCI PENYELESAIAN: Hanya tambahkan payload data jika BUKAN GET / HEAD
+    if (method !== 'GET' && method !== 'HEAD') {
+       const payload = options.body || options.data;
+       if (payload) {
+           // Axios lebih menyukai object JSON mentah daripada string
+           config.data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+       }
+    }
+
+    // 3. Eksekusi API
+    const response = await api(config);
     return response.data;
+    
   } catch (error) { 
     throw error; 
   }

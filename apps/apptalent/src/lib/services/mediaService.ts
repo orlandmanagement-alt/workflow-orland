@@ -37,8 +37,12 @@ export const mediaService = {
     // Step 2: Upload file langsung ke R2
     const uploadRes = await fetch(uploadUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': file.type },
+      headers: { 
+          'Content-Type': file.type,
+          'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD' // <--- TAMBAHKAN BARIS INI
+      },
       body: file,
+      cache: 'no-store' // <--- Tambahkan no-store juga agar PWA tidak mencegatnya
     });
 
     if (!uploadRes.ok) {

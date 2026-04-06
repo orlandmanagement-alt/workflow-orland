@@ -35,11 +35,13 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
 
       if (!presignedRes || !presignedRes.uploadUrl) throw new Error("Gagal mengambil Presigned URL");
 
+      // 3. Modus bypass: Upload dari Browser -> Cloudflare R2
       setLoadingText(`Mengunggah ${type} ke Cloudflare...`);
       const r2Res = await fetch(presignedRes.uploadUrl, {
           method: 'PUT',
           headers: { 
-              'Content-Type': compressedFile.type 
+              'Content-Type': compressedFile.type,
+              'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD' // <--- TAMBAHKAN BARIS INI
           },
           body: compressedFile,
           cache: 'no-store' // Mencegah service worker mencegat

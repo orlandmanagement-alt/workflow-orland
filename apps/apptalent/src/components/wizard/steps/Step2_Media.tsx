@@ -40,11 +40,10 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
       const r2Res = await fetch(presignedRes.uploadUrl, {
           method: 'PUT',
           headers: { 
-              'Content-Type': compressedFile.type,
-              'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD' // <--- TAMBAHKAN BARIS INI
+              'Content-Type': compressedFile.type // Cukup ini saja!
           },
           body: compressedFile,
-          cache: 'no-store' // Mencegah service worker mencegat
+          cache: 'no-store'
       });
 
       if (!r2Res.ok) throw new Error(`Gagal mengunggah ${type}`);

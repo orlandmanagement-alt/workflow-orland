@@ -35,19 +35,22 @@ export const mediaService = {
     const { uploadUrl, publicUrl, fileKey } = presignedRes.data;
 
     // Step 2: Upload file langsung ke R2
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 
-          'Content-Type': file.type,
-          'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD' // <--- TAMBAHKAN BARIS INI
-      },
-      body: file,
-      cache: 'no-store' // <--- Tambahkan no-store juga agar PWA tidak mencegatnya
-    });
+const uploadRes = await fetch(uploadUrl, {
+  method: 'PUT',
+  headers: { 
+    'Content-Type': file.type, // Pastikan ini persis sama dengan yang dikirim di Step 1
+    // Hapus 'X-Amz-Content-Sha256' jika backend (Worker) tidak mengaturnya di Signature
+  },
+  body: file,
+});
 
-    if (!uploadRes.ok) {
-      throw new Error(`Upload ke R2 gagal: ${uploadRes.statusText}`);
-    }
+if (!uploadRes.ok) {
+  // Tambahkan log ini untuk melihat detail error dari R2 (biasanya berupa XML)
+  const errorText = await uploadRes.text();
+  console.error("R2 Error Detail:", errorText);
+  throw new Error(`Upload ke R2 gagal: ${uploadRes.status} ${uploadRes.statusText}`);
+}
+
 
     // Step 3: Catat URL ke database via API Bisnis
     const recordRes = await api.post('/media', {

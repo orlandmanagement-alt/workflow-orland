@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { requireRole } from '../../middleware/authRole'
 import { Bindings, Variables } from '../../index'
+import { AwsClient } from 'aws4fetch'
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
@@ -8,38 +9,63 @@ router.post('/upload-url', requireRole(['admin', 'client', 'talent']), async (c)
   try {
     const { fileName, contentType, folder } = await c.req.json()
     
-    // Bersihkan nama file dari spasi
-    const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    const key = `${folder || 'misc'}/${Date.now()}-${safeFileName}`;
+    // ==========================================
+    // 1. KEAMANAN EKSTRA & VALIDASI INPUT
+    // ==========================================
+    if (!fileName || !contentType) {
+        return c.json({ status: 'error', message: 'fileName dan contentType wajib dikirim' }, 400);
+    }
     
+    // Bersihkan nama file dari path aneh seperti ../ atau /
+    const cleanFileName = fileName.replace(/^.*[\\\/]/, '').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    
+    // Pastikan folder hanya masuk ke direktori yang diizinkan (Mencegah Directory Traversal)
+    const safeFolder = (folder || 'misc').replace(/[^a-zA-Z0-9.\-_/]/g, '');
+    
+    const key = `${safeFolder}/${Date.now()}-${cleanFileName}`;
+    
+    // ==========================================
+    // 2. PERSIAPAN CLOUDFLARE R2
+    // ==========================================
     const accessKey = c.env.R2_ACCESS_KEY_ID;
     const secretKey = c.env.R2_SECRET_ACCESS_KEY;
     const accountId = c.env.CF_ACCOUNT_ID;
     const bucketName = c.env.R2_BUCKET_NAME || 'orland-media';
 
     if (!accessKey || !secretKey || !accountId) {
-        return c.json({ status: 'error', message: 'Rahasia R2 di appapi belum lengkap' }, 500);
+        return c.json({ status: 'error', message: 'Rahasia R2 belum lengkap' }, 500);
     }
 
-    const r2Endpoint = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}`;
-
-    // MENGGUNAKAN HELPER KUSTOM (Jauh lebih aman dari aws4fetch)
-    const uploadUrl = await generatePresignedPutUrl({
-      endpoint: r2Endpoint,
-      key: key,
-      contentType: contentType,
+    const r2 = new AwsClient({
       accessKeyId: accessKey,
       secretAccessKey: secretKey,
-      expiresInSeconds: 300
+      service: 's3',
+      region: 'auto',
     });
 
+    const url = new URL(`https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${key}`);
+
+    // ==========================================
+    // 3. TANDA TANGAN URL (ANTI ERROR 403)
+    // ==========================================
+    // KUNCI UTAMA: Kita WAJIB memasukkan Content-Type dan UNSIGNED-PAYLOAD 
+    // ke dalam Request ini agar ikut ditandatangani dan cocok dengan kiriman browser!
+    const signed = await r2.sign(new Request(url, { 
+        method: 'PUT',
+        headers: {
+            'Content-Type': contentType,
+            'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD'
+        }
+    }), {
+      awsSigV4: { signQuery: true }
+    });
+
+    // Kirim URL yang sudah ditandatangani ke Frontend
     return c.json({
       status: 'ok',
-      uploadUrl: uploadUrl,
-      // URL Publik ini akan langsung dilayani oleh appcdn Anda!
+      uploadUrl: signed.url,
       publicUrl: `https://cdn.orlandmanagement.com/media/${key}`,
-      fileKey: key,
-      headers: { 'Content-Type': contentType }
+      fileKey: key
     })
 
   } catch (error: any) {
@@ -47,81 +73,5 @@ router.post('/upload-url', requireRole(['admin', 'client', 'talent']), async (c)
       return c.json({ status: 'error', message: error.message }, 500);
   }
 })
-
-// ─────────────────────────────────────────────
-// 🔧 Helper: Generate Presigned PUT URL (AWS Sig V4)
-// (Diimpor dari karya orisinal Anda di appcdn)
-// ─────────────────────────────────────────────
-async function generatePresignedPutUrl(opts: {
-  endpoint: string
-  key: string
-  contentType: string
-  accessKeyId: string
-  secretAccessKey: string
-  expiresInSeconds: number
-}): Promise<string> {
-  const { endpoint, key, contentType, accessKeyId, secretAccessKey, expiresInSeconds } = opts
-
-  const url = new URL(`${endpoint}/${key}`)
-  const date = new Date()
-  const dateStr = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z'
-  const dateShort = dateStr.slice(0, 8)
-  const region = 'auto'
-  const service = 's3'
-  const scope = `${dateShort}/${region}/${service}/aws4_request`
-
-  url.searchParams.set('X-Amz-Algorithm', 'AWS4-HMAC-SHA256')
-  url.searchParams.set('X-Amz-Credential', `${accessKeyId}/${scope}`)
-  url.searchParams.set('X-Amz-Date', dateStr)
-  url.searchParams.set('X-Amz-Expires', String(expiresInSeconds))
-  url.searchParams.set('X-Amz-SignedHeaders', 'content-type;host')
-  url.searchParams.set('Content-Type', contentType)
-
-  const host = url.hostname
-  const canonicalRequest = [
-    'PUT',
-    `/${key}`,
-    url.searchParams.toString(),
-    `content-type:${contentType}\nhost:${host}\n`,
-    'content-type;host',
-    'UNSIGNED-PAYLOAD', // Kunci kesuksesan bypass!
-  ].join('\n')
-
-  const stringToSign = [
-    'AWS4-HMAC-SHA256',
-    dateStr,
-    scope,
-    await sha256(canonicalRequest),
-  ].join('\n')
-
-  const signingKey = await getSigningKey(secretAccessKey, dateShort, region, service)
-  const signature = await hmacHex(signingKey, stringToSign)
-  url.searchParams.set('X-Amz-Signature', signature)
-
-  return url.toString()
-}
-
-async function sha256(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
-async function hmac(key: ArrayBuffer, message: string): Promise<ArrayBuffer> {
-  const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message))
-}
-
-async function hmacHex(key: ArrayBuffer, message: string): Promise<string> {
-  const result = await hmac(key, message)
-  return Array.from(new Uint8Array(result)).map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
-async function getSigningKey(secret: string, date: string, region: string, service: string): Promise<ArrayBuffer> {
-  const kDate = await hmac(new TextEncoder().encode(`AWS4${secret}`), date)
-  const kRegion = await hmac(kDate, region)
-  const kService = await hmac(kRegion, service)
-  return hmac(kService, 'aws4_request')
-}
 
 export default router

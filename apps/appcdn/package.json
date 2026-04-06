@@ -14,5 +14,10 @@
     "@cloudflare/workers-types": "^4.20240405.0",
     "typescript": "^5.4.0",
     "wrangler": "^3.50.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy --minify src/index.ts",
+    "build": "echo 'Build selesai, siap deploy!'" 
   }
 }

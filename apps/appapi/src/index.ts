@@ -34,6 +34,7 @@ import commsRouter from './functions/comms/commsHandler'
 import systemToolsRouter from './functions/system/systemToolsHandler'
 import miscToolsRouter from './functions/tools/miscToolsHandler'
 import publicTalentRouter from './functions/public/publicTalentHandler'
+import adminCrudRouter from './functions/admin/adminCrudHandler'
 
 export type Bindings = { DB_CORE: D1Database; DB_LOGS: D1Database; DB_SSO: D1Database; ORLAND_CACHE: KVNamespace; R2_MEDIA: R2Bucket; JWT_SECRET: string; TALENT_URL: string; CLIENT_URL: string; CF_ACCOUNT_ID: string; R2_ACCESS_KEY_ID: string; R2_SECRET_ACCESS_KEY: string }
 export type Variables = { userId: string; userRole: string }
@@ -132,6 +133,7 @@ app.route('/api/v1/system', systemToolsRouter)
 app.route('/api/v1/tools', miscToolsRouter)
 app.route('/api/v1', miscToolsRouter)
 app.route('/api/v1/public/talents', publicTalentRouter)
+app.route('/api/v1/admin', adminCrudRouter)
 
 // PUBLIC R2 MEDIA SERVER (Tanpa JWT)
 app.get("/api/v1/public/media/:key", async (c) => {

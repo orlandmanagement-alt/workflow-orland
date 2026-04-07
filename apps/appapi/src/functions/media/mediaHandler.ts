@@ -80,10 +80,20 @@ async function generatePresignedPutUrl(opts: {
   url.searchParams.set('X-Amz-SignedHeaders', 'content-type;host') // TIDAK ADA x-amz-content-sha256 di sini
 
   const host = url.hostname
+  
+  // URI harus mencakup bucket name (url.pathname) bukan hanya key, dan di-encode per RFC 3986.
+  const canonicalUri = url.pathname.split('/').map(c => encodeURIComponent(c)).join('/');
+  
+  // Amankan format Query String Sesuai strict standard AWS V4 (Alphabetical + URL Encoded)
+  const canonicalQuery = Array.from(url.searchParams.entries())
+    .sort(([k1], [k2]) => k1.localeCompare(k2))
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+
   const canonicalRequest = [
     'PUT',
-    `/${key}`,
-    url.searchParams.toString(),
+    canonicalUri,
+    canonicalQuery,
     `content-type:${contentType}\nhost:${host}\n`,
     'content-type;host',
     'UNSIGNED-PAYLOAD', // Di sinilah keajaiban itu terjadi, tanpa dikirim sebagai Header!

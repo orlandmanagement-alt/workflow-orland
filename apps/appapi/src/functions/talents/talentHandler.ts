@@ -124,6 +124,9 @@ router.put('/me', async (c) => {
         if (typeof updated.additional_photos === 'string') updated.additional_photos = JSON.parse(updated.additional_photos);
     }
     
+    // Invalidate Public KV Cache so the Roster rebuilds correctly
+    await c.env.ORLAND_CACHE.delete('PUBLIC_TALENT_ROSTER');
+    
     return c.json({ status: 'ok', data: updated })
 
   } catch (err: any) {

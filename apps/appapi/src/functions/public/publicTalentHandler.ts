@@ -3,6 +3,58 @@ import { Bindings, Variables } from '../../index'
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
+const CACHE_KEY = 'PUBLIC_TALENT_ROSTER';
+
+router.get('/', async (c) => {
+  try {
+    // 1. Try KV Cache first
+    const cached = await c.env.ORLAND_CACHE.get(CACHE_KEY);
+    if (cached) {
+      return c.json({ status: 'ok', data: JSON.parse(cached), source: 'kv' });
+    }
+
+    // 2. Fallback to D1 (if cache misses or was invalidated)
+    // Only fetch minimal lightweight columns necessary for the widget cards
+    const { results } = await c.env.DB_CORE.prepare(`
+      SELECT talent_id, full_name, category, gender, height, birth_date, location, headshot, interests, skills 
+      FROM talents 
+      WHERE headshot IS NOT NULL
+      ORDER BY full_name ASC
+    `).all<any>();
+
+    // Clean up arrays specifically for the roster
+    const roster = (results || []).map(t => {
+      // Calculate age from birth_date
+      let age = null;
+      if (t.birth_date) {
+        const diffMs = Date.now() - new Date(t.birth_date).getTime();
+        age = Math.abs(new Date(diffMs).getUTCFullYear() - 1970);
+      }
+
+      return {
+        id: t.talent_id,
+        name: t.full_name,
+        category: t.category,
+        gender: t.gender,
+        height: t.height,
+        age: age,
+        location: t.location,
+        headshot: t.headshot,
+        interests: typeof t.interests === 'string' ? JSON.parse(t.interests) : t.interests,
+        skills: typeof t.skills === 'string' ? JSON.parse(t.skills) : t.skills
+      };
+    });
+
+    // Save to KV so next requests are instant
+    await c.env.ORLAND_CACHE.put(CACHE_KEY, JSON.stringify(roster));
+
+    return c.json({ status: 'ok', data: roster, source: 'd1_rebuilt' });
+  } catch (err: any) {
+    console.error("GET /public/talents Error:", err.message);
+    return c.json({ status: 'error', message: 'Gagal memuat direktori talent' }, 500);
+  }
+});
+
 router.get('/:id', async (c) => {
   const id = c.req.param('id');
   try {

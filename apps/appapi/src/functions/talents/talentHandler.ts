@@ -8,7 +8,12 @@ router.get('/me', async (c) => {
   const userId = c.get('userId')
   try {
     const talent = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE user_id = ?').bind(userId).first()
-    if (talent) return c.json({ status: 'ok', data: talent })
+    if (talent) {
+        if (typeof talent.showreels === 'string') talent.showreels = JSON.parse(talent.showreels);
+        if (typeof talent.audios === 'string') talent.audios = JSON.parse(talent.audios);
+        if (typeof talent.additional_photos === 'string') talent.additional_photos = JSON.parse(talent.additional_photos);
+        return c.json({ status: 'ok', data: talent })
+    }
     
     const ssoUser = await c.env.DB_SSO.prepare('SELECT full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
     return c.json({ status: 'ok', data: ssoUser, is_new: true })
@@ -36,6 +41,11 @@ router.put('/me', async (c) => {
   const sideView = body.side_view || body.sideView || null;
   const fullHeight = body.full_height || body.fullHeight || null;
   
+  // SUPPORT ARRAYS (Multi-URLs)
+  const showreels = Array.isArray(body.showreels) ? JSON.stringify(body.showreels) : '[]';
+  const audios = Array.isArray(body.audios) ? JSON.stringify(body.audios) : '[]';
+  const additionalPhotos = Array.isArray(body.additional_photos) ? JSON.stringify(body.additional_photos) : '[]';
+  
   // OPTIONAL SOCIAL & CONTACTS (jika ditarik dari tab profile)
   const instagram = body.instagram || null;
   const tiktok = body.tiktok || null;
@@ -52,23 +62,32 @@ router.put('/me', async (c) => {
         UPDATE talents SET 
           full_name=?, category=?, height=?, weight=?, birth_date=?, gender=?, 
           headshot=?, side_view=?, full_height=?, 
+          showreels=?, audios=?, additional_photos=?,
           instagram=?, tiktok=?, twitter=?, phone=?, email=? 
         WHERE user_id=?
-      `).bind(fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, instagram, tiktok, twitter, phone, email, userId).run()
+      `).bind(fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, showreels, audios, additionalPhotos, instagram, tiktok, twitter, phone, email, userId).run()
     } else {
       // Insert jika profil baru
       const newTalentId = crypto.randomUUID()
       await c.env.DB_CORE.prepare(`
         INSERT INTO talents (
           talent_id, user_id, full_name, category, height, weight, birth_date, gender, 
-          headshot, side_view, full_height, instagram, tiktok, twitter, phone, email
+          headshot, side_view, full_height, showreels, audios, additional_photos, instagram, tiktok, twitter, phone, email
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(newTalentId, userId, fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, instagram, tiktok, twitter, phone, email).run()
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(newTalentId, userId, fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, showreels, audios, additionalPhotos, instagram, tiktok, twitter, phone, email).run()
     }
     
     // Ambil ulang data terbaru setelah disimpan
     const updated = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE user_id = ?').bind(userId).first()
+    
+    // Parse arrays agar balikan JSON rapi sebagai tipe Array
+    if (updated) {
+        if (typeof updated.showreels === 'string') updated.showreels = JSON.parse(updated.showreels);
+        if (typeof updated.audios === 'string') updated.audios = JSON.parse(updated.audios);
+        if (typeof updated.additional_photos === 'string') updated.additional_photos = JSON.parse(updated.additional_photos);
+    }
+    
     return c.json({ status: 'ok', data: updated })
 
   } catch (err: any) {

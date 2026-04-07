@@ -42,16 +42,13 @@ export function useProfileProgress(): ProfileProgress {
 
         // Hitung completeness dari field profile
         const checks: Array<{ key: string; label: string; check: boolean }> = [
-          { key: 'photo', label: 'Foto Utama', check: !!(profile.main_photo_url || profile.profile_photo) },
+          { key: 'photo', label: 'Foto Utama', check: !!(profile.headshot && profile.side_view && profile.full_height) },
           { key: 'name', label: 'Nama Lengkap', check: !!(profile.full_name) },
-          { key: 'phone', label: 'Nomor HP', check: !!(profile.phone) },
-          { key: 'birth', label: 'Tanggal Lahir', check: !!(profile.date_of_birth) },
-          { key: 'location', label: 'Kota Domisili', check: !!(profile.city) },
-          { key: 'height', label: 'Tinggi Badan', check: !!(profile.height_cm) },
-          { key: 'weight', label: 'Berat Badan', check: !!(profile.weight_kg) },
-          { key: 'experience', label: 'Pengalaman', check: !!(profile.years_of_experience) },
-          { key: 'bio', label: 'Bio / Tentang Saya', check: !!(profile.bio && profile.bio.length > 20) },
-          { key: 'bank', label: 'Rekening Bank', check: !!(profile.bank_account_number) },
+          { key: 'phone', label: 'Contact Valid', check: !!(profile.phone && profile.email) },
+          { key: 'birth', label: 'Tanggal Lahir', check: !!(profile.birth_date) },
+          { key: 'appearance', label: 'Fisik & Penampilan', check: !!(profile.height && profile.weight) },
+          { key: 'assets', label: 'Showreels / Audios', check: !!((profile.showreels && profile.showreels.length > 0) || (profile.audios && profile.audios.length > 0)) },
+          { key: 'bio', label: 'Bio / Tentang Saya', check: !!(profile.bio && profile.bio.length > 10) },
         ];
 
         const completed = checks.filter(c => c.check).map(c => c.label);
@@ -62,7 +59,7 @@ export function useProfileProgress(): ProfileProgress {
           percentage,
           completedSections: completed,
           missingSections: missing,
-          isReady: percentage >= 70,
+          isReady: percentage >= 80, // Ready if almost complete
         };
 
         setProgress(result);

@@ -5,12 +5,13 @@ import {
   Download, Phone, Mail, Edit2, 
   Instagram, Youtube, Twitter, Link as LinkIcon, 
   ChevronDown, X, PlusCircle, Trash2, Camera,
-  Save, Loader2
+  Save, Loader2, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { processImage } from '@/utils/imageCompressor';
 import { useProfileProgress } from '@/hooks/useProfileProgress';
 
 export default function ProfileDashboard() {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('info');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,7 @@ export default function ProfileDashboard() {
   const [editData, setEditData] = useState<any>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showMissingModal, setShowMissingModal] = useState(false);
 
   const profileProgressData = useProfileProgress();
   const progressValue = typeof profileProgressData === 'number' ? profileProgressData : (profileProgressData as any)?.percentage || 0;
@@ -28,19 +30,29 @@ export default function ProfileDashboard() {
     apiRequest('/talents/me')
       .then((res: any) => {
           setData(res.data);
-          setEditData(res.data); // Copy data untuk diedit
+          
+          // Inject user phone & email if not set in profile
+          const initialData = { ...res.data };
+          if (!initialData.phone) initialData.phone = user?.phone || '';
+          if (!initialData.email) initialData.email = user?.email || '';
+          if (!initialData.showreels) initialData.showreels = [];
+          if (!initialData.audios) initialData.audios = [];
+          if (!initialData.additional_photos) initialData.additional_photos = [];
+          
+          setEditData(initialData);
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
-  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>, photoType: 'headshot' | 'sideView' | 'fullHeight') => {
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>, photoType: string, index?: number) => {
       const rawFile = e.target.files?.[0];
       if (!rawFile) return;
 
       try {
-          setUploading(prev => ({ ...prev, [photoType]: true }));
-          const ratio = photoType === 'headshot' ? 4/5 : 3/4;
+          const uploadKey = index !== undefined ? `${photoType}-${index}` : photoType;
+          setUploading(prev => ({ ...prev, [uploadKey]: true }));
+          const ratio = (photoType === 'headshot' || photoType === 'additional_photos') ? 4/5 : 3/4;
           const file = await processImage(rawFile, ratio);
 
           const presignedRes: any = await apiRequest('/media/upload-url', {
@@ -54,45 +66,82 @@ export default function ProfileDashboard() {
 
           if (!presignedRes || !presignedRes.uploadUrl) throw new Error("Gagal mendapatkan link upload");
 
-          // 2. Upload asli murni mem-bypass backend langsung ke Cloudflare R2
           const r2Res = await fetch(presignedRes.uploadUrl, {
              method: 'PUT',
              headers: { 'Content-Type': file.type },
              body: file,
-             cache: 'no-store' // <--- TAMBAHKAN INI agar Bypass Service Worker
+             cache: 'no-store'
           });
 
           if (!r2Res.ok) throw new Error("File gagal di-upload ke server utama");
 
           const publicUrl = presignedRes.publicUrl;
+          
+          let updatePayload = { ...data };
+          
+          if (photoType === 'additional_photos' && index !== undefined) {
+             const newAddPhotos = [...(updatePayload.additional_photos || [])];
+             newAddPhotos[index] = publicUrl;
+             updatePayload.additional_photos = newAddPhotos;
+          } else {
+             updatePayload[photoType] = publicUrl;
+          }
+
           const updateRes: any = await apiRequest('/talents/me', {
              method: 'PUT',
-             body: JSON.stringify({
-                ...data,
-                [photoType]: publicUrl
-             })
+             body: JSON.stringify(updatePayload)
           });
 
           if (updateRes.status === 'ok') {
-              setData(updateRes.data);
-              setEditData(updateRes.data);
+              let updated = updateRes.data;
+              if (!updated.showreels) updated.showreels = [];
+              if (!updated.audios) updated.audios = [];
+              if (!updated.additional_photos) updated.additional_photos = [];
+              setData(updated);
+              setEditData(updated);
           }
 
       } catch (err: any) {
           alert('Upload Error: ' + (err.message || 'Terjadi kesalahan sistem'));
       } finally {
-          setUploading(prev => ({ ...prev, [photoType]: false }));
+          const uploadKey = index !== undefined ? `${photoType}-${index}` : photoType;
+          setUploading(prev => ({ ...prev, [uploadKey]: false }));
       }
   };
 
-  // Fungsi untuk update field saat diketik
-  const handleFieldChange = (field: string, value: string | number) => {
+  const handleFieldChange = (field: string, value: any) => {
       setEditData((prev: any) => ({ ...prev, [field]: value }));
       setIsDirty(true);
   };
+  
+  const validateForm = () => {
+    // Basic placeholder-based validation rule checks
+    if (editData.phone && !editData.phone.match(/^[0-9+]{8,15}$/)) {
+        alert("Format Nomor Telepon tidak valid. Gunakan format seperti 08123456789.");
+        return false;
+    }
+    
+    if (editData.height && isNaN(editData.height)) {
+        alert("Tinggi badan harus angka."); return false;
+    }
+    if (editData.weight && isNaN(editData.weight)) {
+        alert("Berat badan harus angka."); return false;
+    }
+    
+    if (editData.showreels?.length > 0) {
+        for (let url of editData.showreels) {
+            if (url && !url.includes("youtube.com") && !url.includes("youtu.be")) {
+                alert("Salah satu link Showreel bukan dari YouTube. Silakan periksa.");
+                return false;
+            }
+        }
+    }
+    return true;
+  }
 
-  // Fungsi menyimpan perubahan
   const handleSaveChanges = async () => {
+      if (!validateForm()) return;
+      
       setSaving(true);
       try {
           const res: any = await apiRequest('/talents/me', {
@@ -102,7 +151,6 @@ export default function ProfileDashboard() {
           if (res.status === 'ok') {
               setData(res.data);
               setIsDirty(false);
-              // Tampilkan toast ringan (opsional)
           }
       } catch (err) {
           alert('Gagal menyimpan profil. Coba lagi.');
@@ -137,9 +185,9 @@ export default function ProfileDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
         
-        {/* SIDEBAR (Dipertahankan sama persis) */}
+        {/* SIDEBAR */}
         <aside className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-[14px] p-4 shadow-[0_10px_30px_rgba(17,24,39,0.04)] sticky top-6">
-           {/* BOX FOTO HEADSHOT & OTHERS ... */}
+           {/* BOX FOTO HEADSHOT */}
           <div>
              <h4 className="text-[12px] font-black tracking-[0.08em] text-slate-600 dark:text-slate-400 mb-2.5">HEADSHOT</h4>
              <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-gradient-to-b from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 p-3 relative">
@@ -171,13 +219,13 @@ export default function ProfileDashboard() {
                  <div>
                     <h4 className="text-[11px] font-black tracking-widest text-slate-500 mb-2">SIDE VIEW</h4>
                     <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-2 bg-slate-50 dark:bg-slate-800 relative">
-                        <input type="file" id="upload-side" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'sideView')} disabled={uploading['sideView']} />
-                        <label htmlFor="upload-side" className={`w-full aspect-[4/3] rounded-lg bg-white dark:bg-slate-700 relative flex flex-col items-center justify-center cursor-pointer overflow-hidden group transition-opacity ${uploading['sideView'] ? 'opacity-50 pointer-events-none' : 'hover:opacity-90'}`}>
-                           {uploading['sideView'] ? (
+                        <input type="file" id="upload-side" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'side_view')} disabled={uploading['side_view']} />
+                        <label htmlFor="upload-side" className={`w-full aspect-[4/3] rounded-lg bg-white dark:bg-slate-700 relative flex flex-col items-center justify-center cursor-pointer overflow-hidden group transition-opacity ${uploading['side_view'] ? 'opacity-50 pointer-events-none' : 'hover:opacity-90'}`}>
+                           {uploading['side_view'] ? (
                                <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                           ) : data?.sideView ? (
+                           ) : data?.side_view ? (
                                <>
-                                  <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${data.sideView})` }} />
+                                  <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${data.side_view})` }} />
                                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="text-white" size={16}/></div>
                                </>
                            ) : (
@@ -191,13 +239,13 @@ export default function ProfileDashboard() {
                  <div>
                     <h4 className="text-[11px] font-black tracking-widest text-slate-500 mb-2">FULL HEIGHT</h4>
                     <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-2 bg-slate-50 dark:bg-slate-800 relative">
-                        <input type="file" id="upload-full" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'fullHeight')} disabled={uploading['fullHeight']} />
-                        <label htmlFor="upload-full" className={`w-full aspect-[4/3] rounded-lg bg-white dark:bg-slate-700 relative flex flex-col items-center justify-center cursor-pointer overflow-hidden group transition-opacity ${uploading['fullHeight'] ? 'opacity-50 pointer-events-none' : 'hover:opacity-90'}`}>
-                           {uploading['fullHeight'] ? (
+                        <input type="file" id="upload-full" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'full_height')} disabled={uploading['full_height']} />
+                        <label htmlFor="upload-full" className={`w-full aspect-[4/3] rounded-lg bg-white dark:bg-slate-700 relative flex flex-col items-center justify-center cursor-pointer overflow-hidden group transition-opacity ${uploading['full_height'] ? 'opacity-50 pointer-events-none' : 'hover:opacity-90'}`}>
+                           {uploading['full_height'] ? (
                                <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                           ) : data?.fullHeight ? (
+                           ) : data?.full_height ? (
                                <>
-                                  <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${data.fullHeight})` }} />
+                                  <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${data.full_height})` }} />
                                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera className="text-white" size={16}/></div>
                                </>
                            ) : (
@@ -217,7 +265,6 @@ export default function ProfileDashboard() {
             </button>
           </div>
           
-          {/* Sisanya di sidebar (Contact, Socmed) */}
           <div className="mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
              <div className="flex justify-between items-center mb-3">
                 <h4 className="text-[12px] font-black tracking-[0.08em] text-slate-600 dark:text-slate-400">CONTACTS</h4>
@@ -229,7 +276,7 @@ export default function ProfileDashboard() {
                 </label>
                 <div className="flex justify-between items-center p-2.5 bg-slate-50 border border-slate-100 dark:bg-slate-800 dark:border-slate-700 rounded-xl opacity-70">
                    <span className="text-slate-500"><Mail size={14}/></span>
-                   <span className="font-bold text-slate-800 dark:text-white text-right w-full ml-2">{data?.email || '-'}</span>
+                   <span className="font-bold text-slate-800 dark:text-white text-right w-full ml-2">{data?.email || editData?.email || '-'}</span>
                 </div>
              </div>
           </div>
@@ -291,7 +338,7 @@ export default function ProfileDashboard() {
                         <div className="h-full bg-gradient-to-r from-rose-400 to-amber-500 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)] transition-all duration-1000" style={{ width: `${progressValue}%` }}></div>
                     </div>
                 </div>
-                <button className="text-[12px] font-bold bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 px-4 py-2 rounded-lg text-amber-800 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors whitespace-nowrap">
+                <button onClick={() => setShowMissingModal(true)} className="text-[12px] font-bold bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 px-4 py-2 rounded-lg text-amber-800 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors whitespace-nowrap">
                     What's missing?
                 </button>
              </div>
@@ -299,7 +346,7 @@ export default function ProfileDashboard() {
              {/* TAB CONTENT */}
              <div className="mt-6">
                  {activeTab === 'info' && <TabInfo editData={editData} onChange={handleFieldChange} />}
-                 {activeTab === 'photos' && <TabPhotos data={data} />}
+                 {activeTab === 'photos' && <TabPhotos data={data} uploading={uploading} handleUpload={handleUploadPhoto} />}
                  {activeTab === 'assets' && <TabAssets editData={editData} onChange={handleFieldChange} />}
                  {activeTab === 'credits' && <TabCredits data={data} />}
              </div>
@@ -324,6 +371,46 @@ export default function ProfileDashboard() {
         </div>
       )}
       
+      {/* ================= POPUP WHAT'S MISSING ================= */}
+      {showMissingModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+             <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl relative animate-in zoom-in-95">
+                 <button onClick={() => setShowMissingModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"><X size={20}/></button>
+                 <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight mb-4">Profil Anda</h3>
+                 
+                 <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                     <div>
+                         <h4 className="text-xs font-black tracking-widest text-emerald-600 mb-2 uppercase">Sudah Lengkap</h4>
+                         {profileProgressData.completedSections.length > 0 ? (
+                             <ul className="space-y-2">
+                                 {profileProgressData.completedSections.map((item: string, i: number) => (
+                                     <li key={i} className="flex items-center text-sm font-bold text-slate-700 dark:text-slate-300">
+                                         <CheckCircle2 size={16} className="text-emerald-500 mr-2 flex-shrink-0" /> {item}
+                                     </li>
+                                 ))}
+                             </ul>
+                         ) : <p className="text-sm text-slate-500">Belum ada.</p>}
+                     </div>
+                     <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                         <h4 className="text-xs font-black tracking-widest text-red-500 mb-2 uppercase">Perlu Dilengkapi</h4>
+                         {profileProgressData.missingSections.length > 0 ? (
+                             <ul className="space-y-2">
+                                 {profileProgressData.missingSections.map((item: string, i: number) => (
+                                     <li key={i} className="flex items-center text-sm font-bold text-slate-700 dark:text-slate-300">
+                                         <AlertCircle size={16} className="text-red-500 mr-2 flex-shrink-0" /> {item}
+                                     </li>
+                                 ))}
+                             </ul>
+                         ) : <p className="text-sm text-slate-500">Profil Anda sudah 100% lengkap!</p>}
+                     </div>
+                 </div>
+                 <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                     <button onClick={() => setShowMissingModal(false)} className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl font-bold text-sm transition-colors text-slate-900 dark:text-white">Tutup</button>
+                 </div>
+             </div>
+          </div>
+      )}
+      
       <style>{`
         .star-clip { clip-path: polygon(50% 0%, 62% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 38% 35%); }
       `}</style>
@@ -332,13 +419,12 @@ export default function ProfileDashboard() {
 }
 
 // ----------------------------------------------------------------------
-// MODULAR TAB COMPONENTS (INTERACTIVE EDIT MODE)
+// MODULAR TAB COMPONENTS
 // ----------------------------------------------------------------------
 
 function TabInfo({ editData, onChange }: { editData: any, onChange: (f: string, v: any) => void }) {
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {/* PERSONAL DETAILS MODULAR */}
             <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card overflow-hidden">
                <div className="flex justify-between items-center px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                   <div className="font-black text-[12px] tracking-[0.06em] text-slate-700 dark:text-slate-300">PERSONAL:</div>
@@ -367,13 +453,12 @@ function TabInfo({ editData, onChange }: { editData: any, onChange: (f: string, 
                     </select>
                  </label>
                  <div className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-3 opacity-60">
-                    <div className="text-[11px] font-extrabold text-slate-400 mb-1">Location (Coming Soon)</div>
-                    <div className="text-[14px] font-black text-slate-900 dark:text-white">Jakarta</div>
+                    <div className="text-[11px] font-extrabold text-slate-400 mb-1">Location</div>
+                    <input type="text" value="Jakarta" disabled className="text-[14px] font-black text-slate-900 dark:text-white bg-transparent outline-none w-full" />
                  </div>
                </div>
             </div>
 
-            {/* APPEARANCE MODULAR */}
             <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card mt-4 overflow-hidden">
                <div className="flex justify-between items-center px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                   <div className="font-black text-[12px] tracking-[0.06em] text-slate-700 dark:text-slate-300">APPEARANCE:</div>
@@ -387,43 +472,130 @@ function TabInfo({ editData, onChange }: { editData: any, onChange: (f: string, 
                         <span className="text-[11px] font-extrabold text-slate-400 mb-1">Weight (kg)</span>
                         <input type="number" value={editData?.weight || ''} onChange={e => onChange('weight', parseInt(e.target.value))} className="bg-transparent text-[14px] font-black text-slate-900 dark:text-white outline-none w-full" placeholder="60" />
                     </label>
-                    
-                    {/* Dummy Fields for future use */}
-                    <div className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-3"><div className="text-[11px] font-extrabold text-slate-400 mb-1">Eye Color</div><div className="text-[14px] font-black text-slate-400">n/a</div></div>
-                    <div className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-3"><div className="text-[11px] font-extrabold text-slate-400 mb-1">Hair Color</div><div className="text-[14px] font-black text-slate-400">n/a</div></div>
-                    <div className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-3"><div className="text-[11px] font-extrabold text-slate-400 mb-1">Chest/Bust</div><div className="text-[14px] font-black text-slate-400">n/a</div></div>
-                    <div className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-3"><div className="text-[11px] font-extrabold text-slate-400 mb-1">Body Type</div><div className="text-[14px] font-black text-slate-400">n/a</div></div>
+               </div>
+            </div>
+            
+            <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card mt-4 overflow-hidden">
+               <div className="flex justify-between items-center px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                  <div className="font-black text-[12px] tracking-[0.06em] text-slate-700 dark:text-slate-300">ABOUT ME (BIO):</div>
+               </div>
+               <div className="p-4">
+                    <label className="border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl p-3 focus-within:border-brand-500 block">
+                        <textarea value={editData?.bio || ''} onChange={e => onChange('bio', e.target.value)} rows={4} className="bg-transparent text-[14px] font-bold text-slate-900 dark:text-white outline-none w-full resize-none leading-relaxed" placeholder="Ceritakan pengalaman dan keahlian Anda..."></textarea>
+                    </label>
                </div>
             </div>
         </div>
     );
 }
 
-function TabAssets({ editData, onChange }: { editData: any, onChange: (f: string, v: string) => void }) {
+function TabAssets({ editData, onChange }: { editData: any, onChange: (f: string, v: any) => void }) {
+    
+    // ARRAY MANAGER 
+    const handleAddURL = (field: 'showreels' | 'audios') => {
+        const arr = editData[field] ? [...editData[field]] : [];
+        if (arr.length >= 5) { alert(`Maksimal 5 link untuk ${field}`); return; }
+        onChange(field, [...arr, '']);
+    }
+    const handleUpdateURL = (field: 'showreels' | 'audios', index: number, value: string) => {
+        const arr = [...(editData[field] || [])];
+        arr[index] = value;
+        onChange(field, arr);
+    }
+    const handleDeleteURL = (field: 'showreels' | 'audios', index: number) => {
+        const arr = [...(editData[field] || [])];
+        arr.splice(index, 1);
+        onChange(field, arr);
+    }
+
     return (
-        <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
+        <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
             <div>
-                <div className="text-[12px] font-black tracking-widest text-slate-500 mb-2">SHOWREEL: (YouTube links)</div>
-                <div className="flex gap-2">
-                    <input type="text" value={editData?.showreel || ''} onChange={e => onChange('showreel', e.target.value)} placeholder="https://youtube.com/watch..." className="flex-1 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl px-4 py-2.5 outline-none focus:border-brand-500 text-sm font-medium dark:text-white" />
+                <div className="flex justify-between items-center mb-3">
+                   <div className="text-[12px] font-black tracking-widest text-slate-500">SHOWREEL: (YouTube links)</div>
+                   <button onClick={() => handleAddURL('showreels')} className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 flex items-center"><PlusCircle size={14} className="mr-1"/> Add Link</button>
                 </div>
+                {editData.showreels?.map((url: string, i: number) => (
+                    <div key={i} className="flex gap-2 mb-2 animate-in slide-in-from-top-2">
+                        <input type="text" value={url} onChange={e => handleUpdateURL('showreels', i, e.target.value)} placeholder="https://youtube.com/watch..." className="flex-1 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl px-4 py-2.5 outline-none focus:border-brand-500 text-sm font-medium dark:text-white transition-colors" />
+                        <button onClick={() => handleDeleteURL('showreels', i)} className="p-2.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 transition-colors"><Trash2 size={16}/></button>
+                    </div>
+                )) || <div className="text-sm text-slate-400 py-2">Belum ada showreel. Klik Add Link.</div>}
             </div>
-            <div>
-                <div className="text-[12px] font-black tracking-widest text-slate-500 mb-2">VOICE OVER: (SoundCloud / Drive)</div>
-                <div className="flex gap-2">
-                    <input type="text" value={editData?.voiceOver || ''} onChange={e => onChange('voiceOver', e.target.value)} placeholder="https://soundcloud.com/..." className="flex-1 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl px-4 py-2.5 outline-none focus:border-brand-500 text-sm font-medium dark:text-white" />
+            
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-6">
+                <div className="flex justify-between items-center mb-3">
+                   <div className="text-[12px] font-black tracking-widest text-slate-500">VOICE OVER: (SoundCloud / Drive)</div>
+                   <button onClick={() => handleAddURL('audios')} className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 flex items-center"><PlusCircle size={14} className="mr-1"/> Add Link</button>
                 </div>
+                {editData.audios?.map((url: string, i: number) => (
+                    <div key={i} className="flex gap-2 mb-2 animate-in slide-in-from-top-2">
+                        <input type="text" value={url} onChange={e => handleUpdateURL('audios', i, e.target.value)} placeholder="https://soundcloud.com/..." className="flex-1 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl px-4 py-2.5 outline-none focus:border-brand-500 text-sm font-medium dark:text-white transition-colors" />
+                        <button onClick={() => handleDeleteURL('audios', i)} className="p-2.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 transition-colors"><Trash2 size={16}/></button>
+                    </div>
+                )) || <div className="text-sm text-slate-400 py-2">Belum ada audio. Klik Add Link.</div>}
             </div>
         </div>
     )
 }
 
-function TabPhotos({ data }: { data: any }) {
+function TabPhotos({ data, uploading, handleUpload }: { data: any, uploading: any, handleUpload: (e: any, t: string, i?: number) => void }) {
+    
+    const additionalPhotos = data?.additional_photos || [];
+    // Buat array exactly length 3 untuk mapping grid tambahan
+    const addonSlots = [0, 1, 2];
+
+    const PhotoCard = ({ type, title, img, index }: any) => {
+        const isUp = index !== undefined ? uploading[`${type}-${index}`] : uploading[type];
+        
+        return (
+            <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-900 p-2 relative">
+                <h4 className="text-[11px] font-black tracking-widest text-slate-500 mb-2 px-1 text-center truncate">{title}</h4>
+                <input type="file" id={`upload-${type}-${index}`} className="hidden" accept="image/*" onChange={(e) => handleUpload(e, type, index)} disabled={isUp} />
+                <label htmlFor={`upload-${type}-${index}`} className={`w-full aspect-[4/5] rounded-[10px] relative bg-slate-200 dark:bg-slate-800 overflow-hidden cursor-pointer group flex flex-col justify-center items-center transition-opacity ${isUp ? 'opacity-50 pointer-events-none' : 'hover:opacity-90'}`}>
+                    {isUp ? (
+                        <div className="text-center z-10 flex flex-col items-center">
+                            <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mb-2" />
+                            <span className="text-brand-600 font-bold text-xs">Up...</span>
+                        </div>
+                    ) : img ? (
+                        <>
+                           <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img})` }} />
+                           <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                               <Camera className="text-white mb-1" size={20}/>
+                               <span className="text-white text-[10px] font-bold">Ganti</span>
+                           </div>
+                        </>
+                    ) : (
+                        <div className="text-center z-10 flex flex-col items-center">
+                            <PlusCircle className="text-slate-400 mb-2" size={24} />
+                            <span className="text-brand-600 font-bold text-xs">Pilih Foto</span>
+                        </div>
+                    )}
+                </label>
+            </div>
+        )
+    };
+
     return (
-        <div className="p-10 border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card animate-in fade-in slide-in-from-bottom-2 duration-300 text-center">
-            <div className="w-16 h-16 bg-brand-50 dark:bg-brand-500/10 text-brand-500 rounded-full flex items-center justify-center mx-auto mb-4"><Camera size={32}/></div>
-            <h3 className="font-bold text-slate-800 dark:text-white mb-2 text-lg">Kelola Foto Utama di Sidebar</h3>
-            <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">Untuk saat ini, Anda bisa mengunggah dan mengganti foto Headshot, Side View, dan Full Height langsung melalui panel di sebelah kiri layar.</p>
+        <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <h3 className="font-bold text-slate-800 dark:text-white mb-1 text-lg">Kelola Foto Profil</h3>
+            <p className="text-sm text-slate-500 mb-6">Mengganti foto utama otomatis menyimpan ke server.</p>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+               <PhotoCard type="headshot" title="HEADSHOT" img={data?.headshot} />
+               <PhotoCard type="side_view" title="SIDE VIEW" img={data?.side_view} />
+               <PhotoCard type="full_height" title="FULL HEIGHT" img={data?.full_height} />
+            </div>
+
+            <h3 className="font-bold text-slate-800 dark:text-white mb-1 text-base border-t border-slate-100 dark:border-slate-800 pt-6">Upload 3 Foto Tambahan</h3>
+            <p className="text-[12px] text-slate-500 mb-4">Tambahkan foto portofolio maksimal 3 buah yang dapat dilihat klien. (Otomatis Save)</p>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {addonSlots.map((index) => (
+                    <PhotoCard key={index} type="additional_photos" index={index} title={`FOTO EXTRA ${index + 1}`} img={additionalPhotos[index]} />
+                ))}
+            </div>
         </div>
     )
 }

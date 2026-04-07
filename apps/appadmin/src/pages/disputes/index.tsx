@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Search, Filter, Shield, MoreHorizontal, MessageSquare, CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Search, Filter, Shield, MoreHorizontal, MessageSquare, CheckCircle, Clock, Building2, User } from 'lucide-react';
 
 export default function DisputeResolution() {
   const [activeTab, setActiveTab] = useState<'open' | 'resolved'>('open');

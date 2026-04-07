@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Gavel, AlertOctagon, CheckCircle2, ChevronRight, MessageSquare, ShieldAlert, FileText, Loader2, RefreshCw } from 'lucide-react';
+import { Gavel, AlertOctagon, CheckCircle2, ChevronRight, MessageSquare, ShieldAlert, FileText, Loader2, RefreshCw, Activity, Ban } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface ProjectOverwatch {

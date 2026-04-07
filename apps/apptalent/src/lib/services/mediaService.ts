@@ -42,6 +42,7 @@ const uploadRes = await fetch(uploadUrl, {
     // Hapus 'X-Amz-Content-Sha256' jika backend (Worker) tidak mengaturnya di Signature
   },
   body: file,
+  cache: 'no-store',
 });
 
 if (!uploadRes.ok) {

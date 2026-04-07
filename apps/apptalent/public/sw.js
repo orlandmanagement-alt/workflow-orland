@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orland-talent-v1';
+const CACHE_NAME = 'orland-pwa-v2';
 const ASSETS = [ '/', '/index.html' ]; // Aset dasar
 
 self.addEventListener('install', (event) => {
@@ -17,6 +17,21 @@ self.addEventListener('activate', (event) => {
 
 // Cache-First Strategy untuk gambar/aset, Network-First untuk API/Data
 self.addEventListener('fetch', (event) => {
+  // Bypass if not GET
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  const url = new URL(event.request.url);
+  // Bypass for third-party domains
+  if (
+    url.hostname.includes('r2.cloudflarestorage.com') ||
+    url.hostname.includes('api.orlandmanagement.com') ||
+    url.hostname.includes('cdn.orlandmanagement.com')
+  ) {
+    return;
+  }
+
   if (event.request.url.includes('/api/v1/')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))

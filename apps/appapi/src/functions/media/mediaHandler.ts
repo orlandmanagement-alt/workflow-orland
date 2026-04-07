@@ -14,7 +14,7 @@ router.post('/upload-url', requireRole(['admin', 'client', 'talent']), async (c)
     
     // Bersihkan nama file agar URL aman
     const cleanFileName = fileName.replace(/^.*[\\\/]/, '').replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    const safeFolder = (folder || 'misc').replace(/[^a-zA-Z0-9.\-_/]/g, '');
+    const safeFolder = (folder || 'misc').replace(/\.\./g, '').replace(/[^a-zA-Z0-9.\-_/]/g, '');
     const key = `${safeFolder}/${Date.now()}-${cleanFileName}`;
     
     const accessKey = c.env.R2_ACCESS_KEY_ID;

@@ -1,0 +1,357 @@
+<div class="w-screen relative left-1/2 -translate-x-1/2 bg-slate-50/50 font-sans text-slate-800">
+
+    <section class="bg-white/80 backdrop-blur-xl border-b border-slate-200 pt-24 pb-4 px-4 relative z-20 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+        <div class="container mx-auto max-w-[1400px] flex flex-col md:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 shrink-0 hidden sm:flex">
+                    <i class="fa-solid fa-users-viewfinder"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">
+                        <span class="konten-id">Eksplorasi Talent</span><span class="konten-en">Explore Talents</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium">
+                        <span class="konten-id">Temukan wajah yang tepat untuk proyek Anda selanjutnya.</span>
+                        <span class="konten-en">Find the perfect face for your next project.</span>
+                    </p>
+                </div>
+            </div>
+            
+            <button onclick="toggleFilterSidebar()" aria-label="Buka Filter Menu" class="lg:hidden w-full md:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
+                <i class="fa-solid fa-sliders"></i> 
+                <span class="konten-id">Filter Pencarian</span><span class="konten-en">Search Filters</span>
+            </button>
+        </div>
+    </section>
+
+    <div id="filterOverlay" onclick="toggleFilterSidebar()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] hidden opacity-0 transition-opacity duration-300 lg:hidden"></div>
+
+    <div class="container mx-auto max-w-[1400px] px-4 py-6 flex flex-col lg:flex-row gap-6 relative">
+
+        <aside id="sidebarFilter" class="fixed inset-y-0 left-0 z-[100] w-[80%] max-w-[300px] bg-white lg:bg-transparent lg:w-64 lg:static lg:block transform -translate-x-full lg:translate-x-0 transition-transform duration-300 overflow-y-auto lg:overflow-visible h-full lg:h-auto border-r border-slate-200 lg:border-none p-6 lg:p-0 shadow-2xl lg:shadow-none">
+            
+            <div class="flex items-center justify-between lg:hidden mb-6 pb-4 border-b border-slate-200">
+                <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-filter text-indigo-500 mr-2"></i> Filters</h3>
+                <button onclick="toggleFilterSidebar()" aria-label="Tutup Filter" class="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center transition-all hover:bg-rose-100 group">
+                    <i class="fa-solid fa-times text-lg transform group-hover:rotate-90 transition-transform duration-300"></i>
+                </button>
+            </div>
+
+            <div class="lg:sticky lg:top-28 space-y-6 pb-20 lg:pb-0 bg-white lg:p-3 sm:lg:p-5 lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm">
+                
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Search Name</label>
+                    <div class="relative group">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                        <input type="text" id="filterSearch" placeholder="Type a name..." class="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all shadow-inner">
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-5">
+                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Gender</label>
+                    <div class="flex gap-2">
+                        <label class="flex-1 cursor-pointer group">
+                            <input type="radio" name="gender" value="All" class="peer sr-only" checked>
+                            <div class="text-center py-2 text-xs font-bold rounded-lg border border-slate-200 text-slate-500 peer-checked:bg-slate-800 peer-checked:text-white peer-checked:border-slate-800 transition-all hover:bg-slate-50 shadow-sm peer-checked:shadow-md">All</div>
+                        </label>
+                        <label class="flex-1 cursor-pointer group">
+                            <input type="radio" name="gender" value="Male" class="peer sr-only">
+                            <div class="text-center py-2 text-xs font-bold rounded-lg border border-slate-200 text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all hover:bg-indigo-50 shadow-sm peer-checked:shadow-md peer-checked:shadow-indigo-500/30">M</div>
+                        </label>
+                        <label class="flex-1 cursor-pointer group">
+                            <input type="radio" name="gender" value="Female" class="peer sr-only">
+                            <div class="text-center py-2 text-xs font-bold rounded-lg border border-slate-200 text-slate-500 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 transition-all hover:bg-rose-50 shadow-sm peer-checked:shadow-md peer-checked:shadow-rose-500/30">F</div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-5">
+                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Category (Primary Skill)</label>
+                    <select id="filterCategory" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none cursor-pointer">
+                        <option value="">Semua Kategori</option>
+                        <option value="Actor">Actor</option>
+                        <option value="Model">Model</option>
+                        <option value="MC">MC</option>
+                        <option value="Dancer">Dancer</option>
+                        <option value="Singer">Singer</option>
+                    </select>
+                </div>
+                
+                <div class="border-t border-slate-100 pt-5">
+                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Height (cm)</label>
+                    <div class="relative group">
+                        <select id="filterHeight" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none appearance-none cursor-pointer shadow-inner transition-all">
+                            <option value="">Any Height</option>
+                            <option value="0-149">&lt; 150 cm</option>
+                            <option value="150-160">150 - 160 cm</option>
+                            <option value="161-170">161 - 170 cm</option>
+                            <option value="171-180">171 - 180 cm</option>
+                            <option value="181-300">&gt; 180 cm</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none group-focus-within:text-indigo-500"></i>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-5">
+                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Screen Age</label>
+                    <div class="relative group">
+                        <select id="filterAge" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none appearance-none cursor-pointer shadow-inner transition-all">
+                            <option value="">Any Age</option>
+                            <option value="5-12">Kids (5-12)</option>
+                            <option value="13-17">Teens (13-17)</option>
+                            <option value="18-25">Young Adult (18-25)</option>
+                            <option value="26-35">Adults (26-35)</option>
+                            <option value="36-100">Mature (36+)</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none group-focus-within:text-indigo-500"></i>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button onclick="resetFilters()" class="w-full py-2 bg-transparent text-slate-400 hover:text-slate-800 text-xs font-bold mt-2 transition-colors">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> Reset All
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="flex-1 w-full">
+            
+            <div class="flex flex-col md:flex-row justify-between items-center bg-white p-3 md:p-4 rounded-2xl border border-slate-200 mb-6 gap-4 shadow-sm">
+                <div class="flex items-center gap-3 w-full justify-between">
+                    <!-- Ditambahkan ID totalCountDisplay -->
+                    <p class="text-sm font-semibold text-slate-600">Showing <span id="totalCountDisplay" class="text-indigo-600 font-black text-lg">0</span> Talents</p>
+                    <div class="h-6 w-px bg-slate-200 hidden md:block"></div>
+                </div>
+            </div>
+
+            <!-- TABEL TALENT GRID KOSONG (WADAH API) -->
+            <div id="talentGrid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+                <div class="col-span-full py-10 text-center">
+                    <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p class="text-sm font-bold text-slate-500 animate-pulse">Menghubungkan ke Pusat Data...</p>
+                </div>
+            </div>
+
+            <div class="mt-10 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 gap-6 shadow-sm">
+                <!-- WADAH PAPAN PAGING API -->
+                <div id="paginationControls" class="flex items-center justify-center gap-1 sm:gap-2 w-full md:w-auto"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- SCRIPT JS ORLAND TALENT ENGINE -->
+<!-- ============================================== -->
+<script>
+    function toggleFilterSidebar() {
+        const sidebar = document.getElementById('sidebarFilter');
+        const overlay = document.getElementById('filterOverlay');
+        if (sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+            setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
+    }
+
+    // === INTI TALENT ENGINE ===
+    const API_BASE = "https://api.orlandmanagement.com/api/v1";
+
+    let ALL_TALENTS = [];
+    let FILTERED_TALENTS = [];
+    let CURRENT_PAGE = 1;
+    let PER_PAGE = 12; // Jumlah data per halaman
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // Daftarkan aksi setiap kali Filter berubah
+        document.querySelectorAll("input[type='radio'], select, input[type='text']").forEach(el => {
+            el.addEventListener("change", applyFilters);
+            el.addEventListener("input", applyFilters);
+        });
+
+        // Download data dari API Database!
+        fetchTalents();
+    });
+
+    function resetFilters() {
+        document.getElementById("filterSearch").value = "";
+        document.getElementById("filterCategory").value = "";
+        document.getElementById("filterHeight").value = "";
+        document.getElementById("filterAge").value = "";
+        document.querySelector("input[name='gender'][value='All']").checked = true;
+        applyFilters();
+    }
+
+    async function fetchTalents() {
+        const grid = document.getElementById("talentGrid");
+        if (!grid) return;
+        
+        try {
+            const response = await fetch(`${API_BASE}/public/talents`);
+            const result = await response.json();
+
+            if (result.status === 'ok') {
+                ALL_TALENTS = result.data;
+                FILTERED_TALENTS = [...ALL_TALENTS];
+                renderGrid();
+            } else {
+                grid.innerHTML = `<div class="col-span-full py-10 text-center text-red-500 font-bold">Terjadi kesalahan pada Server Database Orland.</div>`;
+            }
+        } catch (err) {
+            console.error(err);
+            grid.innerHTML = `<div class="col-span-full py-10 text-center text-amber-500 font-bold">API Belum Merespon (404/500). Gagal Fetch Data. Harap Deploy API Terlebih Dahulu.</div>`;
+        }
+    }
+
+    function applyFilters() {
+        // 1. Ambil Nilai dari DOM
+        const searchInput = document.getElementById("filterSearch");
+        const searchVal = searchInput ? searchInput.value.toLowerCase() : "";
+        
+        const categorySelect = document.getElementById("filterCategory")?.value || "";
+        const heightSelect = document.getElementById("filterHeight")?.value || "";
+        const ageSelect = document.getElementById("filterAge")?.value || "";
+        
+        let selectedGender = "All";
+        document.querySelectorAll("input[name='gender']").forEach(r => {
+            if(r.checked) selectedGender = r.value;
+        });
+
+        // 2. Terapkan Validasi Array in-memory
+        FILTERED_TALENTS = ALL_TALENTS.filter(t => {
+            
+            // Nama
+            const talentName = t.name ? t.name.toLowerCase() : "";
+            if (searchVal && !talentName.includes(searchVal)) return false;
+            
+            // Gender
+            if (selectedGender !== "All") {
+                if (t.gender !== selectedGender) return false;
+            }
+            
+            // Category (Mendukung string Array atau Flat String)
+            if (categorySelect) {
+                const catStr = t.category ? t.category.toLowerCase() : "";
+                if (!catStr.includes(categorySelect.toLowerCase())) return false;
+            }
+
+            // Height Parser (Contoh: "150-160")
+            if (heightSelect) {
+                const parts = heightSelect.split("-");
+                const minH = parseInt(parts[0]);
+                const maxH = parseInt(parts[1]);
+                const tHeight = parseInt(t.height) || 0;
+                
+                if (tHeight < minH || tHeight > maxH) return false;
+            }
+
+            // Age Parser (Contoh: "18-25")
+            if (ageSelect) {
+                const parts = ageSelect.split("-");
+                const minA = parseInt(parts[0]);
+                const maxA = parseInt(parts[1]);
+                const tAge = parseInt(t.age) || 0;
+                
+                if (tAge < minA || tAge > maxA) return false;
+            }
+
+            return true;
+        });
+
+        CURRENT_PAGE = 1;
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById("talentGrid");
+        if (!grid) return;
+
+        const startIndex = (CURRENT_PAGE - 1) * PER_PAGE;
+        const paginated = FILTERED_TALENTS.slice(startIndex, startIndex + PER_PAGE);
+
+        document.getElementById("totalCountDisplay").innerText = FILTERED_TALENTS.length;
+
+        if (paginated.length === 0) {
+            grid.innerHTML = `<div class="col-span-full py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300 w-full"><i class="fa-solid fa-face-frown-open text-5xl mb-4 text-slate-300 block"></i><p class="text-slate-500 font-extrabold text-lg">Tidak ada talent yang cocok dengan filter Anda.</p></div>`;
+            document.getElementById("paginationControls").innerHTML = "";
+            return;
+        }
+
+        let html = "";
+        paginated.forEach(talent => {
+            let theme = "indigo"; let icon = "venus";
+            const cat = talent.category || "Talent";
+            if(cat.toLowerCase().includes('actor')) theme = "emerald";
+            else if(cat.toLowerCase().includes('model')) theme = "amber";
+            else if(cat.toLowerCase().includes('mc')) theme = "fuchsia";
+            if(talent.gender === 'Male') icon = "mars";
+
+            // Card HTML
+            html += `
+            <div class="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-[0_20px_40px_rgba(79,70,229,0.1)] transition-all duration-500 group flex flex-col relative transform hover:-translate-y-1.5 cursor-pointer" onclick="window.open('https://talent.orlandmanagement.com/p/${talent.id}', '_blank')">
+                <div class="w-full aspect-[3/4] relative overflow-hidden bg-slate-200">
+                    <div class="absolute top-3 left-3 z-10"><span class="text-[9px] font-black uppercase tracking-widest bg-white/95 text-${theme}-600 px-2.5 py-1 rounded shadow-sm border border-white/50">${cat}</span></div>
+                    <div class="absolute top-3 right-3 z-10"><div class="w-7 h-7 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white text-xs"><i class="fa-solid fa-${icon}"></i></div></div>
+                    <img src="${talent.headshot || 'https://via.placeholder.com/400x500'}" alt="${talent.name}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    
+                    <div class="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 bg-slate-900/60 backdrop-blur px-2 py-1 rounded-full border border-white/20">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="text-[8px] font-bold text-white uppercase tracking-widest">Available</span>
+                    </div>
+
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col items-center justify-center pb-6">
+                        <div class="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500 text-center mt-10">
+                            <i class="fa-solid fa-expand text-white text-xl mb-2"></i>
+                            <span class="block text-white text-xs font-bold uppercase tracking-widest">Full Profile</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-4 sm:p-5 flex flex-col flex-1 bg-white relative z-20">
+                    <h3 class="font-extrabold text-slate-900 text-base leading-tight truncate transition-colors mb-2">${talent.name}</h3>
+                    <div class="flex flex-wrap gap-2 text-[10px] sm:text-xs text-slate-500 mb-4 font-semibold">
+                        ${talent.age ? `<span class="bg-slate-50 px-2 py-0.5 rounded border border-slate-100"><i class="fa-regular fa-calendar mr-1"></i>${talent.age} Thn</span>` : ''}
+                        ${talent.height ? `<span class="bg-slate-50 px-2 py-0.5 rounded border border-slate-100"><i class="fa-solid fa-arrows-up-down mr-1"></i>${talent.height} cm</span>` : ''}
+                        ${talent.location ? `<span class="bg-slate-50 px-2 py-0.5 rounded border border-slate-100"><i class="fa-solid fa-location-dot mr-1"></i>${talent.location}</span>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        grid.innerHTML = html;
+        renderPaginationControls();
+    }
+
+    function renderPaginationControls() {
+        const controls = document.getElementById("paginationControls");
+        if (!controls) return;
+        const totalPages = Math.ceil(FILTERED_TALENTS.length / PER_PAGE);
+        let btnHtml = "";
+        
+        // Prev button
+        btnHtml += `<button ${CURRENT_PAGE === 1 ? 'disabled' : ''} onclick="goToPage(${CURRENT_PAGE - 1})" class="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-600 transition-all ${CURRENT_PAGE === 1 ? 'opacity-50 cursor-not-allowed' : ''}"><i class="fa-solid fa-chevron-left text-xs"></i></button>`;
+
+        for(let i=1; i<=totalPages; i++) {
+             let activeTheme = i === CURRENT_PAGE ? "bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg transform scale-105" : "border border-slate-200 text-slate-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-slate-50";
+             btnHtml += `<button onclick="goToPage(${i})" class="w-10 h-10 rounded-xl ${activeTheme} font-bold transition-all text-sm mx-1">${i}</button>`;
+        }
+
+        // Next button
+        btnHtml += `<button ${CURRENT_PAGE === totalPages || totalPages === 0 ? 'disabled' : ''} onclick="goToPage(${CURRENT_PAGE + 1})" class="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-600 transition-all hover:bg-slate-50 ${(CURRENT_PAGE === totalPages || totalPages === 0) ? 'opacity-50 cursor-not-allowed' : ''}"><i class="fa-solid fa-chevron-right text-xs"></i></button>`;
+
+        controls.innerHTML = btnHtml;
+    }
+
+    function goToPage(page) {
+        if(page < 1 || page > Math.ceil(FILTERED_TALENTS.length / PER_PAGE)) return;
+        CURRENT_PAGE = page;
+        renderGrid();
+        document.getElementById("talentGrid").scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+</script>

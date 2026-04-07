@@ -1,4 +1,11 @@
 export const MASTER_DATA = {
+  CITIES: [
+    "Jakarta", "Surabaya", "Bandung", "Medan", "Semarang", "Makassar", 
+    "Palembang", "Tangerang", "Depok", "Bekasi", "Bogor", "Denpasar (Bali)", 
+    "Yogyakarta", "Malang", "Surakarta (Solo)", "Balikpapan", "Banjarmasin", 
+    "Pontianak", "Samarinda", "Batam", "Pekanbaru", "Padang", "Bandar Lampung",
+    "Jambi", "Manado", "Mataram", "Kupang", "Ambon", "Jayapura", "Sorong", "Luar Indonesia / Other"
+  ],
   CATEGORY: ["Model", "Actor", "Voice Over", "Influencer", "Dancer", "Other"],
   ETHNICITY: ["Asian", "Caucasian", "Hispanic", "African Descent", "Mixed Race", "Other"],
   INTERESTS: [

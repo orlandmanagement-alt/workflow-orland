@@ -17,11 +17,23 @@ export function TabInfo({ editData, onChange }: TabInfoProps) {
             {/* INTERESTS MULTI-SELECT */}
             <div className="border border-slate-200 dark:border-slate-800 rounded-[14px] bg-white dark:bg-dark-card overflow-visible">
                <div className="flex justify-between items-center px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-                  <div className="font-black tracking-widest text-slate-500 text-xs">CAREER INTERESTS</div>
+                  <div className="font-black tracking-widest text-slate-500 text-xs">CAREER INTERESTS & CATEGORY</div>
                </div>
-               <div className="p-5">
+               <div className="p-5 flex flex-col gap-5">
+                   <div>
+                       <label className="text-[12px] font-extrabold text-slate-500 mb-2 block">Primary Category</label>
+                       <select value={editData?.category || ''} onChange={e => onChange('category', e.target.value)} className="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl p-3 outline-none text-[14px] font-bold dark:text-white focus:border-brand-500">
+                           <option value="">Select Category...</option>
+                           <option value="Model">Model</option>
+                           <option value="Actor">Actor</option>
+                           <option value="Dancer">Dancer</option>
+                           <option value="Singer">Singer</option>
+                           <option value="Influencer">Influencer</option>
+                           <option value="Host / MC">Host / MC</option>
+                       </select>
+                   </div>
                    <MultiSelect 
-                       label="What are you interested in?"
+                       label="What specific fields are you interested in?"
                        options={MASTER_DATA.INTERESTS} 
                        selected={editData.interests || []} 
                        onChange={(val) => onChange('interests', val)} 
@@ -58,7 +70,10 @@ export function TabInfo({ editData, onChange }: TabInfoProps) {
                      </div>
                      <div className="flex flex-col gap-1.5">
                         <label className="text-[11px] font-extrabold text-slate-400">Location</label>
-                        <input type="text" value={editData?.location || ''} onChange={e => onChange('location', e.target.value)} className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl p-3 outline-none text-[13px] font-bold dark:text-white focus:border-brand-500" placeholder="Jakarta..." />
+                        <select value={editData?.location || ''} onChange={e => onChange('location', e.target.value)} className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl p-3 outline-none text-[13px] font-bold dark:text-white focus:border-brand-500">
+                             <option value="">Select...</option>
+                             {MASTER_DATA.CITIES?.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                      </div>
                      <div className="flex flex-col gap-1.5">
                         <label className="text-[11px] font-extrabold text-slate-400">Ethnicity</label>

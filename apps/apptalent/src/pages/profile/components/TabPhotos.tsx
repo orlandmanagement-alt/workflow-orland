@@ -5,9 +5,10 @@ interface TabPhotosProps {
     data: any;
     uploading: any;
     handleUpload: (e: React.ChangeEvent<HTMLInputElement>, type: string, index?: number) => void;
+    handleDelete: (type: string, index?: number) => void;
 }
 
-export function TabPhotos({ data, uploading, handleUpload }: TabPhotosProps) {
+export function TabPhotos({ data, uploading, handleUpload, handleDelete }: TabPhotosProps) {
     const additionalPhotos = data?.additional_photos || [];
     const addonSlots = [0, 1, 2];
 
@@ -37,6 +38,13 @@ export function TabPhotos({ data, uploading, handleUpload }: TabPhotosProps) {
                                </div>
                                <span className="text-white text-[10px] font-bold tracking-wider uppercase">Replace</span>
                            </div>
+                           <button 
+                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(type, index); }} 
+                               className="absolute top-2 right-2 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white p-2 border border-red-200 hover:border-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-20"
+                               title="Delete Photo"
+                           >
+                               <Trash2 size={16} />
+                           </button>
                         </>
                     ) : (
                         <div className="text-center z-10 flex flex-col items-center text-slate-400 group-hover:text-brand-500 transition-colors border-2 border-transparent group-hover:border-brand-500/30 border-dashed w-full h-full justify-center">

@@ -3,7 +3,7 @@ import { useAuthStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import { 
   Download, Phone, Mail, Instagram,
-  Camera, Save, Loader2, Share2, Link as LinkIcon
+  Camera, Save, Loader2, Share2, Link as LinkIcon, Trash2
 } from 'lucide-react';
 
 // Components
@@ -135,6 +135,31 @@ export default function ProfileDashboard() {
       }
   };
 
+  const handleDeletePhoto = async (photoType: string, index?: number) => {
+      if (!confirm("Hapus foto ini?")) return;
+      let updatePayload = { ...editData };
+      
+      if (photoType === 'additional_photos' && index !== undefined) {
+          const newAddPhotos = [...(updatePayload.additional_photos || [])];
+          newAddPhotos[index] = "";
+          updatePayload.additional_photos = newAddPhotos.filter(Boolean);
+      } else {
+          updatePayload[photoType] = "";
+      }
+      
+      try {
+          const updateRes: any = await apiRequest('/talents/me', { method: 'PUT', body: JSON.stringify(updatePayload) });
+          if (updateRes.status === 'ok') {
+              setData(updateRes.data);
+              handleFieldChange(photoType, updatePayload[photoType]);
+              if(index !== undefined) handleFieldChange('additional_photos', updatePayload.additional_photos);
+              setToastMessage('Foto berhasil dihapus');
+          }
+      } catch (err) {
+          alert('Gagal menghapus foto.');
+      }
+  };
+
   const handleSaveChanges = async () => {
       setSaving(true);
       try {
@@ -211,24 +236,84 @@ export default function ProfileDashboard() {
         {/* SIDEBAR (Sticky on Desktop) */}
         <aside className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-[14px] p-5 shadow-[0_10px_30px_rgba(17,24,39,0.03)] sticky top-6 max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar lg:order-1 order-2">
            
-           <div className="mb-6 relative group overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-[14px] aspect-[4/5] flex items-center justify-center">
-              <input type="file" id="upload-headshot-sb" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'headshot')} disabled={uploading['headshot']} />
-              <label htmlFor="upload-headshot-sb" className="w-full h-full cursor-pointer absolute inset-0 z-10 flex flex-col justify-center items-center">
-                  {uploading['headshot'] && <Loader2 className="animate-spin text-white z-20" size={32} />}
-              </label>
-              {data?.headshot ? (
-                  <>
-                    <img src={data.headshot} alt="Headshot" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-white text-xs font-bold bg-white/20 backdrop-blur px-3 py-1.5 rounded-lg">Ganti Foto</span>
-                    </div>
-                  </>
-              ) : (
-                  <div className="text-slate-400 flex flex-col items-center">
-                      <Camera size={32} className="mb-2 opacity-50" />
-                      <span className="text-xs font-bold">Add Headshot</span>
-                  </div>
-              )}
+           <div className="mb-8 flex flex-col gap-3">
+               {/* MAIN HEADSHOT */}
+               <div className="relative group overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-[14px] aspect-[4/5] flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <input type="file" id="upload-headshot-sb" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'headshot')} disabled={uploading['headshot']} />
+                  <label htmlFor="upload-headshot-sb" className="w-full h-full cursor-pointer absolute inset-0 z-10 flex flex-col justify-center items-center">
+                      {uploading['headshot'] && <Loader2 className="animate-spin text-white z-20" size={32} />}
+                  </label>
+                  {data?.headshot ? (
+                      <>
+                        <img src={data.headshot} alt="Headshot" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span className="text-white text-[10px] font-black tracking-widest uppercase mb-1 drop-shadow-md">Headshot</span>
+                            <span className="text-white text-xs font-bold bg-white/20 px-3 py-1.5 rounded-lg border border-white/30">Ganti Foto</span>
+                        </div>
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePhoto('headshot'); }} className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-20 scale-95 hover:scale-105" title="Delete Photo">
+                           <Trash2 size={16} />
+                        </button>
+                      </>
+                  ) : (
+                      <div className="text-slate-400 flex flex-col items-center">
+                          <Camera size={32} className="mb-2 opacity-50" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Headshot</span>
+                      </div>
+                  )}
+               </div>
+
+               {/* COMPANION SHOTS */}
+               <div className="grid grid-cols-2 gap-3">
+                   {/* Side View */}
+                   <div className="relative group overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-[14px] aspect-[3/4] flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
+                       <input type="file" id="upload-side-sb" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'side_view')} disabled={uploading['side_view']} />
+                       <label htmlFor="upload-side-sb" className="w-full h-full cursor-pointer absolute inset-0 z-10 flex flex-col justify-center items-center">
+                           {uploading['side_view'] && <Loader2 className="animate-spin text-white z-20" size={24} />}
+                       </label>
+                       {data?.side_view ? (
+                           <>
+                             <img src={data.side_view} alt="Side View" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                 <span className="text-white text-[9px] font-black tracking-widest uppercase mb-1">Side View</span>
+                                 <span className="text-white text-[10px] font-bold bg-white/20 px-2 py-1 rounded border border-white/30">Ganti</span>
+                             </div>
+                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePhoto('side_view'); }} className="absolute top-1.5 right-1.5 bg-rose-500 hover:bg-rose-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-20 scale-95 hover:scale-105">
+                               <Trash2 size={12} />
+                             </button>
+                           </>
+                       ) : (
+                           <div className="text-slate-400 flex flex-col items-center text-center">
+                               <Camera size={20} className="mb-1 opacity-50" />
+                               <span className="text-[9px] font-black uppercase tracking-widest">Side</span>
+                           </div>
+                       )}
+                   </div>
+                   
+                   {/* Full Height */}
+                   <div className="relative group overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-[14px] aspect-[3/4] flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
+                       <input type="file" id="upload-full-sb" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'full_height')} disabled={uploading['full_height']} />
+                       <label htmlFor="upload-full-sb" className="w-full h-full cursor-pointer absolute inset-0 z-10 flex flex-col justify-center items-center">
+                           {uploading['full_height'] && <Loader2 className="animate-spin text-white z-20" size={24} />}
+                       </label>
+                       {data?.full_height ? (
+                           <>
+                             <img src={data.full_height} alt="Full Height" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                 <span className="text-white text-[9px] font-black tracking-widest uppercase mb-1">Full Ht.</span>
+                                 <span className="text-white text-[10px] font-bold bg-white/20 px-2 py-1 rounded border border-white/30">Ganti</span>
+                             </div>
+                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePhoto('full_height'); }} className="absolute top-1.5 right-1.5 bg-rose-500 hover:bg-rose-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-20 scale-95 hover:scale-105">
+                               <Trash2 size={12} />
+                             </button>
+                           </>
+                       ) : (
+                           <div className="text-slate-400 flex flex-col items-center text-center">
+                               <Camera size={20} className="mb-1 opacity-50" />
+                               <span className="text-[9px] font-black uppercase tracking-widest">Full Ht.</span>
+                           </div>
+                       )}
+                   </div>
+               </div>
            </div>
 
            <div className="border-t border-slate-100 dark:border-slate-800 pt-5 text-[13px] font-medium text-slate-700 dark:text-slate-300 space-y-3">
@@ -286,7 +371,7 @@ export default function ProfileDashboard() {
                {/* TAB CONTENT RENDERING */}
                <div className="p-4 md:p-6 min-h-[400px]">
                    {activeTab === 'info' && <TabInfo editData={editData} onChange={handleFieldChange} />}
-                   {activeTab === 'photos' && <TabPhotos data={data} uploading={uploading} handleUpload={handleUploadPhoto} />}
+                   {activeTab === 'photos' && <TabPhotos data={data} uploading={uploading} handleUpload={handleUploadPhoto} handleDelete={handleDeletePhoto} />}
                    {activeTab === 'assets' && <TabAssets editData={editData} onChange={handleFieldChange} />}
                    {activeTab === 'credits' && <TabCredits data={data} />}
                </div>

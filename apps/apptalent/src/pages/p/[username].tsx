@@ -1,137 +1,239 @@
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Instagram, Youtube, Twitter, Download, MessageCircle, Star } from 'lucide-react';
+import { Instagram, Youtube, Twitter, Download, MessageCircle, Star, ChevronLeft, MapPin, CheckCircle2, Play } from 'lucide-react';
+import { apiRequest } from '@/lib/api';
 
 export default function PublicProfile() {
   const { username } = useParams();
-  
-  // NANTINYA: Data ini akan di-fetch dari API (api.get(`/public/talent/${username}`))
-  // Untuk UI/UX saat ini, kita gunakan data simulasi agar Anda bisa melihat kemegahannya.
-  const talent = {
-    name: username?.replace(/-/g, ' ').toUpperCase() || 'ENDANG WIRA SURYA',
-    category: 'ACTOR & COMMERCIAL MODEL',
-    height: '170 cm',
-    weight: '65 kg',
-    gender: 'Male',
-    bio: 'Berpengalaman lebih dari 5 tahun di industri kreatif. Telah membintangi berbagai TVC nasional dan film layar lebar. Memiliki karakter wajah yang kuat dan adaptif terhadap berbagai peran.',
-    main_photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=800&h=1000',
-    gallery: [
-      'https://images.unsplash.com/photo-1492288991661-058aa541ff43?auto=format&fit=crop&q=80&w=400&h=500',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400&h=500',
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=500'
-    ]
-  };
+  const [talent, setTalent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+     const fetchTalentInfo = async () => {
+         setLoading(true);
+         try {
+             // Assuming username in URL is actually the talent_id for precise queries
+             const res: any = await apiRequest(`/public/talents/${username}`);
+             if (res.status === 'ok') {
+                 setTalent(res.data);
+             } else {
+                 console.error("Failed to load talent:", res.message);
+                 setTalent(null); // Will trigger fallback or not found state if implemented
+             }
+         } catch (error) {
+             console.error("API error", error);
+         } finally {
+             setLoading(false);
+         }
+     };
+
+     if (username) fetchTalentInfo();
+  }, [username]);
 
   const handleBooking = () => {
-    // 1-Click Booking langsung ke WhatsApp Admin Orland
-    const message = `Halo Orland Management, saya tertarik untuk mem-booking talent: ${talent.name}. Bisa infokan rate card & jadwalnya?`;
+    const message = `Halo Orland Management, saya tertarik untuk bekerja sama dengan talent: ${talent?.full_name}. Boleh infokan rate card & jadwalnya?`;
     window.open(`https://wa.me/6281234567890?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  // Extract Youtube ID
+  const getYoutubeId = (url: string) => {
+      const match = url?.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+      return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  if (loading || !talent) {
+      return (
+          <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+              <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="font-bold text-slate-500 animate-pulse">Memuat Profil Talent...</p>
+          </div>
+      );
+  }
+
+  // Compile all photos
+  const gallery = [talent.side_view, talent.full_height, ...(talent.additional_photos || [])].filter(Boolean);
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0a192f] font-sans selection:bg-brand-500 selection:text-white pb-20">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#080d19] font-sans selection:bg-brand-500 selection:text-white pb-32">
         
-        {/* HEADER & MAIN PHOTO (HERO) */}
-        <div className="relative h-[60vh] md:h-[70vh] w-full bg-slate-900 overflow-hidden">
-            <img src={talent.main_photo} alt={talent.name} className="absolute inset-0 w-full h-full object-cover object-top opacity-80" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
-            
-            {/* Navigasi Klien */}
-            <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-10">
-                <span className="text-white font-extrabold text-xl tracking-tighter">ORLAND<span className="font-light">TALENT</span></span>
-                <button className="bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-white hover:text-slate-900 transition-colors">
-                    Download PDF
+        {/* PUBLIC HEADER NAV */}
+        <nav className="fixed top-0 left-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50">
+            <div className="max-w-6xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+                <a href="/" className="text-slate-900 dark:text-white font-extrabold text-xl tracking-tighter flex items-center gap-2">
+                    ORLAND<span className="font-light text-slate-500">TALENT</span>
+                </a>
+                <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white text-xs font-bold rounded-full transition-colors border border-slate-200 dark:border-slate-700">
+                    <Download size={14} /> Comp Card
                 </button>
             </div>
+        </nav>
 
-            {/* Judul Talent */}
-            <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-10">
-                <div className="flex items-center gap-2 mb-2">
-                    <Star className="text-amber-400 fill-amber-400" size={16} />
-                    <span className="text-amber-400 text-xs font-bold uppercase tracking-widest">Verified Pro</span>
+        {/* HERO SECTION */}
+        <div className="pt-24 px-4 md:px-8 max-w-6xl mx-auto mb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 xl:gap-12 items-end">
+                <div>
+                   <div className="flex items-center gap-2 mb-3">
+                       <span className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-1.5"><CheckCircle2 size={14}/> Verified Pro</span>
+                       {talent.location && <span className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5"><MapPin size={12}/> {talent.location}</span>}
+                   </div>
+                   <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white leading-none tracking-tighter mb-4">{talent.full_name}</h1>
+                   <p className="text-brand-600 dark:text-brand-400 font-extrabold tracking-widest uppercase text-sm md:text-lg">{talent.category}</p>
                 </div>
-                <h1 className="text-4xl md:text-6xl font-black text-white leading-none tracking-tight mb-2">{talent.name}</h1>
-                <p className="text-brand-400 font-bold tracking-widest uppercase text-sm md:text-base">{talent.category}</p>
+
+                {/* Main Headshot Image - Elegant Float */}
+                 <div className="hidden lg:block relative z-10 -mb-20">
+                     <div className="relative aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800">
+                         <img src={talent.headshot} alt={talent.full_name} className="w-full h-full object-cover object-center" />
+                     </div>
+                     {/* Decorative Elements */}
+                     <div className="absolute -z-10 top-10 -right-10 w-full h-full bg-brand-500 rounded-3xl opacity-10 blur-2xl"></div>
+                 </div>
             </div>
         </div>
 
-        {/* CONTENT & STATS */}
-        <div className="max-w-5xl mx-auto px-6 md:px-12 -mt-8 relative z-20">
-            <div className="bg-white dark:bg-dark-card rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 p-6 md:p-10 flex flex-col md:flex-row gap-10">
+        {/* MAIN CONTENT DIVIDER */}
+        <div className="max-w-6xl mx-auto px-4 md:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 xl:gap-12">
                 
-                {/* Kolom Kiri: Stats */}
-                <div className="md:w-1/3 space-y-8">
-                    <div>
-                        <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Physical Stats</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                                <span className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Height</span>
-                                <span className="font-bold text-lg dark:text-white">{talent.height}</span>
-                            </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
-                                <span className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Weight</span>
-                                <span className="font-bold text-lg dark:text-white">{talent.weight}</span>
-                            </div>
-                        </div>
+                {/* LEFT CONTENT AREA */}
+                <div className="space-y-12">
+                    
+                    {/* Mobile Headshot */}
+                    <div className="lg:hidden relative aspect-[3/4] rounded-3xl overflow-hidden shadow-xl mb-8">
+                         <img src={talent.headshot} alt={talent.full_name} className="w-full h-full object-cover object-center" />
                     </div>
 
-                    <div>
-                        <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Social Media</h3>
-                        <div className="flex gap-3">
-                            <a href="#" className="h-12 w-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-pink-600 transition-colors"><Instagram size={20} /></a>
-                            <a href="#" className="h-12 w-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-red-600 transition-colors"><Youtube size={20} /></a>
-                            <a href="#" className="h-12 w-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-blue-400 transition-colors"><Twitter size={20} /></a>
+                    {/* BIO */}
+                    <section>
+                        <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">About</h3>
+                        <p className="text-lg text-slate-700 dark:text-slate-300 leading-relaxed font-medium">{talent.bio}</p>
+                    </section>
+                    
+                    {/* SHOWREELS (YOUTUBE) */}
+                    {talent.showreels?.length > 0 && (
+                    <section>
+                        <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Play size={16}/> Showreels</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {talent.showreels.map((url: string, idx: number) => {
+                                const vidId = getYoutubeId(url);
+                                if (!vidId) return null;
+                                return (
+                                    <div key={idx} className="w-full aspect-video rounded-2xl overflow-hidden shadow-sm bg-black group relative">
+                                        <iframe 
+                                            src={`https://www.youtube.com/embed/${vidId}?rel=0`} 
+                                            title="YouTube" frameBorder="0" allowFullScreen loading="lazy"
+                                            className="absolute inset-0 w-full h-full z-10"
+                                        ></iframe>
+                                    </div>
+                                )
+                            })}
                         </div>
-                    </div>
+                    </section>
+                    )}
+
+                    {/* GALLERY */}
+                    {gallery.length > 0 && (
+                    <section>
+                        <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Portfolio Gallery</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {gallery.map((img: string, idx: number) => (
+                                <div key={idx} className="aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer group shadow-sm bg-slate-100 dark:bg-slate-800">
+                                    <img src={img} alt={`Gallery ${idx}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                    )}
+
+                    {/* EXPERIENCE TIMELINE */}
+                    {talent.experiences?.length > 0 && (
+                    <section className="bg-white dark:bg-slate-800/50 rounded-3xl p-6 md:p-8 border border-slate-100 dark:border-slate-700/50 shadow-sm">
+                        <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8">Work Experience</h3>
+                        <div className="relative border-l-2 border-slate-200 dark:border-slate-700 ml-3 space-y-8">
+                            {talent.experiences.map((exp: any, i: number) => (
+                                <div key={i} className="relative pl-8 group">
+                                    <div className="absolute w-3.5 h-3.5 rounded-full bg-white dark:bg-slate-800 border-2 border-brand-500 -left-[9px] top-1.5" />
+                                    <div>
+                                        <div className="inline-block bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs font-black px-3 py-1 rounded-lg mb-2">
+                                           {exp.year}
+                                        </div>
+                                        <h4 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{exp.title}</h4>
+                                        <p className="text-xs font-black tracking-widest uppercase text-brand-600 dark:text-brand-400 mb-2">{exp.company}</p>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400">{exp.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                    )}
                 </div>
 
-                {/* Kolom Kanan: Bio & Gallery */}
-                <div className="md:w-2/3">
-                    <h3 className="text-xl font-bold dark:text-white mb-3">About</h3>
-                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-8">{talent.bio}</p>
-
-                    <h3 className="text-xl font-bold dark:text-white mb-4">Portfolio Gallery</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {/* CLIENT REVIEWS (NEW FEATURE) */}
-                    <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
-                        <h3 className="text-xl font-bold dark:text-white mb-6 flex items-center"><Star className="mr-2 text-amber-400 fill-amber-400" size={20}/> Ulasan Klien (3)</h3>
-                        <div className="space-y-4">
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div><p className="font-bold text-sm dark:text-white">Timo Tjahjanto (Director)</p><p className="text-xs text-slate-500">Film Layar Lebar</p></div>
-                                    <div className="flex text-amber-400"><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/></div>
-                                </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 italic">"Sangat profesional, on-time, dan pendalaman karakternya luar biasa tajam. Will definitely work with him again."</p>
+                {/* RIGHT SIDEBAR (Sticky Info) */}
+                <aside className="lg:mt-40 space-y-6">
+                    
+                    {/* STATS CARD */}
+                    <div className="bg-white dark:bg-slate-800/50 rounded-3xl p-6 border border-slate-100 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Physical Attributes</h3>
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 flex flex-col items-center text-center justify-center border border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Height</span>
+                                <span className="text-xl font-black text-slate-900 dark:text-white">{talent.height} <span className="text-xs text-slate-400 font-bold">cm</span></span>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div><p className="font-bold text-sm dark:text-white">Tokopedia Production Team</p><p className="text-xs text-slate-500">TVC Ramadhan 2025</p></div>
-                                    <div className="flex text-amber-400"><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/><Star size={14} className="fill-amber-400"/></div>
-                                </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 italic">"Kerja bareng talent ini sangat fun! Energi di set langsung naik, arahan sutradara dieksekusi dengan sempurna."</p>
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 flex flex-col items-center text-center justify-center border border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Weight</span>
+                                <span className="text-xl font-black text-slate-900 dark:text-white">{talent.weight} <span className="text-xs text-slate-400 font-bold">kg</span></span>
                             </div>
                         </div>
+
+                        <ul className="space-y-3 text-sm divide-y divide-slate-100 dark:divide-slate-800">
+                            {talent.gender && <li className="flex justify-between pt-3"><span className="text-slate-500 font-medium">Gender</span><span className="font-bold text-slate-900 dark:text-white">{talent.gender}</span></li>}
+                            {talent.ethnicity && <li className="flex justify-between pt-3"><span className="text-slate-500 font-medium">Ethnicity</span><span className="font-bold text-slate-900 dark:text-white">{talent.ethnicity}</span></li>}
+                        </ul>
                     </div>
 
-                        {talent.gallery.map((img, idx) => (
-                            <div key={idx} className="aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer group">
-                                <img src={img} alt="Gallery" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    {/* SKILLS & INTERESTS */}
+                    <div className="bg-white dark:bg-slate-800/50 rounded-3xl p-6 border border-slate-100 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                        {talent.interests?.length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Interests</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {talent.interests.map((item: string, i: number) => (
+                                        <span key={i} className="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg text-xs font-bold">{item}</span>
+                                    ))}
+                                </div>
                             </div>
-                        ))}
+                        )}
+                        {talent.skills?.length > 0 && (
+                            <div>
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Special Skills</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {talent.skills.map((item: string, i: number) => (
+                                        <span key={i} className="bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-800">{item}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
 
+                    {/* SOCIALS */}
+                    <div className="flex gap-3 justify-center pt-2">
+                        <a href="#" className="h-12 w-12 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-pink-600 hover:scale-110 transition-all"><Instagram size={20} /></a>
+                        <a href="#" className="h-12 w-12 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-red-600 hover:scale-110 transition-all"><Youtube size={20} /></a>
+                    </div>
+                </aside>
             </div>
         </div>
 
-        {/* 1-CLICK BOOKING BAR (Sticky Bottom for Clients) */}
-        <div className="fixed bottom-0 left-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 p-4 z-50">
-            <div className="max-w-5xl mx-auto flex justify-between items-center">
+        {/* 1-CLICK BOOKING CTA (Sticky Bottom) */}
+        <div className="fixed bottom-0 left-0 w-full bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 p-4 z-50">
+            <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="hidden md:block">
-                    <p className="font-bold dark:text-white text-sm">Tertarik dengan Talent ini?</p>
-                    <p className="text-xs text-slate-500">Hubungi representatif Orland Management.</p>
+                    <p className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Interested in {talent.full_name} for your project?</p>
+                    <p className="text-sm font-medium text-slate-500">Contact our Orland Management reps for rates and availability.</p>
                 </div>
-                <button onClick={handleBooking} className="w-full md:w-auto px-8 py-3.5 bg-green-600 hover:bg-green-700 text-white font-black rounded-xl shadow-lg shadow-green-600/30 flex items-center justify-center transition-transform hover:scale-105">
-                    <MessageCircle size={20} className="mr-2" /> 1-Click Booking via WhatsApp
+                {/* Note: Contact info is abstracted purely to the agency via this CTA, completely hiding direct Talent phone/emails */}
+                <button onClick={handleBooking} className="w-full md:w-auto px-8 py-3.5 bg-[#25D366] hover:bg-[#1ebd5a] text-white font-black rounded-2xl shadow-[0_10px_30px_rgba(37,211,102,0.3)] flex items-center justify-center transition-transform hover:scale-105 group">
+                    <MessageCircle size={20} className="mr-2 group-hover:animate-bounce" /> Message Agency via WhatsApp
                 </button>
             </div>
         </div>

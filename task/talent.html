@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talent Profile • Orland Management</title>
+
+  <!-- CropperJS (3rd party) -->
+  <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css">
+  <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
+
+  <style>
+/* ===== Talent Profile FINAL (CSS) ===== */
+:root{
+  --bg:#f4f6fb; --card:#ffffff; --muted:#6b7280; --text:#111827; --line:#e5e7eb;
+  --danger-bg:#fde2e2; --danger:#b42318; --primary:#7c3aed;
+  --btn:#2563eb; --btn2:#1d4ed8; --chip:#eef2ff; --shadow:0 10px 30px rgba(17,24,39,.08);
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:var(--bg)}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 14px 40px}
+
+/* alert bar */
+.alert{display:flex;gap:10px;align-items:center;background:var(--danger-bg);color:var(--danger);
+  border:1px solid rgba(180,35,24,.18);padding:10px 12px;border-radius:12px;font-size:13px;margin-bottom:14px}
+.alert .dot{width:10px;height:10px;border-radius:999px;background:var(--danger);
+  box-shadow:0 0 0 4px rgba(180,35,24,.15);flex:0 0 auto}
+
+/* grid */
+.grid{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+/* LEFT PANEL */
+.side{padding:14px}
+.side h4{margin:0 0 10px;font-size:12px;letter-spacing:.08em;color:#374151}
+.ph{border:1px dashed #cbd5e1;border-radius:16px;background:linear-gradient(180deg,#f8fafc,#ffffff);padding:12px}
+.avatar{width:100%;aspect-ratio:4/5;border-radius:16px;background:
+  radial-gradient(circle at 45% 35%, #dbeafe 0 22%, transparent 23%),
+  radial-gradient(circle at 50% 28%, #cbd5e1 0 18%, transparent 19%),
+  linear-gradient(#eef2f7,#f8fafc);
+  border:1px solid #e2e8f0;position:relative;overflow:hidden;cursor:pointer}
+.avatar::after{content:"";position:absolute;inset:auto 0 0 0;height:42%;
+  background:radial-gradient(ellipse at 50% 0%, #cbd5e1 0 60%, transparent 61%);opacity:.75}
+
+/* mini row */
+.miniRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.mini{border:1px dashed #cbd5e1;border-radius:14px;padding:10px;background:#fbfdff}
+.mini .miniBox{width:100%;aspect-ratio:4/3;border-radius:12px;border:1px solid #e2e8f0;
+  background:linear-gradient(#f1f5f9,#ffffff);position:relative;cursor:pointer}
+.mini .miniBox::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 50% 45%, rgba(148,163,184,.55) 0 10%, transparent 11%),
+  radial-gradient(circle at 45% 35%, rgba(148,163,184,.45) 0 8%, transparent 9%);opacity:.8}
+.cap{font-size:11px;color:var(--muted);margin:8px 0 10px;line-height:1.35}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  border:0;padding:10px 12px;border-radius:12px;cursor:pointer;background:var(--btn);
+  color:#fff;font-weight:600;font-size:13px}
+.btn:hover{background:var(--btn2)}
+.btn.ghost{background:#f1f5f9;color:#0f172a;border:1px solid #e2e8f0}
+
+.block{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+
+.kv{display:grid;grid-template-columns:1fr;gap:8px;font-size:13px;color:#0f172a}
+.kv .item{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid #eef2f7;
+  border-radius:12px;background:#fbfdff;align-items:center}
+.kv .item span:first-child{color:var(--muted)}
+.kv .item input{width:100%;max-width:210px;border:1px solid #e5e7eb;border-radius:10px;
+  padding:8px 10px;font-size:13px;outline:none;text-align:right;background:#fff}
+.kv .item input:focus{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.12)}
+.linkAdd{color:var(--btn);font-weight:600;cursor:pointer;white-space:nowrap}
+
+/* MAIN */
+.main{padding:14px}
+.topRow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.titleWrap h1{margin:0;font-size:28px;line-height:1.1;letter-spacing:-.02em}
+.subMeta{display:flex;gap:10px;align-items:center;margin-top:8px;color:var(--muted);font-size:13px;flex-wrap:wrap}
+.rating{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
+  background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-weight:700}
+.star{width:14px;height:14px;display:inline-block;background:conic-gradient(from 0deg,#fbbf24,#f59e0b,#fbbf24);
+  clip-path:polygon(50% 0%, 62% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 38% 35%)}
+
+/* Tabs */
+.tabs{display:flex;gap:18px;margin-top:14px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.tab{font-weight:700;color:var(--muted);font-size:14px;position:relative;padding-bottom:10px;cursor:pointer;user-select:none}
+.tab.active{color:#0f172a}
+.tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-11px;height:3px;border-radius:999px;background:var(--primary)}
+
+/* progress bar */
+.progressWrap{margin-top:14px;border:1px solid #fde68a;background:#fffbeb;border-radius:14px;padding:12px}
+.progressHead{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:13px;color:#92400e;
+  font-weight:800;margin-bottom:10px}
+.bar{height:10px;border-radius:999px;background:#feecc8;overflow:hidden;border:1px solid rgba(146,64,14,.12)}
+.bar>div{height:100%;width:0%;background:linear-gradient(90deg,#fb7185,#f59e0b);border-radius:999px;transition:width .25s ease}
+.hint{margin-top:10px;font-size:13px;color:#78350f;display:flex;justify-content:space-between;gap:10px;
+  align-items:center;flex-wrap:wrap}
+.hint a{color:#1d4ed8;text-decoration:none;font-weight:700}
+
+/* Sections */
+.section{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:visible}
+.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;background:#f8fafc;
+  border-bottom:1px solid var(--line)}
+.sectionHead .label{font-weight:900;letter-spacing:.06em;font-size:12px;color:#374151}
+.sectionHead .add{font-weight:900;color:var(--btn);cursor:pointer;font-size:13px}
+.sectionBody{padding:12px;font-size:14px;color:var(--muted);overflow:visible}
+.empty{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px;border:1px dashed #cbd5e1;
+  border-radius:12px;background:#fbfdff;color:#64748b}
+
+/* two column fields */
+.twoCol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{border:1px solid #eef2f7;border-radius:12px;padding:10px 10px;background:#fff}
+.field .k{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:800}
+.field .v{font-size:14px;color:#0f172a;font-weight:900}
+
+/* helpers UI */
+.rowHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.miniBtn{border:1px solid #e2e8f0;background:#fff;color:#0f172a;font-weight:900;font-size:12px;padding:7px 10px;
+  border-radius:10px;cursor:pointer}
+.miniBtn.primary{background:var(--btn);border-color:transparent;color:#fff}
+.miniBtn:hover{filter:brightness(.98)}
+
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.formGrid{grid-template-columns:1fr}}
+.frow{display:flex;flex-direction:column;gap:6px}
+.frow label{font-size:12px;color:var(--muted);font-weight:900}
+.frow input,.frow select,.frow textarea{border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;outline:none;
+  font-size:13px;background:#fff;font:inherit}
+.frow textarea{min-height:92px;resize:vertical}
+.frow input:focus,.frow select:focus,.frow textarea:focus{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.12)}
+
+/* panel handling */
+.panel{display:none}
+.panel.active{display:block}
+
+/* dropdown multi */
+.dropdown{position:relative;margin-bottom:10px;z-index:1}
+.dropdown.is-open{z-index:100000}
+.dd-btn{width:100%;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:#fff;
+  padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:900;font-size:13px;color:#0f172a}
+.dd-btn:hover{background:#f9fafb}
+.dd-panel{position:absolute;left:0;right:0;top:calc(100% + 6px);border:1px solid var(--line);background:#fff;
+  border-radius:14px;box-shadow:var(--shadow);padding:8px;z-index:99999;max-height:260px;overflow:auto}
+.dd-item{display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:10px;cursor:pointer}
+.dd-item:hover{background:#f8fafc}
+.dd-item input{transform:scale(1.05)}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{background:var(--chip);border:1px solid #e0e7ff;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;
+  color:#111827;display:inline-flex;align-items:center;gap:8px}
+.chip .x{width:18px;height:18px;border-radius:999px;display:grid;place-items:center;background:#fff;border:1px solid var(--line);
+  color:#ef4444;font-weight:900;cursor:pointer;line-height:1}
+.chip .x:hover{background:#fee2e2;border-color:#fecaca}
+
+.mutedHelp{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.4}
+
+/* skill input */
+.skillInput{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff}
+.skillInput input{border:none;outline:none;flex:1;font-size:13px}
+.skillInput .cc{font-size:11px;color:var(--muted);font-weight:900;white-space:nowrap}
+
+/* photo filled state */
+.avatar.hasPhoto,.miniBox.hasPhoto{background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important}
+.avatar.hasPhoto::after,.miniBox.hasPhoto::before{display:none}
+
+/* social list */
+.socialList{display:grid;gap:10px}
+.socialRow{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid #eef2f7;border-radius:12px;
+  padding:8px 10px;background:#fbfdff;font-size:13px}
+.socialTag{font-weight:900;color:#0f172a;flex:0 0 auto}
+.socialUrl{color:#2563eb;font-weight:900;word-break:break-all;text-align:right;text-decoration:none}
+.socialUrl:hover{text-decoration:underline}
+
+/* MODAL */
+.modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal[hidden]{display:none}
+.modalBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}
+.modalCard{position:relative;width:100%;max-width:720px;background:#fff;border-radius:18px;box-shadow:0 25px 60px rgba(0,0,0,.25);
+  overflow:hidden}
+.modalHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.modalHead h3{margin:0;font-size:16px;font-weight:900}
+.modalClose{border:none;background:transparent;font-size:22px;cursor:pointer;color:#64748b}
+.modalBody{padding:14px 16px}
+
+/* Progress modal layout */
+.progress-layout{display:flex;gap:26px;align-items:flex-start}
+@media(max-width:720px){.progress-layout{flex-direction:column}}
+.progress-left{width:200px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;text-align:center}
+.progress-chart-wrapper{width:150px;height:150px;position:relative}
+.progress-chart{width:100%;height:100%;border-radius:50%;background:conic-gradient(#22c55e var(--pct), #e5e7eb 0);
+  display:flex;align-items:center;justify-content:center;position:relative}
+.progress-chart::before{content:"";position:absolute;inset:8px;background:#fff;border-radius:50%}
+.progress-chart-inner{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:6px}
+.progress-chart-inner img{width:78px;height:78px;border-radius:50%;object-fit:cover;border:3px solid #fff;
+  box-shadow:0 2px 12px rgba(0,0,0,.12)}
+.progress-chart-inner span{font-weight:900;color:#16a34a}
+.rating-info{margin-top:12px;background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12px;
+  color:var(--muted);text-align:left;width:100%}
+.rating-info strong{color:#0f172a;display:block;margin-bottom:4px}
+
+.progress-right{flex:1;display:flex;flex-direction:column;gap:14px}
+.prog-item{display:flex;flex-direction:column;gap:8px}
+.prog-header{display:flex;justify-content:space-between;align-items:center;font-weight:900}
+.prog-pct{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#f1f5f9;color:var(--muted)}
+.prog-desc{font-size:12px;color:var(--muted);line-height:1.4}
+.prog-bar-bg{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+.prog-bar-fill{height:100%;width:var(--p);background:#22c55e;border-radius:999px;transition:width .3s ease}
+.prog-link{color:#2563eb;font-size:12px;font-weight:900;cursor:pointer;text-decoration:none}
+.prog-link:hover{text-decoration:underline}
+
+.pill-save{border:none;cursor:pointer;font-weight:900;background:#2563eb;color:#fff;padding:10px 14px;border-radius:999px}
+.pill-cancel{border:1px solid var(--line);cursor:pointer;font-weight:900;background:#fff;color:#0f172a;padding:10px 14px;border-radius:999px}
+
+/* Photos panel */
+.photoGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media(max-width:980px){.photoGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.photoGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.photoTile{border:1px solid #e5e7eb;border-radius:14px;background:#fff;overflow:hidden}
+.tileHead{padding:10px 12px;font-weight:900;color:#6b7280;font-size:12px;letter-spacing:.08em;background:#f8fafc;
+  border-bottom:1px solid #e5e7eb}
+.tileBody{position:relative;height:220px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff}
+.tileBody:hover{background:#f8fafc}
+.tileImg{width:100%;height:100%;object-fit:cover;display:none}
+.tileEmpty{width:100%;height:100%;border:1px dashed #cbd5e1;border-radius:12px;margin:12px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;background:#fbfdff}
+.xPhoto{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:999px;border:none;background:rgba(255,255,255,.92);
+  cursor:pointer;font-weight:900;color:#ef4444;display:grid;place-items:center}
+
+.addGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:10px}
+@media(max-width:980px){.addGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.addGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.thumb{border:1px solid #e5e7eb;border-radius:14px;background:#fff;overflow:hidden;position:relative;aspect-ratio:1}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:999px;border:none;background:rgba(255,255,255,.92);
+  cursor:pointer;font-weight:900;color:#ef4444;display:grid;place-items:center}
+
+/* Assets panel */
+.assetsGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:980px){.assetsGrid{grid-template-columns:1fr}}
+.assetBox{border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:12px}
+.assetTitle{font-weight:900;color:#6b7280;font-size:12px;letter-spacing:.08em}
+.assetRow{display:flex;gap:10px;margin-top:10px}
+.assetRow input{flex:1;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px}
+.assetList{margin-top:12px;display:grid;gap:12px}
+.assetItem{border:1px dashed #e5e7eb;border-radius:14px;padding:10px;background:#fbfdff;position:relative}
+.assetItem .x{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:999px;border:none;background:#fff;
+  cursor:pointer;font-weight:900;color:#ef4444}
+.ytFrame{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000}
+audio{width:100%;margin-top:6px}
+
+/* Credits panel */
+.creditsList{display:grid;gap:10px;margin-top:12px}
+.creditCard{border:1px solid #e5e7eb;border-radius:14px;padding:14px;background:#fff;position:relative}
+.creditCard .x{position:absolute;top:12px;right:12px;border:none;background:transparent;cursor:pointer;font-weight:900;color:#6b7280}
+.creditCard .x:hover{color:#ef4444}
+.creditTop{display:flex;justify-content:space-between;gap:10px;padding-right:20px;align-items:baseline}
+.creditTop b{font-size:15px;color:#111827}
+.creditMeta{color:#6b7280;font-size:12px;font-weight:900;margin-top:4px}
+.creditAbout{margin-top:8px;color:#374151;font-size:13px;line-height:1.5}
+.credit-form-box{border:1px dashed var(--btn);background:#eff6ff;padding:14px;border-radius:14px;margin-top:12px}
+
+/* Responsive: stack */
+@media (max-width:900px){
+  .grid{grid-template-columns:1fr}
+  .side{order:1}
+  .main{order:0}
+}
+
+/* Sidebar photo remove */
+.photoWrap{position:relative}
+.photoX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(255,255,255,.92);cursor:pointer;font-weight:900;color:#ef4444;display:none;place-items:center;z-index:5}
+.photoWrap.hasPhoto .photoX{display:grid}
+.photoX:hover{background:#fee2e2;border-color:#fecaca}
+
+/* Mobile form forced 2 columns */
+@media (max-width:520px){
+  .formGrid{grid-template-columns:1fr 1fr!important}
+  .dd-panel.is-fixed{position:fixed!important;left:12px!important;right:12px!important;top:var(--dd-top,120px)!important;
+    width:auto!important;max-height:min(60vh,340px);overflow:auto;z-index:200000!important}
+}
+@media (max-width:360px){
+  .formGrid{grid-template-columns:1fr 1fr!important;max-width:100px}
+}
+
+/* Multi select button text */
+.dd-btn .dd-value{font-weight:800;color:#0f172a}
+.dd-btn .dd-placeholder{color:#6b7280;font-weight:800}
+
+/* Appearance multi section 1 column */
+.apMultiBlock{display:flex;flex-direction:column;gap:12px}
+.apMultiBlock .field{width:100%}
+
+/* appearance edit layout fix */
+#appearanceEdit .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#appearanceEdit .formGrid .frow:nth-last-child(3),
+#appearanceEdit .formGrid .frow:nth-last-child(2),
+#appearanceEdit .formGrid .frow:nth-last-child(1){grid-column:1 / -1}
+
+/* =========================================================
+   Mobile Hero Slider (MHS) - CSS
+========================================================= */
+.mhs{display:none;width:100%;position:relative;z-index:5;background:#0b1220;height:380px}
+@media (max-width:900px){.mhs{display:block}}
+@media (max-width:520px){.mhs{height:420px}}
+.mhs-viewport{position:absolute;inset:0;overflow:hidden}
+.mhs-track{height:100%;display:flex;transition:transform 260ms ease;will-change:transform}
+.mhs-slide{flex:0 0 100%;height:100%;position:relative;background:#0b1220}
+.mhs-img{width:100%;height:100%;object-fit:cover;display:block}
+.mhs-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.30) 0%,rgba(0,0,0,.08) 45%,rgba(0,0,0,.40) 100%);
+  pointer-events:none}
+.mhs-top{position:absolute;left:14px;right:14px;top:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:2}
+.mhs-pill{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.92);
+  border:1px solid rgba(255,255,255,.6);font-weight:900;color:#0f172a;line-height:1;backdrop-filter:blur(8px)}
+.mhs-topEdit{width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.92);
+  color:#0f172a;cursor:pointer;font-weight:1000;display:grid;place-items:center;line-height:1;backdrop-filter:blur(8px)}
+.mhs-topEdit:active{transform:scale(.98)}
+.mhs-arrow{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:999px;border:1px solid rgba(255,255,255,.35);
+  background:rgba(0,0,0,.25);color:#fff;cursor:pointer;z-index:2;display:grid;place-items:center;font-size:20px}
+.mhs-arrow:active{transform:translateY(-50%) scale(.98)}
+.mhs-arrow.prev{left:10px}
+.mhs-arrow.next{right:10px}
+.mhs-nameWrap{position:absolute;left:14px;right:14px;bottom:56px;z-index:2;text-align:center;color:#fff;font-weight:1000;
+  letter-spacing:-0.02em;text-shadow:0 8px 20px rgba(0,0,0,.45)}
+.mhs-name{font-size:44px;line-height:1.02}
+@media (max-width:520px){.mhs-name{font-size:40px}}
+.mhs-dots{position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:8px;z-index:2}
+.mhs-dot{width:10px;height:10px;border-radius:999px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.25);cursor:pointer}
+.mhs-dot.active{background:rgba(255,255,255,.95);border-color:rgba(255,255,255,.95)}
+@media (min-width:901px){.mhs{display:none!important}}
+
+/* MOBILE hide topRow & sidebarfoto */
+@media (max-width:900px){
+  .topRow{display:none!important}
+  #sidebarfoto{display:none!important}
+}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="alert" id="topAlert">
+      <span class="dot"></span>
+      <div>
+        <strong>Your profile is hidden:</strong> please <a href="">verify</a> now.
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <aside class="card side">
+
+        <div id="sidebarfoto">
+          <h4>HEADSHOT</h4>
+          <div class="ph">
+            <div class="photoWrap" id="wrapHeadshot">
+              <button class="photoX" type="button" data-remove-photo="headshot" title="Remove">×</button>
+              <div class="avatar" id="photoHeadshot" data-photo-box="headshot" aria-label="Headshot"></div>
+            </div>
+
+            <div class="cap">
+              <span class="linkAdd" data-upload="headshot">Upload</span>
+              <div>Min resolution: 600×800 px</div>
+            </div>
+          </div>
+
+          <div class="block">
+            <button class="btn ghost" type="button">🔓 Unlock (My photo score)</button>
+          </div>
+
+          <div class="block">
+            <div class="miniRow">
+              <div>
+                <h4 style="margin:0 0 8px;">SIDE VIEW</h4>
+                <div class="mini">
+                  <div class="photoWrap" id="wrapSide">
+                    <button class="photoX" type="button" data-remove-photo="side" title="Remove">×</button>
+                    <div class="miniBox" id="photoSide" data-photo-box="side" aria-label="Side view"></div>
+                  </div>
+                  <div class="cap">
+                    <span class="linkAdd" data-upload="side">Upload</span><br />Min: 600×800 px
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 style="margin:0 0 8px;">FULL HEIGHT</h4>
+                <div class="mini">
+                  <div class="photoWrap" id="wrapFull">
+                    <button class="photoX" type="button" data-remove-photo="full" title="Remove">×</button>
+                    <div class="miniBox" id="photoFull" data-photo-box="full" aria-label="Full height"></div>
+                  </div>
+                  <div class="cap">
+                    <span class="linkAdd" data-upload="full">Upload</span><br />Min: 600×800 px
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="block">
+            <button class="btn ghost" type="button">⬇️ Download PDF Comp Card</button>
+          </div>
+        </div>
+
+        <!-- CONTACTS -->
+        <div class="block" id="contactsCard">
+          <div class="rowHead">
+            <h4 style="margin:0;">CONTACTS</h4>
+            <button class="miniBtn" type="button" id="btnEditContacts">Edit</button>
+          </div>
+
+          <div class="kv" id="contactView">
+            <div class="item" id="rowPhone">
+              <span>📞</span>
+              <span id="txtPhone">-</span>
+            </div>
+            <div class="item" id="rowEmail">
+              <span>✉️</span>
+              <span id="txtEmail">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PERSONAL LINK -->
+        <div class="block" id="personalLinkCard">
+          <div class="rowHead">
+            <h4 style="margin:0;">PERSONAL LINK</h4>
+            <button class="miniBtn" type="button" id="btnEditPersonalLink">Add</button>
+          </div>
+
+          <div id="personalLinkView" class="item" style="background:#fff;">
+            <span id="txtPersonalLink">Add your custom URL.</span>
+          </div>
+
+          <div id="personalLinkEdit" hidden style="margin-top:10px;">
+            <input id="inpPersonalLink" placeholder="https://yourlink.com">
+          </div>
+        </div>
+
+        <!-- SOCIAL -->
+        <div class="block" id="socialCard">
+          <div class="rowHead">
+            <h4 style="margin:0;">SOCIAL MEDIA</h4>
+            <button class="miniBtn" type="button" id="btnEditSocial">Add</button>
+          </div>
+
+          <div id="socialView">
+            <div class="item" style="background:#fff;" id="socialEmpty">
+              <span>Add links to your social accounts.</span>
+              <span class="linkAdd" id="btnEditSocial2">Add</span>
+            </div>
+            <div id="socialList" class="socialList" hidden></div>
+          </div>
+
+          <div id="socialEdit" hidden style="margin-top:10px;">
+            <div class="formGrid">
+              <div class="frow"><label>Facebook</label><input id="sm_facebook" placeholder="https://facebook.com/username"></div>
+              <div class="frow"><label>Instagram</label><input id="sm_instagram" placeholder="https://instagram.com/username"></div>
+              <div class="frow"><label>TikTok</label><input id="sm_tiktok" placeholder="https://tiktok.com/@..."></div>
+              <div class="frow"><label>X</label><input id="sm_x" placeholder="https://x.com/username"></div>
+              <div class="frow"><label>YouTube</label><input id="sm_youtube" placeholder="https://youtube.com/@channel"></div>
+              <div class="frow"><label>Website</label><input id="sm_website" placeholder="https://yourwebsite.com"></div>
+              <div class="frow"><label>IMDb</label><input id="sm_imdb" placeholder="https://www.imdb.com/name/..."></div>
+              <div class="frow"><label>Vimeo</label><input id="sm_vimeo" placeholder="https://vimeo.com/..."></div>
+              <div class="frow"><label>LinkedIn</label><input id="sm_linkedin" placeholder="https://linkedin.com/in/..."></div>
+              <div class="frow"><label>Flickr</label><input id="sm_flickr" placeholder="https://flickr.com/..."></div>
+              <div class="frow"><label>SAG-AFTRA</label><input id="sm_sagaftra" placeholder="https://..."></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cap" style="margin-top:12px;">Profile ID: 7199262</div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="card main">
+        <div class="topRow">
+          <div class="titleWrap">
+            <h1 id="headerName">Orland Management</h1>
+            <div class="subMeta">
+              <span class="rating"><span class="star"></span> <span id="headerRating">0</span></span>
+              <span> / 10,000</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Profile tabs" id="tabs">
+          <div class="tab active" role="tab" aria-selected="true" data-tab="info">Info</div>
+          <div class="tab" role="tab" aria-selected="false" data-tab="photos">Photos</div>
+          <div class="tab" role="tab" aria-selected="false" data-tab="assets">Assets</div>
+          <div class="tab" role="tab" aria-selected="false" data-tab="credits">Credits</div>
+        </div>
+
+        <div class="progressWrap" id="progressWrap">
+          <div class="progressHead">
+            <span>Your profile progress</span>
+            <button class="btn ghost" type="button" style="width:auto;" onclick="ProfileApp.Modals.open('modalProgress')">Open ▾</button>
+          </div>
+          <div class="bar" aria-label="Profile progress"><div id="progressBarFill"></div></div>
+          <div class="hint">
+            <span>Get points for completing your profile to get noticed by casting directors.</span>
+            <a href="javascript:void(0)">Learn more</a>
+          </div>
+        </div>
+
+        <!-- ===== PANEL: INFO ===== -->
+        <section class="panel active" id="panel-info">
+
+          <!-- INTERESTED IN -->
+          <div class="section">
+            <div class="sectionHead">
+              <div class="label">INTERESTED IN:</div>
+            </div>
+            <div class="sectionBody">
+              <div class="dropdown">
+                <button class="dd-btn" type="button" data-dd="interestedDD">Select categories <span class="dd-caret">▾</span></button>
+                <div class="dd-panel" id="interestedDD" hidden></div>
+              </div>
+
+              <div class="chips" id="interestedChips"></div>
+              <div class="mutedHelp">Klik checkbox untuk menambahkan. Klik (×) pada chip untuk menghapus.</div>
+            </div>
+          </div>
+
+          <!-- SKILLS -->
+          <div class="section">
+            <div class="sectionHead"><div class="label">SKILLS:</div></div>
+            <div class="sectionBody">
+              <div class="skillInput">
+                <input type="text" id="inpSkill" maxlength="25" placeholder="Write your skills...">
+                <span class="cc"><span id="skillCharCount">0</span>/25</span>
+                <button type="button" class="miniBtn primary" id="btnAddSkill">Save</button>
+              </div>
+              <div class="chips" id="listSkills"></div>
+            </div>
+          </div>
+
+          <!-- PERSONAL -->
+          <div class="section" id="secPersonal">
+            <div class="sectionHead">
+              <div class="label">PERSONAL:</div>
+              <div class="add" id="btnEditPersonal" style="opacity:.85;">✎</div>
+            </div>
+
+            <div class="sectionBody" id="personalView">
+              <div class="twoCol">
+                <div class="field"><div class="k">Gender</div><div class="v" id="txtGender">-</div></div>
+                <div class="field"><div class="k">Date Of Birth</div><div class="v" id="txtDob">-</div></div>
+                <div class="field"><div class="k">Location</div><div class="v" id="txtLoc">-</div></div>
+                <div class="field"><div class="k">Ethnicity</div><div class="v" id="txtEthnicity">-</div></div>
+              </div>
+            </div>
+
+            <div class="sectionBody" id="personalEdit" hidden>
+              <div class="formGrid">
+                <div class="frow">
+                  <label>Gender</label>
+                  <select id="inpGender">
+                    <option>Male</option><option>Female</option><option>Non-Binary</option><option>Other</option>
+                  </select>
+                </div>
+                <div class="frow"><label>Date Of Birth</label><input type="date" id="inpDob"></div>
+                <div class="frow"><label>Location</label><input type="text" id="inpLoc" placeholder="State Line, PA"></div>
+                <div class="frow">
+                  <label>Ethnicity</label>
+                  <select id="inpEthnicity">
+                    <option>Asian</option><option>Black</option><option>Caucasian</option>
+                    <option>Hispanic</option><option>Other</option>
+                  </select>
+                </div>
+              </div>
+              <!-- no bottom save/cancel (toggle by header icon) -->
+            </div>
+          </div>
+
+          <!-- UNION (placeholder) -->
+          <div class="section">
+            <div class="sectionHead"><div class="label">UNION AFFILIATION:</div></div>
+            <div class="sectionBody">
+              <div class="empty">
+                <span>Please add your union affiliation status.</span>
+                <span class="linkAdd">Add</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- APPEARANCE -->
+          <div class="section" id="secAppearance">
+            <div class="sectionHead">
+              <div class="label">APPEARANCE:</div>
+              <div class="add" id="btnEditAppearance" style="opacity:.85;">✎</div>
+            </div>
+
+            <!-- VIEW -->
+            <div class="sectionBody" id="appearanceView">
+              <div class="twoCol">
+                <div class="field"><div class="k">Height</div><div class="v" id="apv_height">n/a</div></div>
+                <div class="field"><div class="k">Weight</div><div class="v" id="apv_weight">n/a</div></div>
+                <div class="field"><div class="k">Eye Color</div><div class="v" id="apv_eye">n/a</div></div>
+                <div class="field"><div class="k">Hair Color</div><div class="v" id="apv_hair">n/a</div></div>
+                <div class="field"><div class="k">Hip Size</div><div class="v" id="apv_hip">n/a</div></div>
+                <div class="field"><div class="k">Chest/Bust</div><div class="v" id="apv_chest">n/a</div></div>
+                <div class="field"><div class="k">Body Type</div><div class="v" id="apv_bodytype">n/a</div></div>
+              </div>
+
+              <div style="height:12px"></div>
+
+              <div class="apMultiBlock">
+                <div class="field full"><div class="k">Specific Characteristics</div><div class="v" id="apv_specific">n/a</div></div>
+                <div class="field full"><div class="k">Tattoos</div><div class="v" id="apv_tattoos">n/a</div></div>
+                <div class="field full"><div class="k">Piercings</div><div class="v" id="apv_piercings">n/a</div></div>
+              </div>
+            </div>
+
+            <!-- EDIT -->
+            <div class="sectionBody" id="appearanceEdit" hidden>
+              <div class="formGrid">
+                <div class="frow"><label>Height</label><select id="ap_height"></select></div>
+                <div class="frow"><label>Weight</label><select id="ap_weight"></select></div>
+                <div class="frow"><label>Eye Color</label><select id="ap_eye"></select></div>
+                <div class="frow"><label>Hair Color</label><select id="ap_hair"></select></div>
+                <div class="frow"><label>Hip Size</label><select id="ap_hip"></select></div>
+                <div class="frow"><label>Chest/Bust</label><select id="ap_chest"></select></div>
+                <div class="frow"><label>Body Type</label><select id="ap_bodytype"></select></div>
+
+                <div class="frow">
+                  <label>Specific Characteristics</label>
+                  <div class="dropdown">
+                    <button class="dd-btn" type="button" data-dd="ap_specDD">
+                      <span class="dd-placeholder">Select</span>
+                      <span class="dd-value" id="ap_specValue" hidden></span>
+                      <span class="dd-caret">▾</span>
+                    </button>
+                    <div class="dd-panel" id="ap_specDD" hidden></div>
+                  </div>
+                </div>
+
+                <div class="frow">
+                  <label>Tattoos</label>
+                  <div class="dropdown">
+                    <button class="dd-btn" type="button" data-dd="ap_tattooDD">
+                      <span class="dd-placeholder">Select</span>
+                      <span class="dd-value" id="ap_tattooValue" hidden></span>
+                      <span class="dd-caret">▾</span>
+                    </button>
+                    <div class="dd-panel" id="ap_tattooDD" hidden></div>
+                  </div>
+                </div>
+
+                <div class="frow">
+                  <label>Piercings</label>
+                  <div class="dropdown">
+                    <button class="dd-btn" type="button" data-dd="ap_pierceDD">
+                      <span class="dd-placeholder">Select</span>
+                      <span class="dd-value" id="ap_pierceValue" hidden></span>
+                      <span class="dd-caret">▾</span>
+                    </button>
+                    <div class="dd-panel" id="ap_pierceDD" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <!-- no bottom save/cancel (toggle by header icon) -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PANEL: PHOTOS ===== -->
+        <section class="panel" id="panel-photos">
+          <div class="section" style="border:none;margin-top:14px;">
+            <div class="sectionBody">
+              <div class="photoGrid">
+                <div class="photoTile">
+                  <div class="tileHead" style="text-align:center;">HEADSHOT</div>
+                  <div class="tileBody" data-main-photo="headshot">
+                    <img id="ph_headshot" class="tileImg" alt="Headshot">
+                    <div class="tileEmpty" id="ph_headshot_empty">
+                      <span style="color:var(--btn); font-weight:900;">Upload</span>
+                      <span class="cap" style="margin:0;">Min resolution:<br>600x800 px</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="photoTile">
+                  <div class="tileHead" style="text-align:center;">SIDE VIEW</div>
+                  <div class="tileBody" data-main-photo="side">
+                    <img id="ph_side" class="tileImg" alt="Side view">
+                    <div class="tileEmpty" id="ph_side_empty">
+                      <span style="color:var(--btn); font-weight:900;">Upload</span>
+                      <span class="cap" style="margin:0;">Min resolution:<br>600x800 px</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="photoTile">
+                  <div class="tileHead" style="text-align:center;">FULL HEIGHT</div>
+                  <div class="tileBody" data-main-photo="full">
+                    <img id="ph_full" class="tileImg" alt="Full height">
+                    <div class="tileEmpty" id="ph_full_empty">
+                      <span style="color:var(--btn); font-weight:900;">Upload</span>
+                      <span class="cap" style="margin:0;">Min resolution:<br>600x800 px</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="photoTile" style="background:#f8fafc;">
+                  <div class="tileHead" style="text-align:center;border-bottom:none;"></div>
+                  <div class="tileBody" style="border:none;cursor:default;flex-direction:column;gap:10px;padding:20px;">
+                    <div style="background:#0f172a;color:#fff;width:30px;height:30px;border-radius:999px;display:grid;place-items:center;">🔒</div>
+                    <div style="font-weight:900;">Additional Photos</div>
+                    <div class="cap" style="margin:0;">Increasing your chances to be discovered</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="height:14px"></div>
+
+              <div class="sectionHead" style="border:1px solid var(--line);border-radius:14px;">
+                <div class="label">ADDITIONAL PHOTOS</div>
+                <button class="pill-save" type="button" id="btnAddAdditional">+ Add more</button>
+              </div>
+              <div class="addGrid" id="additionalPhotosGrid"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PANEL: ASSETS ===== -->
+        <section class="panel" id="panel-assets">
+          <div class="assetsGrid" style="margin-top:14px;">
+            <div class="assetBox">
+              <div class="assetTitle">VIDEOS: <span class="cap" style="margin:0;display:inline;">(YouTube links)</span></div>
+              <div class="assetRow">
+                <input id="inpYt" placeholder="Paste YouTube URL here...">
+                <button class="btn ghost" type="button" onclick="ProfileApp.Assets.add('youtube')" style="width:auto;">Add</button>
+              </div>
+              <div id="listYt" class="assetList"></div>
+            </div>
+
+            <div class="assetBox">
+              <div class="assetTitle">AUDIO: <span class="cap" style="margin:0;display:inline;">(mp3/wav/ogg URL, atau YouTube audio)</span></div>
+              <div class="assetRow">
+                <input id="inpAudio" placeholder="Paste Audio URL (.mp3, .wav, .ogg) or YouTube URL...">
+                <button class="btn ghost" type="button" onclick="ProfileApp.Assets.add('audio')" style="width:auto;">Add</button>
+              </div>
+              <div id="listAudio" class="assetList"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PANEL: CREDITS ===== -->
+        <section class="panel" id="panel-credits">
+          <div class="section" style="border:none;margin-top:14px;">
+            <div class="sectionHead">
+              <div class="label">CREDITS</div>
+              <div class="add" onclick="ProfileApp.Credits.toggleForm(true)">+ Add</div>
+            </div>
+
+            <div class="sectionBody">
+              <div id="creditFormWrapper" class="credit-form-box" hidden>
+                <div class="formGrid">
+                  <div class="frow">
+                    <label>Job title</label>
+                    <input type="text" id="cr_title" placeholder="e.g. Lead Actor" maxlength="130">
+                    <span class="cap" style="margin:0;">From 3 to 130 characters</span>
+                  </div>
+                  <div class="frow">
+                    <label>Date</label>
+                    <div style="display:flex;gap:10px;">
+                      <select id="cr_month" style="flex:1;">
+                        <option value="January">January</option><option value="February">February</option>
+                        <option value="March">March</option><option value="April">April</option>
+                        <option value="May">May</option><option value="June">June</option>
+                        <option value="July">July</option><option value="August">August</option>
+                        <option value="September">September</option><option value="October">October</option>
+                        <option value="November">November</option><option value="December">December</option>
+                      </select>
+                      <select id="cr_year" style="flex:1;"></select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="frow" style="margin-top:10px;">
+                  <label>Company</label>
+                  <input type="text" id="cr_company" placeholder="Production company or agency" maxlength="130">
+                </div>
+
+                <div class="frow" style="margin-top:10px;">
+                  <label>About</label>
+                  <textarea id="cr_about" placeholder="Describe your role and responsibilities..." maxlength="500"></textarea>
+                  <span class="cap" style="margin:0;">Max 500 characters</span>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-top:10px;">
+                  <button class="pill-save" type="button" onclick="ProfileApp.Credits.save()">Save Credit</button>
+                  <button class="pill-cancel" type="button" onclick="ProfileApp.Credits.toggleForm(false)">Cancel</button>
+                </div>
+              </div>
+
+              <div class="empty" id="creditEmptyState" style="margin-top:12px;">
+                <span>Please list any acting, modeling or entertainment experience you have.</span>
+                <span class="linkAdd" onclick="ProfileApp.Credits.toggleForm(true)">Add</span>
+              </div>
+
+              <div class="sectionHead" id="creditListHeader" hidden style="margin-top:12px;border:1px solid var(--line);border-radius:14px;">
+                <div class="label">CREDITS LIST</div>
+                <button class="pill-save" type="button" onclick="ProfileApp.Credits.toggleForm(true)">+ Add Another</button>
+              </div>
+
+              <div id="listCredits" class="creditsList"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Hidden file input -->
+  <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp" hidden>
+
+  <!-- MODAL: CROP -->
+  <div class="modal" id="modalCrop" hidden>
+    <div class="modalBackdrop" data-close="modal"></div>
+    <div class="modalCard" style="max-width:720px;">
+      <div class="modalHead">
+        <h3>Crop Photo</h3>
+        <button class="modalClose" type="button" data-close="modal">×</button>
+      </div>
+      <div class="modalBody">
+        <div class="crop-area" style="border:1px solid var(--line);border-radius:14px;padding:10px;background:#f8fafc;">
+          <img id="cropTarget" src="" alt="Crop target" style="display:block;max-width:100%;">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <button class="miniBtn" type="button" id="btnCropCancel">Cancel</button>
+          <button class="miniBtn primary" type="button" id="btnCropApply">Apply & Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PROGRESS -->
+  <div class="modal" id="modalProgress" hidden>
+    <div class="modalBackdrop"></div>
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Profile Progress</h3>
+        <button class="modalClose" type="button" onclick="ProfileApp.Modals.close('modalProgress')">×</button>
+      </div>
+      <div class="modalBody">
+        <div class="progress-layout">
+          <div class="progress-left">
+            <div class="progress-chart-wrapper">
+              <div class="progress-chart" id="modalChartCircle" style="--pct: 0deg;">
+                <div class="progress-chart-inner">
+                  <img id="modalChartAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cbd5e1'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
+                  <span>★ <span id="modalChartRating">0</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="rating-info">
+              <strong>💡 Remember:</strong>
+              Comp card photos will be evaluated by a photo analyzer to update your rating.
+            </div>
+          </div>
+
+          <div class="progress-right">
+            <div class="prog-item">
+              <div class="prog-header">
+                <span>Info</span>
+                <span class="prog-pct" id="progPctInfo">0%</span>
+              </div>
+              <div class="prog-desc">Complete all sections with information about you.</div>
+              <div class="prog-bar-bg"><div class="prog-bar-fill" id="progBarInfo" style="--p:0%;"></div></div>
+              <span class="prog-link" onclick="ProfileApp.Tabs.jumpTo('info')">Complete Profile →</span>
+            </div>
+
+            <div class="prog-item">
+              <div class="prog-header">
+                <span>Photos</span>
+                <span class="prog-pct" id="progPctPhotos">0%</span>
+              </div>
+              <div class="prog-desc">Add 3 main photos to boost your profile.</div>
+              <div class="prog-bar-bg"><div class="prog-bar-fill" id="progBarPhotos" style="--p:0%;"></div></div>
+              <span class="prog-link" onclick="ProfileApp.Tabs.jumpTo('photos')">Add More Photos →</span>
+            </div>
+
+            <div class="prog-item">
+              <div class="prog-header">
+                <span>Videos/Audio</span>
+                <span class="prog-pct" id="progPctVideos">0%</span>
+              </div>
+              <div class="prog-desc">Add YouTube video or audio link to expose your talent.</div>
+              <div class="prog-bar-bg"><div class="prog-bar-fill" id="progBarVideos" style="--p:0%;"></div></div>
+              <span class="prog-link" onclick="ProfileApp.Tabs.jumpTo('assets')">Add Assets →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NAME -->
+  <div class="modal" id="modalName" hidden>
+    <div class="modalBackdrop"></div>
+    <div class="modalCard" style="max-width:520px;">
+      <div class="modalHead">
+        <h3>Edit Name</h3>
+        <button class="modalClose" type="button" onclick="ProfileApp.Modals.close('modalName')">×</button>
+      </div>
+      <div class="modalBody">
+        <div class="formGrid">
+          <div class="frow"><label>First name</label><input id="nameFirst" type="text" placeholder="First name"></div>
+          <div class="frow"><label>Last name</label><input id="nameLast" type="text" placeholder="Last name"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="pill-save" type="button" onclick="ProfileAppName.save()">Save</button>
+          <button class="pill-cancel" type="button" onclick="ProfileApp.Modals.close('modalName')">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/* ---------- validators ---------- */
+function isValidEmail(v){const s=(v||"").trim();return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);}
+function normalizePhone(v){return (v||"").replace(/\s|[-()]/g,"").trim();}
+function isValidPhone(v){const p=normalizePhone(v);if(!/^\d+$/.test(p))return false;return p.startsWith("08")||p.startsWith("62");}
+function isValidUrl(v){try{const u=new URL((v||"").trim());return u.protocol==="https:"||u.protocol==="http:";}catch{return false;}}
+const SOCIAL_DOMAIN_RULES={facebook:["facebook.com"],instagram:["instagram.com"],tiktok:["tiktok.com"],x:["x.com","twitter.com"],youtube:["youtube.com","youtu.be"],website:null,imdb:["imdb.com"],vimeo:["vimeo.com"],linkedin:["linkedin.com"],flickr:["flickr.com"],sagaftra:null};
+function isValidSocialUrl(key,url){
+  const s=(url||"").trim(); if(!s) return true;
+  if(!isValidUrl(s)) return false;
+  const rules=SOCIAL_DOMAIN_RULES[key]; if(!rules) return true;
+  try{const host=new URL(s).hostname.replace(/^www\./,'').toLowerCase();return rules.some(d=>host===d||host.endsWith("."+d));}catch{return false;}
+}
+
+/* =========================
+   Talent Profile FINAL (JS) - REVISED FULL
+========================= */
+(() => {
+  const qs = (id) => document.getElementById(id);
+  const qsa = (sel) => Array.from(document.querySelectorAll(sel));
+
+  const KEY = "talent_profile_fix_v2";
+  const DEFAULT = {
+    name: { first: "Orland", last: "Management" },
+    contacts: { phone: "(088) 101–1430", email: "orlandmanagement@gmail.com" },
+    personal: { gender: "Male", dob: "1986-05-06", loc: "State Line, PA", ethnicity: "Other" },
+    personalLink: "",
+    interestedIn: [],
+    skills: [],
+    social: {
+      facebook: "", instagram: "", tiktok: "", x: "", youtube: "", website: "",
+      imdb: "", vimeo: "", linkedin: "", flickr: "", sagaftra: ""
+    },
+    photos: { headshot: "", side: "", full: "", additional: [] },
+    appearance: {
+      height: "N/A", weight: "N/A", eye: "N/A", hair: "N/A", hip: "N/A", chest: "N/A", bodytype: "N/A",
+      specific: [], tattoos: [], piercings: []
+    },
+    assets: { youtube: [], audio: [] },
+    credits: []
+  };
+
+  let state = structuredClone ? structuredClone(DEFAULT) : JSON.parse(JSON.stringify(DEFAULT));
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+
+      state = {
+        ...DEFAULT,
+        ...parsed,
+        name: { ...DEFAULT.name, ...(parsed.name || {}) },
+        contacts: { ...DEFAULT.contacts, ...(parsed.contacts || {}) },
+        personal: { ...DEFAULT.personal, ...(parsed.personal || {}) },
+        social: { ...DEFAULT.social, ...(parsed.social || {}) },
+        photos: { ...DEFAULT.photos, ...(parsed.photos || {}) },
+        appearance: { ...DEFAULT.appearance, ...(parsed.appearance || {}) },
+        assets: { ...DEFAULT.assets, ...(parsed.assets || {}) }
+      };
+
+      state.interestedIn = Array.isArray(state.interestedIn) ? state.interestedIn : [];
+      state.skills = Array.isArray(state.skills) ? state.skills : [];
+      state.photos.additional = Array.isArray(state.photos.additional) ? state.photos.additional : [];
+      state.appearance.specific = Array.isArray(state.appearance.specific) ? state.appearance.specific : [];
+      state.appearance.tattoos = Array.isArray(state.appearance.tattoos) ? state.appearance.tattoos : [];
+      state.appearance.piercings = Array.isArray(state.appearance.piercings) ? state.appearance.piercings : [];
+      state.assets.youtube = Array.isArray(state.assets.youtube) ? state.assets.youtube : [];
+      state.assets.audio = Array.isArray(state.assets.audio) ? state.assets.audio : [];
+      state.credits = Array.isArray(state.credits) ? state.credits : [];
+    } catch {}
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    ProfileProgress.update();
+  }
+
+  function setMode(sectionId, mode) {
+    const el = qs(sectionId);
+    if (!el) return;
+    el.dataset.mode = mode;
+  }
+  function getMode(sectionId) {
+    const el = qs(sectionId);
+    return el?.dataset?.mode || "view";
+  }
+
+  /* ---------- dropdown global ---------- */
+  function initDropdownGlobal() {
+    function closeAll() {
+      qsa(".dd-panel").forEach(p => {
+        p.hidden = true;
+        p.classList.remove("is-fixed");
+        p.style.removeProperty("--dd-top");
+      });
+      qsa(".dropdown").forEach(d => d.classList.remove("is-open"));
+    }
+
+    function positionPanel(btn, panel){
+      if (!window.matchMedia("(max-width: 520px)").matches) return;
+      const r = btn.getBoundingClientRect();
+      const top = Math.min(window.innerHeight - 40, Math.max(60, r.bottom + 8));
+      panel.style.setProperty("--dd-top", top + "px");
+    }
+
+    let activeBtn = null;
+    let activePanel = null;
+
+    document.addEventListener("scroll", () => {
+      if (!activeBtn || !activePanel || activePanel.hidden) return;
+      positionPanel(activeBtn, activePanel);
+    }, true);
+
+    window.addEventListener("resize", () => {
+      if (!activeBtn || !activePanel || activePanel.hidden) return;
+      positionPanel(activeBtn, activePanel);
+    });
+
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest?.("[data-dd]");
+      if (btn) {
+        const id = btn.getAttribute("data-dd");
+        const panel = qs(id);
+        if(!panel) return;
+
+        const dropdown = btn.closest(".dropdown");
+        const wasOpen = !panel.hidden;
+
+        closeAll();
+        if (wasOpen) return;
+
+        panel.hidden = false;
+        dropdown?.classList.add("is-open");
+
+        if (window.matchMedia("(max-width: 520px)").matches) {
+          panel.classList.add("is-fixed");
+          positionPanel(btn, panel);
+        }
+
+        activeBtn = btn;
+        activePanel = panel;
+        return;
+      }
+
+      if (!e.target.closest?.(".dropdown")) {
+        closeAll();
+        activeBtn = null;
+        activePanel = null;
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAll();
+    });
+  }
+
+  /* ---------- tabs ---------- */
+  function initTabs() {
+    const tabs = qs("tabs");
+    if (!tabs) return;
+
+    tabs.addEventListener("click", (e) => {
+      const tab = e.target.closest?.(".tab[data-tab]");
+      if (!tab) return;
+      const key = tab.getAttribute("data-tab");
+
+      qsa(".tab").forEach(t => {
+        const on = (t === tab);
+        t.classList.toggle("active", on);
+        t.setAttribute("aria-selected", on ? "true": "false");
+      });
+
+      qsa(".panel").forEach(p => p.classList.remove("active"));
+      const panel = qs("panel-" + key);
+      if (panel) panel.classList.add("active");
+    });
+  }
+
+  /* ---------- modals ---------- */
+  function initModals() {
+    window.ProfileApp = window.ProfileApp || {};
+    ProfileApp.Modals = ProfileApp.Modals || {
+      open(id) {
+        const m = qs(id);
+        if (!m) return;
+        m.hidden = false;
+        document.documentElement.style.overflow = "hidden";
+        if (id === "modalProgress") ProfileProgress.update();
+      },
+      close(id) {
+        const m = qs(id);
+        if (!m) return;
+        m.hidden = true;
+        const anyOpen = qsa(".modal").some(x => !x.hidden);
+        if (!anyOpen) document.documentElement.style.overflow = "";
+      }
+    };
+
+    document.addEventListener("click", (e)=> {
+      const bd = e.target.closest?.(".modalBackdrop");
+      if (!bd) return;
+      const modal = bd.closest(".modal");
+      if (modal) {
+        modal.hidden = true;
+        const anyOpen = qsa(".modal").some(x => !x.hidden);
+        if (!anyOpen) document.documentElement.style.overflow = "";
+      }
+    });
+
+    document.addEventListener("keydown",(e)=> {
+      if (e.key !== "Escape") return;
+      const open = qsa(".modal").filter(m => !m.hidden);
+      const last = open[open.length - 1];
+      if (last) {
+        last.hidden = true;
+        const anyOpen = qsa(".modal").some(x => !x.hidden);
+        if (!anyOpen) document.documentElement.style.overflow = "";
+      }
+    });
+
+    const modalCrop = qs("modalCrop");
+    modalCrop?.addEventListener("click",(e)=> {
+      if (e.target?.dataset?.close === "modal") ProfileApp.Modals.close("modalCrop");
+    });
+    qsa('[data-close="modal"]').forEach(btn => {
+      btn.addEventListener("click", ()=> ProfileApp.Modals.close("modalCrop"));
+    });
+  }
+
+  /* ---------- header/name ---------- */
+  function fullName() {
+    const full = `${(state.name.first || "").trim()} ${(state.name.last || "").trim()}`.trim();
+    return full || "Orland Management";
+  }
+
+  function injectHeaderEditIcon() {
+    const topRow = document.querySelector(".topRow .titleWrap");
+    if (!topRow) return;
+    if (topRow.querySelector("#btnHeaderEditIcon")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "btnHeaderEditIcon";
+    btn.type = "button";
+    btn.className = "miniBtn";
+    btn.style.width = "auto";
+    btn.style.marginTop = "10px";
+    btn.textContent = "✎ Edit Name";
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      qs("nameFirst").value = state.name.first || "";
+      qs("nameLast").value = state.name.last || "";
+      ProfileApp.Modals.open("modalName");
+    });
+
+    topRow.appendChild(btn);
+  }
+
+  function applyHeader() {
+    const full = fullName();
+    const parts = full.split(/\s+/).filter(Boolean);
+    const h1 = qs("headerName");
+    if (!h1) return;
+
+    if (parts.length <= 1) h1.innerHTML = full;
+    else {
+      const first = parts.shift();
+      const rest = parts.join(" ");
+      h1.innerHTML = `${first}<br/>${rest}`;
+    }
+
+    if (!h1.dataset.bound) {
+      h1.style.cursor = "pointer";
+      h1.title = "Edit name";
+      h1.addEventListener("click", (e) => {
+        e.stopPropagation();
+        qs("nameFirst").value = state.name.first || "";
+        qs("nameLast").value = state.name.last || "";
+        ProfileApp.Modals.open("modalName");
+      });
+      h1.dataset.bound = "1";
+    }
+
+    injectHeaderEditIcon();
+  }
+
+  window.ProfileAppName = {
+    save() {
+      state.name.first = (qs("nameFirst").value || "").trim();
+      state.name.last = (qs("nameLast").value || "").trim();
+      save();
+      applyHeader();
+      ProfileApp.Modals.close("modalName");
+    }
+  };
+
+  /* ---------- contacts (toggle 1 button) ---------- */
+  function renderContacts() {
+    qs("txtPhone").textContent = state.contacts.phone || "-";
+    qs("txtEmail").textContent = state.contacts.email || "-";
+  }
+
+  function contactsEnterEdit() {
+    const phoneSpan = qs("txtPhone");
+    const emailSpan = qs("txtEmail");
+
+    if (phoneSpan && !qs("inpPhone")) {
+      const inp = document.createElement("input");
+      inp.id = "inpPhone";
+      inp.type = "text";
+      inp.value = state.contacts.phone || "";
+      phoneSpan.replaceWith(inp);
+    }
+    if (emailSpan && !qs("inpEmail")) {
+      const inp = document.createElement("input");
+      inp.id = "inpEmail";
+      inp.type = "email";
+      inp.value = state.contacts.email || "";
+      emailSpan.replaceWith(inp);
+    }
+  }
+
+  function contactsSave() {
+    const phoneVal = (qs("inpPhone")?.value || "").trim();
+    const emailVal = (qs("inpEmail")?.value || "").trim();
+
+    if (phoneVal && !isValidPhone(phoneVal)) { alert("Nomor HP tidak valid. Harus diawali 08 atau 62 dan hanya angka."); return false; }
+    if (emailVal && !isValidEmail(emailVal)) { alert("Email tidak valid."); return false; }
+
+    state.contacts.phone = phoneVal;
+    state.contacts.email = emailVal;
+    save();
+
+    const phoneInput = qs("inpPhone");
+    const emailInput = qs("inpEmail");
+
+    if (phoneInput) {
+      const span = document.createElement("span");
+      span.id = "txtPhone";
+      span.textContent = phoneVal || "-";
+      phoneInput.replaceWith(span);
+    }
+    if (emailInput) {
+      const span = document.createElement("span");
+      span.id = "txtEmail";
+      span.textContent = emailVal || "-";
+      emailInput.replaceWith(span);
+    }
+    return true;
+  }
+
+  function initContacts() {
+    const btn = qs("btnEditContacts");
+    const sectionId = "contactsCard";
+    if (!btn) return;
+
+    setMode(sectionId, "view");
+    btn.textContent = "Edit";
+
+    btn.addEventListener("click", () => {
+      const mode = getMode(sectionId);
+      if (mode === "view") {
+        contactsEnterEdit();
+        setMode(sectionId, "edit");
+        btn.textContent = "Save";
+      } else {
+        const ok = contactsSave();
+        if (!ok) return;
+        setMode(sectionId, "view");
+        btn.textContent = "Edit";
+      }
+    });
+  }
+
+  /* ---------- personal link (toggle 1 button) ---------- */
+  function renderPersonalLink() {
+    const txt = qs("txtPersonalLink");
+    const btn = qs("btnEditPersonalLink");
+    const edit = qs("personalLinkEdit");
+    if (!txt || !btn || !edit) return;
+
+    const url = (state.personalLink || "").trim();
+    if (!url) {
+      txt.textContent = "Add your custom URL.";
+      btn.textContent = "Add";
+    } else {
+      txt.textContent = url;
+      btn.textContent = "Edit";
+    }
+
+    if (getMode("personalLinkCard") === "view") edit.hidden = true;
+  }
+
+  function initPersonalLink() {
+    const btn = qs("btnEditPersonalLink");
+    const editBox = qs("personalLinkEdit");
+    const inp = qs("inpPersonalLink");
+    if (!btn || !editBox || !inp) return;
+
+    setMode("personalLinkCard", "view");
+    renderPersonalLink();
+
+    btn.addEventListener("click", () => {
+      const mode = getMode("personalLinkCard");
+      if (mode === "view") {
+        editBox.hidden = false;
+        inp.value = (state.personalLink || "").trim();
+        setMode("personalLinkCard", "edit");
+        btn.textContent = "Save";
+        inp.focus();
+      } else {
+        const v = (inp.value || "").trim();
+        if (v && !isValidUrl(v)) { alert("Personal link tidak valid. Harus http/https."); return; }
+        state.personalLink = v;
+        save();
+
+        editBox.hidden = true;
+        setMode("personalLinkCard", "view");
+        renderPersonalLink();
+      }
+    });
+  }
+
+  /* ---------- personal section (toggle icon) ---------- */
+  function fmtDob(iso) {
+    if (!iso) return "—";
+    const [y,m,d] = String(iso).split("-");
+    if (!y||!m||!d) return "—";
+    return `${m}/${d}/${y}`;
+  }
+  function renderPersonal() {
+    qs("txtGender").textContent = state.personal.gender || "—";
+    qs("txtDob").textContent = fmtDob(state.personal.dob);
+    qs("txtLoc").textContent = state.personal.loc || "—";
+    qs("txtEthnicity").textContent = state.personal.ethnicity || "—";
+  }
+  function personalEnterEdit() {
+    qs("personalView").hidden = true;
+    qs("personalEdit").hidden = false;
+    qs("inpGender").value = state.personal.gender || "Male";
+    qs("inpDob").value = state.personal.dob || "";
+    qs("inpLoc").value = state.personal.loc || "";
+    qs("inpEthnicity").value = state.personal.ethnicity || "Other";
+  }
+  function personalSave() {
+    state.personal.gender = qs("inpGender").value;
+    state.personal.dob = qs("inpDob").value;
+    state.personal.loc = (qs("inpLoc").value || "").trim();
+    state.personal.ethnicity = qs("inpEthnicity").value;
+    save();
+    renderPersonal();
+    qs("personalView").hidden = false;
+    qs("personalEdit").hidden = true;
+  }
+  function initPersonal() {
+    const btn = qs("btnEditPersonal");
+    if (!btn) return;
+    setMode("secPersonal", "view");
+    btn.style.cursor = "pointer";
+    btn.textContent = "✎";
+    btn.addEventListener("click", () => {
+      const mode = getMode("secPersonal");
+      if (mode === "view") {
+        personalEnterEdit();
+        setMode("secPersonal", "edit");
+        btn.textContent = "Save";
+      } else {
+        personalSave();
+        setMode("secPersonal", "view");
+        btn.textContent = "✎";
+      }
+    });
+  }
+
+  /* ---------- checklist helper ---------- */
+  function buildChecklist(panelId, items, selectedArr, onChange) {
+    const panel = qs(panelId);
+    if (!panel) return;
+    panel.innerHTML = "";
+    items.forEach(label => {
+      const row = document.createElement("label");
+      row.className = "dd-item";
+      const checked = selectedArr.includes(label);
+      row.innerHTML = `<input type="checkbox" ${checked ? "checked": ""}>
+      <span style="font-weight:900;font-size:13px">${label}</span>`;
+      const cb = row.querySelector("input");
+      cb.addEventListener("change", () => onChange(label, cb.checked));
+      panel.appendChild(row);
+    });
+  }
+  function syncChecklistChecked(panelId, selectedArr) {
+    const panel = qs(panelId);
+    if (!panel) return;
+    const set = new Set(selectedArr || []);
+    panel.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      const label = cb.closest(".dd-item")?.querySelector("span")?.textContent?.trim();
+      if (!label) return;
+      cb.checked = set.has(label);
+    });
+  }
+
+  /* ---------- interested in ---------- */
+  const INTERESTED = ["Acting","Modeling","Reality TV","Theater","Music Videos","Singing","Dancing","Promotional Models","Voice-Over","Extras","Commercials","Content Creators","Influencers"];
+  function renderInterestedChips() {
+    const cont = qs("interestedChips");
+    if (!cont) return;
+    cont.innerHTML = "";
+    (state.interestedIn || []).forEach((label) => {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.innerHTML = `<span>${label}</span><span class="x" title="Remove">×</span>`;
+      chip.querySelector(".x").addEventListener("click", () => {
+        state.interestedIn = (state.interestedIn || []).filter(x => x !== label);
+        save();
+        renderInterestedChips();
+        syncChecklistChecked("interestedDD", state.interestedIn);
+      });
+      cont.appendChild(chip);
+    });
+  }
+  function initInterested() {
+    buildChecklist("interestedDD", INTERESTED, state.interestedIn, (label, checked) => {
+      const set = new Set(state.interestedIn || []);
+      checked ? set.add(label) : set.delete(label);
+      state.interestedIn = Array.from(set);
+      save();
+      renderInterestedChips();
+    });
+    renderInterestedChips();
+  }
+
+  /* ---------- skills ---------- */
+  function renderSkills() {
+    const cont = qs("listSkills");
+    if (!cont) return;
+    cont.innerHTML = "";
+    (state.skills || []).forEach((s) => {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.innerHTML = `<span>${s}</span><span class="x" title="Remove">×</span>`;
+      chip.querySelector(".x").addEventListener("click", () => {
+        state.skills = (state.skills || []).filter(x => x !== s);
+        save();
+        renderSkills();
+      });
+      cont.appendChild(chip);
+    });
+  }
+  function initSkills() {
+    const inp = qs("inpSkill");
+    const cc = qs("skillCharCount");
+    const btn = qs("btnAddSkill");
+    if (!inp || !cc || !btn) return;
+
+    cc.textContent = String(inp.value.length);
+    inp.addEventListener("input", () => cc.textContent = String(inp.value.length));
+
+    function addSkill() {
+      const val = (inp.value || "").trim().replace(/\s+/g, " ");
+      if (!val) return;
+      if (val.length > 25) return;
+      if (!(state.skills || []).includes(val)) state.skills.push(val);
+      inp.value = "";
+      cc.textContent = "0";
+      save();
+      renderSkills();
+    }
+
+    btn.addEventListener("click", addSkill);
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } });
+    renderSkills();
+  }
+
+  /* ---------- social (toggle 1 button) ---------- */
+  const SOCIAL_FIELDS = [
+    ["facebook","Facebook","sm_facebook"],
+    ["instagram","Instagram","sm_instagram"],
+    ["tiktok","TikTok","sm_tiktok"],
+    ["x","X","sm_x"],
+    ["youtube","YouTube","sm_youtube"],
+    ["website","Website","sm_website"],
+    ["imdb","IMDb","sm_imdb"],
+    ["vimeo","Vimeo","sm_vimeo"],
+    ["linkedin","LinkedIn","sm_linkedin"],
+    ["flickr","Flickr","sm_flickr"],
+    ["sagaftra","SAG-AFTRA","sm_sagaftra"],
+  ];
+
+  function renderSocial() {
+    const empty = qs("socialEmpty");
+    const list = qs("socialList");
+    const btn = qs("btnEditSocial");
+    if (!empty || !list || !btn) return;
+
+    const entries = SOCIAL_FIELDS
+      .map(([key, label]) => [label, state.social[key]])
+      .filter(([, url]) => (url || "").trim().length);
+
+    if (entries.length === 0) {
+      empty.hidden = false;
+      list.hidden = true;
+      list.innerHTML = "";
+      btn.textContent = "Add";
+      return;
+    }
+
+    empty.hidden = true;
+    list.hidden = false;
+    list.innerHTML = "";
+    entries.forEach(([label, url]) => {
+      const row = document.createElement("div");
+      row.className = "socialRow";
+      row.innerHTML = `<div class="socialTag">${label}</div><a class="socialUrl" href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      list.appendChild(row);
+    });
+    btn.textContent = "Edit";
+  }
+
+  function socialEnterEdit() {
+    qs("socialView").hidden = true;
+    qs("socialEdit").hidden = false;
+    SOCIAL_FIELDS.forEach(([key,, id]) => qs(id).value = state.social[key] || "");
+  }
+
+  function socialSave() {
+    for (const [key,, id] of SOCIAL_FIELDS){
+      const val = (qs(id).value || "").trim();
+      if (!isValidSocialUrl(key, val)){
+        alert(`Link ${key.toUpperCase()} tidak valid. Harus domain yang sesuai.`);
+        return false;
+      }
+    }
+    SOCIAL_FIELDS.forEach(([key,, id]) => state.social[key] = (qs(id).value || "").trim());
+    save();
+    qs("socialView").hidden = false;
+    qs("socialEdit").hidden = true;
+    renderSocial();
+    return true;
+  }
+
+  function initSocial() {
+    const btn = qs("btnEditSocial");
+    const btn2 = qs("btnEditSocial2");
+    if (!btn) return;
+
+    setMode("socialCard", "view");
+    renderSocial();
+
+    function toggle() {
+      const mode = getMode("socialCard");
+      if (mode === "view") {
+        socialEnterEdit();
+        setMode("socialCard", "edit");
+        btn.textContent = "Save";
+      } else {
+        const ok = socialSave();
+        if (!ok) return;
+        setMode("socialCard", "view");
+      }
+    }
+
+    btn.addEventListener("click", toggle);
+    btn2?.addEventListener("click", () => { if (getMode("socialCard") === "view") toggle(); });
+  }
+
+  /* ---------- appearance ---------- */
+  const EYES=["N/A","Black","Blue","Brown","Green","Grey","Hazel","Other"];
+  const HAIR=["N/A","Black","Blonde","Brown","Grey","Red","Other"];
+  const BODY=["N/A","Athletic","Average","Curvy","Muscular","Plus-sized","Slim"];
+  const TATTOOS=["None","Arms","Back","Chest","Leg","Neck","Hand","Face","Other"];
+  const PIERCINGS=["None","Ear/Ears","Nose","Eyebrow","Lip","Tongue","Other"];
+  const SPEC=["None","Large Scar","Vitiligo","Eczema","Deaf","Blind","Other"];
+  const HEIGHTS=["N/A",...Array.from({length:60},(_,i)=>`${150+i} cm`)];
+  const WEIGHTS=["N/A",...Array.from({length:161},(_,i)=>`${40+i} kg`)];
+  const HIPS=["N/A",...Array.from({length:51},(_,i)=>`${20+i}"`)];
+  const CHEST=["N/A",...Array.from({length:41},(_,i)=>`${20+i}"`)];
+
+  function fillSelect(id, items, selected) {
+    const el = qs(id);
+    if (!el) return;
+    el.innerHTML = items.map(v => `<option value="${v}">${v}</option>`).join("");
+    el.value = selected ?? items[0];
+  }
+  function cleanMulti(arr){return (arr||[]).filter(v=>v && v!=="None" && v!=="N/A");}
+  function setPlainValue(id, val){
+    const el = qs(id); if(!el) return;
+    const ok = (val && val !== "N/A" && val !== "n/a");
+    el.textContent = ok ? val : "n/a";
+    el.style.color = ok ? "#0f172a" : "#94a3b8";
+  }
+  function renderChipsInto(el, items){
+    if(!el) return;
+    const clean = cleanMulti(items);
+    if(!clean.length){ el.textContent="n/a"; el.style.color="#94a3b8"; return; }
+    el.style.color="#0f172a";
+    el.innerHTML = `<div class="chips">${clean.map(v=>`<div class="chip"><span>${v}</span></div>`).join("")}</div>`;
+  }
+  function renderAppearanceView(){
+    const ap = state.appearance;
+    setPlainValue("apv_height", ap.height);
+    setPlainValue("apv_weight", ap.weight);
+    setPlainValue("apv_eye", ap.eye);
+    setPlainValue("apv_hair", ap.hair);
+    setPlainValue("apv_hip", ap.hip);
+    setPlainValue("apv_chest", ap.chest);
+    setPlainValue("apv_bodytype", ap.bodytype);
+    renderChipsInto(qs("apv_specific"), ap.specific);
+    renderChipsInto(qs("apv_tattoos"), ap.tattoos);
+    renderChipsInto(qs("apv_piercings"), ap.piercings);
+  }
+  function setMultiButtonText(btnValueId, selectedArr){
+    const el = qs(btnValueId);
+    if(!el) return;
+    const clean = (selectedArr||[]).filter(v=>v && v!=="None" && v!=="N/A");
+    const placeholder = el.parentElement?.querySelector?.(".dd-placeholder");
+    if(clean.length){
+      if(placeholder) placeholder.hidden = true;
+      el.hidden = false;
+      el.textContent = clean.join(", ");
+    } else {
+      el.hidden = true;
+      if(placeholder) placeholder.hidden = false;
+    }
+  }
+  function syncAppearanceMultiButtons(){
+    setMultiButtonText("ap_specValue", state.appearance?.specific || []);
+    setMultiButtonText("ap_tattooValue", state.appearance?.tattoos || []);
+    setMultiButtonText("ap_pierceValue", state.appearance?.piercings || []);
+  }
+  function appearanceEnterEdit(){
+    qs("appearanceView").hidden = true;
+    qs("appearanceEdit").hidden = false;
+    const ap = state.appearance;
+    qs("ap_height").value = ap.height || "N/A";
+    qs("ap_weight").value = ap.weight || "N/A";
+    qs("ap_eye").value = ap.eye || "N/A";
+    qs("ap_hair").value = ap.hair || "N/A";
+    qs("ap_hip").value = ap.hip || "N/A";
+    qs("ap_chest").value = ap.chest || "N/A";
+    qs("ap_bodytype").value = ap.bodytype || "N/A";
+  }
+  function appearanceSave(){
+    state.appearance.height = qs("ap_height").value;
+    state.appearance.weight = qs("ap_weight").value;
+    state.appearance.eye = qs("ap_eye").value;
+    state.appearance.hair = qs("ap_hair").value;
+    state.appearance.hip = qs("ap_hip").value;
+    state.appearance.chest = qs("ap_chest").value;
+    state.appearance.bodytype = qs("ap_bodytype").value;
+    save();
+    renderAppearanceView();
+    qs("appearanceView").hidden = false;
+    qs("appearanceEdit").hidden = true;
+    qsa(".dd-panel").forEach(p => p.hidden = true);
+  }
+  function initAppearance(){
+    fillSelect("ap_height", HEIGHTS, state.appearance.height);
+    fillSelect("ap_weight", WEIGHTS, state.appearance.weight);
+    fillSelect("ap_eye", EYES, state.appearance.eye);
+    fillSelect("ap_hair", HAIR, state.appearance.hair);
+    fillSelect("ap_hip", HIPS, state.appearance.hip);
+    fillSelect("ap_chest", CHEST, state.appearance.chest);
+    fillSelect("ap_bodytype", BODY, state.appearance.bodytype);
+
+    buildChecklist("ap_specDD", SPEC, state.appearance.specific, (label, checked) => {
+      const set = new Set(state.appearance.specific || []);
+      checked ? set.add(label) : set.delete(label);
+      if (label === "None" && checked) state.appearance.specific = ["None"];
+      else { set.delete("None"); state.appearance.specific = Array.from(set); }
+      save(); syncAppearanceMultiButtons();
+    });
+    buildChecklist("ap_tattooDD", TATTOOS, state.appearance.tattoos, (label, checked) => {
+      const set = new Set(state.appearance.tattoos || []);
+      checked ? set.add(label) : set.delete(label);
+      if (label === "None" && checked) state.appearance.tattoos = ["None"];
+      else { set.delete("None"); state.appearance.tattoos = Array.from(set); }
+      save(); syncAppearanceMultiButtons();
+    });
+    buildChecklist("ap_pierceDD", PIERCINGS, state.appearance.piercings, (label, checked) => {
+      const set = new Set(state.appearance.piercings || []);
+      checked ? set.add(label) : set.delete(label);
+      if (label === "None" && checked) state.appearance.piercings = ["None"];
+      else { set.delete("None"); state.appearance.piercings = Array.from(set); }
+      save(); syncAppearanceMultiButtons();
+    });
+
+    const btn = qs("btnEditAppearance");
+    if(btn){
+      setMode("secAppearance","view");
+      btn.style.cursor="pointer";
+      btn.textContent="✎";
+      btn.addEventListener("click", () => {
+        const mode = getMode("secAppearance");
+        if(mode==="view"){
+          appearanceEnterEdit();
+          setMode("secAppearance","edit");
+          btn.textContent="Save";
+        } else {
+          appearanceSave();
+          setMode("secAppearance","view");
+          btn.textContent="✎";
+        }
+      });
+    }
+
+    syncAppearanceMultiButtons();
+    renderAppearanceView();
+  }
+
+  /* ---------- photos + cropper ---------- */
+  let cropper = null;
+  let currentTarget = "headshot";
+  function destroyCropper(){try{if(cropper) cropper.destroy();}catch{} cropper=null;}
+  function aspectRatioFor(target){ if(target==="additional") return NaN; return 3/4; }
+
+  function renderSidebarPhotos(){
+    const map={headshot:qs("photoHeadshot"),side:qs("photoSide"),full:qs("photoFull")};
+    const wrapMap={headshot:qs("wrapHeadshot"),side:qs("wrapSide"),full:qs("wrapFull")};
+    ["headshot","side","full"].forEach((k)=> {
+      const box = map[k];
+      const wrap = wrapMap[k];
+      const url = state.photos?.[k] || "";
+      if(!box) return;
+      box.style.backgroundImage = url ? `url("${url}")` : "";
+      box.classList.toggle("hasPhoto", !!url);
+      if(wrap) wrap.classList.toggle("hasPhoto", !!url);
+    });
+  }
+  function setImgOrEmpty(imgId, emptyId, url){
+    const img = qs(imgId), empty = qs(emptyId);
+    if(!img||!empty) return;
+    if(url){ img.src=url; img.style.display="block"; empty.style.display="none"; }
+    else{ img.style.display="none"; empty.style.display="flex"; }
+  }
+  function renderPhotosPanel(){
+    setImgOrEmpty("ph_headshot","ph_headshot_empty", state.photos.headshot || "");
+    setImgOrEmpty("ph_side","ph_side_empty", state.photos.side || "");
+    setImgOrEmpty("ph_full","ph_full_empty", state.photos.full || "");
+
+    const mainMap=[["headshot",qs("ph_headshot")],["side",qs("ph_side")],["full",qs("ph_full")]];
+    mainMap.forEach(([key,img])=>{
+      const body = img?.closest(".tileBody");
+      if(!body) return;
+      const url = state.photos[key] || "";
+      const existing = body.querySelector(".xPhoto");
+      if(url && !existing){
+        const b=document.createElement("button");
+        b.className="xPhoto"; b.type="button"; b.textContent="×";
+        b.addEventListener("click",(e)=>{e.stopPropagation(); if(!confirm("Remove this photo?")) return;
+          state.photos[key]=""; save(); renderAllPhotos();
+        });
+        body.appendChild(b);
+      }
+      if(!url && existing) existing.remove();
+    });
+
+    const grid = qs("additionalPhotosGrid");
+    if(!grid) return;
+    grid.innerHTML="";
+    (state.photos.additional||[]).forEach((url,idx)=>{
+      const div=document.createElement("div");
+      div.className="thumb";
+      div.innerHTML=`<button class="x" type="button" title="Remove">×</button><img src="${url}" alt="Additional photo">`;
+      div.querySelector(".x").addEventListener("click",()=>{ if(!confirm("Remove this photo?")) return;
+        state.photos.additional.splice(idx,1); save(); renderPhotosPanel(); renderSidebarPhotos();
+      });
+      grid.appendChild(div);
+    });
+  }
+  function renderAllPhotos(){ renderSidebarPhotos(); renderPhotosPanel(); }
+  function openCropModal(dataUrl){
+    const img=qs("cropTarget");
+    if(!img) return;
+    img.onload=()=>{ ProfileApp.Modals.open("modalCrop"); destroyCropper();
+      cropper=new Cropper(img,{aspectRatio:aspectRatioFor(currentTarget),viewMode:1,background:false,autoCropArea:1});
+    };
+    img.src=dataUrl;
+  }
+  function initPhotoBindings(){
+    window.ProfileUpload = window.ProfileUpload || {};
+    window.ProfileUpload.open = (target)=>{ currentTarget=target; qs("fileInput").click(); };
+
+    document.addEventListener("click",(e)=>{
+      const btn=e.target.closest?.("[data-remove-photo]");
+      if(!btn) return;
+      const key=btn.getAttribute("data-remove-photo");
+      if(!key) return;
+      e.stopPropagation();
+      if(!confirm("Remove this photo?")) return;
+      state.photos[key]=""; save(); renderAllPhotos();
+    });
+
+    qsa("[data-upload]").forEach(el=>{
+      if(el.dataset.bound) return;
+      el.addEventListener("click",()=> ProfileUpload.open(el.getAttribute("data-upload")));
+      el.dataset.bound="1";
+    });
+    qsa("[data-photo-box]").forEach(el=>{
+      if(el.dataset.bound) return;
+      el.addEventListener("click",()=> ProfileUpload.open(el.getAttribute("data-photo-box")));
+      el.dataset.bound="1";
+    });
+
+    document.addEventListener("click",(e)=>{
+      const tile=e.target.closest?.(".tileBody[data-main-photo]");
+      if(!tile) return;
+      ProfileUpload.open(tile.getAttribute("data-main-photo"));
+    });
+
+    qs("btnAddAdditional")?.addEventListener("click",()=> ProfileUpload.open("additional"));
+
+    qs("fileInput")?.addEventListener("change", async ()=>{
+      const file = qs("fileInput").files && qs("fileInput").files[0];
+      if(!file) return;
+      if(!/^image\/(png|jpe?g|webp)$/i.test(file.type)){
+        alert("Only image files (png/jpg/webp) are allowed.");
+        qs("fileInput").value=""; return;
+      }
+      const r=new FileReader();
+      r.onload=()=> openCropModal(r.result);
+      r.readAsDataURL(file);
+      qs("fileInput").value="";
+    });
+
+    qs("btnCropCancel")?.addEventListener("click",()=>{ destroyCropper(); ProfileApp.Modals.close("modalCrop"); });
+    qs("btnCropApply")?.addEventListener("click",()=>{
+      if(!cropper) return;
+      const canvas=cropper.getCroppedCanvas({maxWidth:900,maxHeight:1200,imageSmoothingQuality:"high"});
+      const dataUrl=canvas.toDataURL("image/jpeg",0.88);
+      if(currentTarget==="additional") state.photos.additional.unshift(dataUrl);
+      else state.photos[currentTarget]=dataUrl;
+      save(); destroyCropper(); ProfileApp.Modals.close("modalCrop"); renderAllPhotos();
+    });
+  }
+
+  /* ---------- assets ---------- */
+  function isYouTubeUrl(url){ return /(^https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url); }
+  function extractYouTubeId(url){
+    try{
+      const u=new URL(url);
+      if(/youtu\.be$/i.test(u.hostname)) return u.pathname.replace("/","")||"";
+      if(/youtube\.com$/i.test(u.hostname)||/www\.youtube\.com$/i.test(u.hostname)){
+        if(u.searchParams.get("v")) return u.searchParams.get("v");
+        const m=u.pathname.match(/\/(shorts|embed)\/([a-zA-Z0-9_-]{6,})/);
+        if(m) return m[2];
+      }
+      return "";
+    }catch{
+      const m=String(url).match(/(?:v=|\/shorts\/|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{6,})/);
+      return m?m[1]:"";
+    }
+  }
+  function normalizeUrl(url){ return (url||"").trim(); }
+
+  function renderAssets(){
+    const ytList=qs("listYt");
+    if(ytList){
+      ytList.innerHTML="";
+      state.assets.youtube.forEach((url,idx)=>{
+        const id=extractYouTubeId(url);
+        const box=document.createElement("div");
+        box.className="assetItem";
+        box.innerHTML=`<button class="x" type="button" title="Remove">×</button>
+          ${id ? `<iframe class="ytFrame" src="https://www.youtube.com/embed/${id}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` :
+          `<a class="socialUrl" href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`}`;
+        box.querySelector(".x").addEventListener("click",()=>{state.assets.youtube.splice(idx,1); save(); renderAssets();});
+        ytList.appendChild(box);
+      });
+    }
+
+    const aList=qs("listAudio");
+    if(aList){
+      aList.innerHTML="";
+      state.assets.audio.forEach((url,idx)=>{
+        const isYT=isYouTubeUrl(url);
+        const id=isYT ? extractYouTubeId(url) : "";
+        const isAudioFile=/\.(mp3|wav|ogg)(\?.*)?$/i.test(url);
+        const box=document.createElement("div");
+        box.className="assetItem";
+        box.innerHTML=`<button class="x" type="button" title="Remove">×</button>
+          <div style="font-weight:900;color:#0f172a;margin-bottom:8px;">${isYT ? "YouTube Audio" : (isAudioFile ? "Audio File" : "Audio Link")}</div>
+          ${isYT && id ? `<iframe class="ytFrame" src="https://www.youtube.com/embed/${id}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` :
+            isAudioFile ? `<audio controls src="${url}"></audio>` :
+            `<a class="socialUrl" href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`}`;
+        box.querySelector(".x").addEventListener("click",()=>{state.assets.audio.splice(idx,1); save(); renderAssets();});
+        aList.appendChild(box);
+      });
+    }
+  }
+
+  window.ProfileApp = window.ProfileApp || {};
+  ProfileApp.Assets = {
+    add(type){
+      if(type==="youtube"){
+        const url = normalizeUrl(qs("inpYt")?.value);
+        if(!url) return;
+        if(!isYouTubeUrl(url)){ alert("Please enter a valid YouTube URL."); return; }
+        if(!state.assets.youtube.includes(url)) state.assets.youtube.unshift(url);
+        if(qs("inpYt")) qs("inpYt").value="";
+        save(); renderAssets(); return;
+      }
+      if(type==="audio"){
+        const url = normalizeUrl(qs("inpAudio")?.value);
+        if(!url) return;
+        if(!state.assets.audio.includes(url)) state.assets.audio.unshift(url);
+        if(qs("inpAudio")) qs("inpAudio").value="";
+        save(); renderAssets();
+      }
+    }
+  };
+
+  /* ---------- credits add/edit/delete ---------- */
+  let creditEditingId = null;
+  function yearOptions(){
+    const y=new Date().getFullYear();
+    const start=y-70, end=y+1;
+    const el=qs("cr_year"); if(!el) return;
+    el.innerHTML="";
+    for(let i=end;i>=start;i--){
+      const opt=document.createElement("option");
+      opt.value=String(i); opt.textContent=String(i);
+      el.appendChild(opt);
+    }
+  }
+  function openCreditFormForAdd(){
+    creditEditingId=null;
+    qs("creditFormWrapper").hidden=false;
+    qs("cr_title").value=""; qs("cr_company").value=""; qs("cr_about").value="";
+    qs("cr_month").value="January"; yearOptions(); qs("cr_year").value=String(new Date().getFullYear());
+    const saveBtn=qs("creditFormWrapper")?.querySelector?.(".pill-save");
+    if(saveBtn) saveBtn.textContent="Save Credit";
+  }
+  function openCreditFormForEdit(id){
+    const cr=(state.credits||[]).find(x=>x.id===id);
+    if(!cr) return;
+    creditEditingId=id;
+    qs("creditFormWrapper").hidden=false;
+    qs("cr_title").value=cr.title||""; qs("cr_company").value=cr.company||""; qs("cr_about").value=cr.about||"";
+    qs("cr_month").value=cr.month||"January"; yearOptions(); qs("cr_year").value=cr.year||String(new Date().getFullYear());
+    const saveBtn=qs("creditFormWrapper")?.querySelector?.(".pill-save");
+    if(saveBtn) saveBtn.textContent="Update Credit";
+  }
+  function closeCreditForm(){ qs("creditFormWrapper").hidden=true; creditEditingId=null; }
+
+  function renderCredits(){
+    const list=qs("listCredits"), empty=qs("creditEmptyState"), header=qs("creditListHeader");
+    if(!list||!empty||!header) return;
+    list.innerHTML="";
+    if(!state.credits.length){ empty.hidden=false; header.hidden=true; return; }
+    empty.hidden=true; header.hidden=false;
+
+    state.credits.forEach((cr)=>{
+      const card=document.createElement("div");
+      card.className="creditCard";
+      card.innerHTML=`
+        <button class="x" type="button" title="Remove">×</button>
+        <button class="miniBtn" type="button" data-credit-edit="${cr.id}" style="position:absolute; top:10px; right:44px; width:auto; padding:6px 10px;">✎</button>
+        <div class="creditTop">
+          <b>${cr.title||"Untitled"}</b>
+          <div style="font-weight:900;color:#111827;">${(cr.month||"")}${cr.year ? " "+cr.year : ""}</div>
+        </div>
+        <div class="creditMeta">${cr.company||""}</div>
+        <div class="creditAbout">${(cr.about||"").replace(/[<>]/g,"")}</div>
+      `;
+      card.querySelector(".x").addEventListener("click",()=>{ if(!confirm("Remove this credit?")) return;
+        state.credits = state.credits.filter(x=>x.id!==cr.id); save(); renderCredits();
+      });
+      card.querySelector(`[data-credit-edit="${cr.id}"]`).addEventListener("click",()=> openCreditFormForEdit(cr.id));
+      list.appendChild(card);
+    });
+  }
+
+  ProfileApp.Credits = {
+    toggleForm(show){ if(show) openCreditFormForAdd(); else closeCreditForm(); },
+    save(){
+      const title=(qs("cr_title").value||"").trim();
+      const company=(qs("cr_company").value||"").trim();
+      const about=(qs("cr_about").value||"").trim();
+      const month=qs("cr_month").value;
+      const year=qs("cr_year").value;
+
+      if(title.length<3){ alert("Job title must be at least 3 characters."); return; }
+      if(title.length>130){ alert("Job title max 130 characters."); return; }
+
+      if(!creditEditingId){
+        state.credits.unshift({
+          id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())+"_"+Math.random().toString(16).slice(2),
+          title, company, about, month, year
+        });
+      } else {
+        const idx=state.credits.findIndex(x=>x.id===creditEditingId);
+        if(idx>=0) state.credits[idx] = { ...state.credits[idx], title, company, about, month, year };
+      }
+      save(); closeCreditForm(); renderCredits();
+    }
+  };
+
+  /* ---------- progress ---------- */
+  const ProfileProgress = {
+    update(){
+      const fill=qs("progressBarFill");
+
+      const infoMax=6;
+      let infoScore=0;
+      if((state.contacts.phone||"").trim()) infoScore++;
+      if((state.contacts.email||"").trim()) infoScore++;
+      if((state.personal.gender||"").trim()) infoScore++;
+      if((state.personal.dob||"").trim()) infoScore++;
+      if((state.personal.loc||"").trim()) infoScore++;
+      if((state.personal.ethnicity||"").trim()) infoScore++;
+      const infoPct=Math.round((infoScore/infoMax)*100);
+
+      const photoMax=3;
+      let photoScore=0;
+      if((state.photos.headshot||"").trim()) photoScore++;
+      if((state.photos.side||"").trim()) photoScore++;
+      if((state.photos.full||"").trim()) photoScore++;
+      const photoPct=Math.round((photoScore/photoMax)*100);
+
+      const hasAssets=(state.assets.youtube.length+state.assets.audio.length)>0;
+      const videoPct=hasAssets?100:0;
+
+      const hasSocial=Object.values(state.social||{}).some(v=>(v||"").trim());
+      const socialPct=hasSocial?100:0;
+
+      const totalPct=Math.max(0,Math.min(100,Math.round((infoPct*0.35)+(photoPct*0.35)+(videoPct*0.2)+(socialPct*0.1))));
+      if(fill) fill.style.width=totalPct+"%";
+
+      const rating=totalPct*100;
+      const rTxt=Number(rating).toLocaleString();
+      if(qs("headerRating")) qs("headerRating").textContent=rTxt;
+
+      const alertEl=qs("topAlert");
+      if(alertEl) alertEl.style.display=(state.photos.headshot?"none":"flex");
+
+      if(qs("progPctInfo")) qs("progPctInfo").textContent=infoPct+"%";
+      if(qs("progBarInfo")) qs("progBarInfo").style.setProperty("--p", infoPct+"%");
+
+      if(qs("progPctPhotos")) qs("progPctPhotos").textContent=photoPct+"%";
+      if(qs("progBarPhotos")) qs("progBarPhotos").style.setProperty("--p", photoPct+"%");
+
+      if(qs("progPctVideos")) qs("progPctVideos").textContent=videoPct+"%";
+      if(qs("progBarVideos")) qs("progBarVideos").style.setProperty("--p", videoPct+"%");
+
+      if(qs("modalChartCircle")) qs("modalChartCircle").style.setProperty("--pct", (totalPct*3.6)+"deg");
+      if(qs("modalChartRating")) qs("modalChartRating").textContent=rTxt;
+      if(state.photos.headshot && qs("modalChartAvatar")) qs("modalChartAvatar").src=state.photos.headshot;
+    }
+  };
+  window.ProfileProgress = ProfileProgress;
+
+  ProfileApp.Tabs = {
+    jumpTo(key){
+      const tab=document.querySelector(`.tab[data-tab="${key}"]`);
+      tab?.click();
+      ProfileApp.Modals.close("modalProgress");
+    }
+  };
+
+  /* ---------- init ---------- */
+  function init(){
+    load();
+    initDropdownGlobal();
+    initTabs();
+    initModals();
+
+    qs("progressWrap")?.addEventListener("click",(e)=>{
+      if(e.target.closest("a")) return;
+      ProfileApp.Modals.open("modalProgress");
+    });
+
+    applyHeader();
+    initContacts();
+    initPersonalLink();
+    initInterested();
+    initSkills();
+    initSocial();
+
+    renderContacts();
+    renderPersonal();
+    initPersonal();
+
+    initAppearance();
+
+    initPhotoBindings();
+    renderAllPhotos();
+
+    yearOptions();
+    renderAssets();
+    renderCredits();
+
+    ProfileProgress.update();
+  }
+  document.addEventListener("DOMContentLoaded", init);
+})();
+
+/* =========================================================
+   Mobile Hero Slider (MHS) - JS (REVISED)
+========================================================= */
+(function(){
+  const KEY="talent_profile_fix_v2";
+  const PHOTO_KEYS=["headshot","side","full"];
+  const qs=(sel,root=document)=>root.querySelector(sel);
+
+  function isMobile(){return window.matchMedia("(max-width: 900px)").matches;}
+  function readState(){try{const raw=localStorage.getItem(KEY); if(!raw) return null; return JSON.parse(raw);}catch{return null;}}
+  function getNameFromState(st){
+    const first=(st?.name?.first||"").trim(); const last=(st?.name?.last||"").trim();
+    const full=`${first} ${last}`.trim(); return full || "Orland Management";
+  }
+  function getPhotoFromState(st,k){return (st?.photos?.[k]||"").trim();}
+  function buildFallbackSvg(label){
+    const txt=encodeURIComponent(label||"Upload photo");
+    return `data:image/svg+xml;charset=utf-8,`+
+      `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">`+
+      `<rect width="100%" height="100%" fill="#0b1220"/>`+
+      `<text x="50%" y="50%" fill="#ffffff" font-family="Arial" font-size="44" font-weight="700" text-anchor="middle" dominant-baseline="middle">${txt}</text>`+
+      `</svg>`;
+  }
+
+  const MHS={
+    mounted:false, idx:0, root:null, track:null, nameEl:null, dotsWrap:null, editPhotoBtn:null, editNameBtn:null, imgs:[],
+    mount(){
+      if(this.mounted) return;
+      if(!isMobile()) return;
+      const wrap=qs(".wrap"); if(!wrap) return;
+
+      const root=document.createElement("section");
+      root.className="mhs";
+      root.setAttribute("aria-label","Profile header slider");
+      root.innerHTML=`
+        <div class="mhs-viewport">
+          <div class="mhs-track"></div>
+          <div class="mhs-overlay"></div>
+          <div class="mhs-top">
+            <div class="mhs-pill" id="mhsRatingPill">
+              <span style="color:#ef4444;font-weight:1000;">★</span>
+              <span id="mhsRatingText">0</span>
+              <span style="opacity:.8;">/ 10,000</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button class="mhs-topEdit" id="mhsEditName" type="button" aria-label="Edit name" title="Edit name">✎</button>
+              <button class="mhs-topEdit" id="mhsEditPhoto" type="button" aria-label="Edit photo" title="Edit photo">🖼</button>
+            </div>
+          </div>
+          <button class="mhs-arrow prev" type="button" aria-label="Previous">‹</button>
+          <button class="mhs-arrow next" type="button" aria-label="Next">›</button>
+          <div class="mhs-nameWrap"><div class="mhs-name" id="mhsName">Orland Management</div></div>
+          <div class="mhs-dots" aria-label="Slides"></div>
+        </div>
+      `;
+      wrap.parentNode.insertBefore(root, wrap);
+
+      this.root=root;
+      this.track=qs(".mhs-track",root);
+      this.nameEl=qs("#mhsName",root);
+      this.dotsWrap=qs(".mhs-dots",root);
+      this.editPhotoBtn=qs("#mhsEditPhoto",root);
+      this.editNameBtn=qs("#mhsEditName",root);
+
+      this.imgs=PHOTO_KEYS.map((k)=>{
+        const slide=document.createElement("div");
+        slide.className="mhs-slide";
+        slide.dataset.key=k;
+        const img=document.createElement("img");
+        img.className="mhs-img";
+        img.alt=k;
+        img.src=buildFallbackSvg("Upload photo");
+        slide.appendChild(img);
+        this.track.appendChild(slide);
+        return img;
+      });
+
+      this.dotsWrap.innerHTML="";
+      PHOTO_KEYS.forEach((_,i)=>{
+        const d=document.createElement("button");
+        d.type="button";
+        d.className="mhs-dot"+(i===0?" active":"");
+        d.setAttribute("aria-label","Go to slide "+(i+1));
+        d.addEventListener("click",()=>this.go(i));
+        this.dotsWrap.appendChild(d);
+      });
+
+      qs(".mhs-arrow.prev",root).addEventListener("click",()=>this.prev());
+      qs(".mhs-arrow.next",root).addEventListener("click",()=>this.next());
+      this.bindSwipe();
+
+      this.editPhotoBtn.addEventListener("click",(e)=>{
+        e.preventDefault(); e.stopPropagation();
+        const k=PHOTO_KEYS[this.idx]||"headshot";
+        if(window.ProfileUpload?.open) window.ProfileUpload.open(k);
+        else document.querySelector(`[data-upload="${k}"]`)?.click();
+      });
+
+      this.editNameBtn.addEventListener("click",(e)=>{
+        e.preventDefault(); e.stopPropagation();
+        const st=readState();
+        const first=(st?.name?.first||"");
+        const last=(st?.name?.last||"");
+        const f=document.getElementById("nameFirst");
+        const l=document.getElementById("nameLast");
+        if(f) f.value=first;
+        if(l) l.value=last;
+        window.ProfileApp?.Modals?.open?.("modalName");
+      });
+
+      this.updateFromStorage();
+      this.go(0,true);
+      this.mounted=true;
+    },
+    unmount(){
+      if(!this.mounted) return;
+      this.root?.remove();
+      this.root=null; this.track=null; this.nameEl=null; this.dotsWrap=null;
+      this.editPhotoBtn=null; this.editNameBtn=null; this.imgs=[];
+      this.idx=0; this.mounted=false;
+    },
+    bindSwipe(){
+      const el=this.root;
+      let startX=0, dx=0, touching=false;
+      el.addEventListener("touchstart",(e)=>{
+        if(!e.touches||e.touches.length!==1) return;
+        touching=true; startX=e.touches[0].clientX; dx=0;
+      },{passive:true});
+      el.addEventListener("touchmove",(e)=>{
+        if(!touching||!e.touches||e.touches.length!==1) return;
+        dx=e.touches[0].clientX-startX;
+      },{passive:true});
+      el.addEventListener("touchend",()=>{
+        if(!touching) return;
+        touching=false;
+        if(Math.abs(dx)>45){ if(dx<0) this.next(); else this.prev(); }
+      },{passive:true});
+    },
+    go(i,instant=false){
+      if(!this.track) return;
+      const max=PHOTO_KEYS.length-1;
+      this.idx=Math.max(0,Math.min(max,i));
+      const x=-this.idx*100;
+      if(instant){
+        const prev=this.track.style.transition;
+        this.track.style.transition="none";
+        this.track.style.transform=`translateX(${x}%)`;
+        void this.track.offsetHeight;
+        this.track.style.transition=prev||"transform 260ms ease";
+      }else{
+        this.track.style.transform=`translateX(${x}%)`;
+      }
+      const dots=this.dotsWrap?Array.from(this.dotsWrap.children):[];
+      dots.forEach((d,idx)=>d.classList.toggle("active",idx===this.idx));
+    },
+    next(){this.go((this.idx+1)%PHOTO_KEYS.length);},
+    prev(){this.go((this.idx-1+PHOTO_KEYS.length)%PHOTO_KEYS.length);},
+    updateFromStorage(){
+      const st=readState(); if(!st) return;
+      if(this.nameEl) this.nameEl.textContent=getNameFromState(st);
+      const headerRating=document.getElementById("headerRating")?.textContent||"0";
+      const pill=document.getElementById("mhsRatingText");
+      if(pill) pill.textContent=headerRating;
+      PHOTO_KEYS.forEach((k,i)=>{
+        const url=getPhotoFromState(st,k);
+        const img=this.imgs[i]; if(!img) return;
+        img.src=url||buildFallbackSvg("Upload photo");
+      });
+    }
+  };
+
+  function handleResize(){ if(isMobile()) MHS.mount(); else MHS.unmount(); }
+  window.addEventListener("resize",handleResize);
+
+  (function hookLocalStorage(){
+    try{
+      const orig=localStorage.setItem;
+      if(orig.__mhsHooked) return;
+      const hooked=function(k,v){
+        orig.apply(this,arguments);
+        if(k===KEY){ if(MHS.mounted) MHS.updateFromStorage(); }
+      };
+      hooked.__mhsHooked=true;
+      localStorage.setItem=hooked;
+    }catch{}
+  })();
+
+  document.addEventListener("DOMContentLoaded",()=>{ handleResize(); });
+})();
+  </script>
+</body>
+</html>

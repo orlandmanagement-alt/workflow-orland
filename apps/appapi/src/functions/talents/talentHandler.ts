@@ -12,6 +12,13 @@ router.get('/me', async (c) => {
         if (typeof talent.showreels === 'string') talent.showreels = JSON.parse(talent.showreels);
         if (typeof talent.audios === 'string') talent.audios = JSON.parse(talent.audios);
         if (typeof talent.additional_photos === 'string') talent.additional_photos = JSON.parse(talent.additional_photos);
+        if (typeof talent.interests === 'string') talent.interests = JSON.parse(talent.interests);
+        if (typeof talent.skills === 'string') talent.skills = JSON.parse(talent.skills);
+        
+        // Also fetch experiences and attach to profile explicitly for easy UI binding
+        const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(talent.talent_id).all()
+        talent.experiences = exps || [];
+        
         return c.json({ status: 'ok', data: talent })
     }
     
@@ -41,10 +48,13 @@ router.put('/me', async (c) => {
   const sideView = body.side_view || body.sideView || null;
   const fullHeight = body.full_height || body.fullHeight || null;
   
-  // SUPPORT ARRAYS (Multi-URLs)
+  // SUPPORT ARRAYS (Multi-URLs & Chips)
   const showreels = Array.isArray(body.showreels) ? JSON.stringify(body.showreels) : '[]';
   const audios = Array.isArray(body.audios) ? JSON.stringify(body.audios) : '[]';
   const additionalPhotos = Array.isArray(body.additional_photos) ? JSON.stringify(body.additional_photos) : '[]';
+  
+  const interests = Array.isArray(body.interests) ? JSON.stringify(body.interests) : '[]';
+  const skills = Array.isArray(body.skills) ? JSON.stringify(body.skills) : '[]';
   
   // OPTIONAL SOCIAL & CONTACTS (jika ditarik dari tab profile)
   const instagram = body.instagram || null;
@@ -52,30 +62,56 @@ router.put('/me', async (c) => {
   const twitter = body.twitter || null;
   const phone = body.phone || null;
   const email = body.email || null;
+  
+  // ADDITIONAL PERSONAL & APPEARANCE
+  const union_affiliation = body.union_affiliation || null;
+  const eye_color = body.eye_color || null;
+  const hair_color = body.hair_color || null;
+  const hip_size = body.hip_size || null;
+  const chest_bust = body.chest_bust || null;
+  const body_type = body.body_type || null;
+  const specific_characteristics = body.specific_characteristics || null;
+  const tattoos = body.tattoos || null;
+  const piercings = body.piercings || null;
+  const ethnicity = body.ethnicity || null;
+  const location = body.location || null;
 
   try {
     const existing = await c.env.DB_CORE.prepare('SELECT talent_id FROM talents WHERE user_id = ?').bind(userId).first()
 
     if (existing) {
-      // Update jika profil sudah ada (Termasuk field media & kontak)
+      // Update jika profil sudah ada
       await c.env.DB_CORE.prepare(`
         UPDATE talents SET 
           full_name=?, category=?, height=?, weight=?, birth_date=?, gender=?, 
           headshot=?, side_view=?, full_height=?, 
           showreels=?, audios=?, additional_photos=?,
+          interests=?, skills=?, union_affiliation=?, eye_color=?, hair_color=?, hip_size=?, chest_bust=?, body_type=?, specific_characteristics=?, tattoos=?, piercings=?, ethnicity=?, location=?,
           instagram=?, tiktok=?, twitter=?, phone=?, email=? 
         WHERE user_id=?
-      `).bind(fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, showreels, audios, additionalPhotos, instagram, tiktok, twitter, phone, email, userId).run()
+      `).bind(
+        fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, 
+        showreels, audios, additionalPhotos, 
+        interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
+        instagram, tiktok, twitter, phone, email, userId
+      ).run()
     } else {
       // Insert jika profil baru
       const newTalentId = crypto.randomUUID()
       await c.env.DB_CORE.prepare(`
         INSERT INTO talents (
           talent_id, user_id, full_name, category, height, weight, birth_date, gender, 
-          headshot, side_view, full_height, showreels, audios, additional_photos, instagram, tiktok, twitter, phone, email
+          headshot, side_view, full_height, showreels, audios, additional_photos, 
+          interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
+          instagram, tiktok, twitter, phone, email
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(newTalentId, userId, fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, showreels, audios, additionalPhotos, instagram, tiktok, twitter, phone, email).run()
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        newTalentId, userId, fullName, category, height, weight, birthDate, gender, 
+        headshot, sideView, fullHeight, showreels, audios, additionalPhotos, 
+        interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
+        instagram, tiktok, twitter, phone, email
+      ).run()
     }
     
     // Ambil ulang data terbaru setelah disimpan

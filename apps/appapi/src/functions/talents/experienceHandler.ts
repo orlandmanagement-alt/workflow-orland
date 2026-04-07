@@ -13,16 +13,16 @@ router.get('/:talent_id/experiences', async (c) => {
 router.post('/:talent_id/experiences', zValidator('json', createExpSchema), async (c) => {
   const body = c.req.valid('json')
   const expId = crypto.randomUUID()
-  await c.env.DB_CORE.prepare('INSERT INTO talent_experiences (exp_id, talent_id, title, year, description) VALUES (?, ?, ?, ?, ?)')
-    .bind(expId, c.req.param('talent_id'), body.title, body.year, body.description || null).run()
+  await c.env.DB_CORE.prepare('INSERT INTO talent_experiences (exp_id, talent_id, title, year, month, company, description) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(expId, c.req.param('talent_id'), body.title, body.year, body.month || null, body.company || null, body.description || null).run()
   return c.json({ status: 'ok', id: expId }, 201)
 })
 
 router.put('/experiences/:exp_id', zValidator('json', updateExpSchema), async (c) => {
   const body = c.req.valid('json')
   const expId = c.req.param('exp_id')
-  const result = await c.env.DB_CORE.prepare('UPDATE talent_experiences SET title = ?, year = ?, description = ? WHERE exp_id = ?')
-    .bind(body.title, body.year, body.description || null, expId).run()
+  const result = await c.env.DB_CORE.prepare('UPDATE talent_experiences SET title = ?, year = ?, month = ?, company = ?, description = ? WHERE exp_id = ?')
+    .bind(body.title, body.year, body.month || null, body.company || null, body.description || null, expId).run()
   if (result.meta.changes === 0) return c.json({ status: 'error', message: 'Not found' }, 404)
   return c.json({ status: 'ok', data: { exp_id: expId, ...body } })
 })

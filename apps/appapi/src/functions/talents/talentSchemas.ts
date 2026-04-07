@@ -4,7 +4,7 @@ export const talentQuerySchema = z.object({ limit: z.string().optional().default
 export const createTalentSchema = z.object({ full_name: z.string().min(2), category: z.string(), base_rate: z.number().min(0) })
 export const updateTalentSchema = z.object({ full_name: z.string().min(2), category: z.string(), base_rate: z.number().min(0) })
 
-export const createExpSchema = z.object({ title: z.string().min(2), year: z.number().min(1900), description: z.string().optional() })
+export const createExpSchema = z.object({ title: z.string().min(2), year: z.number().min(1900), month: z.string().optional(), company: z.string().optional(), description: z.string().optional() })
 export const updateExpSchema = createExpSchema
 
 export const createCertSchema = z.object({ cert_name: z.string().min(2), issued_by: z.string(), year: z.number().min(1900) })

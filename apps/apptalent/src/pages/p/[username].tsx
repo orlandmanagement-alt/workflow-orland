@@ -137,7 +137,7 @@ export default function PublicProfile() {
         <div className="lg:hidden relative w-full h-[65vh] min-h-[480px] bg-black overflow-hidden group">
              {/* Slider Controls Layer */}
              <div className="absolute top-4 right-4 z-20 flex gap-3">
-                 <button onClick={() => setWishlist(!wishlist)} className={\`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all \${wishlist ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/80 border-white/50 text-slate-600'}\`}>
+                 <button onClick={() => setWishlist(!wishlist)} className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md shadow-lg transition-all ${wishlist ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/80 border-white/50 text-slate-600'}`}>
                      <Heart size={20} fill={wishlist ? "currentColor" : "none"} className={wishlist ? 'animate-bounce' : ''}/>
                  </button>
                  <button onClick={copyLink} className="w-11 h-11 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-slate-600 shadow-lg border border-white/50">
@@ -145,7 +145,7 @@ export default function PublicProfile() {
                  </button>
              </div>
 
-             <div className="absolute inset-0 transition-transform duration-700 ease-out" style={{ transform: \`translateX(-\${slideIdx * 100}%)\` }}>
+             <div className="absolute inset-0 transition-transform duration-700 ease-out" style={{ transform: `translateX(-${slideIdx * 100}%)` }}>
                  <div className="flex h-full w-[300%]">
                      {mobileGallery.map((img, i) => (
                          <div key={i} className="w-1/3 h-full relative">
@@ -159,7 +159,7 @@ export default function PublicProfile() {
              {/* Slider Dots */}
              <div className="absolute bottom-[160px] left-5 z-20 flex gap-2">
                  {mobileGallery.map((_, i) => (
-                     <div key={i} onClick={()=>setSlideIdx(i)} className={\`h-2 rounded-full cursor-pointer transition-all duration-300 \${i === slideIdx ? 'bg-pink-500 w-8 shadow-[0_0_12px_rgba(236,72,153,0.8)]' : 'bg-white/40 w-2 hover:bg-white/60'}\`} />
+                     <div key={i} onClick={()=>setSlideIdx(i)} className={`h-2 rounded-full cursor-pointer transition-all duration-300 ${i === slideIdx ? 'bg-pink-500 w-8 shadow-[0_0_12px_rgba(236,72,153,0.8)]' : 'bg-white/40 w-2 hover:bg-white/60'}`} />
                  ))}
              </div>
 
@@ -245,7 +245,7 @@ export default function PublicProfile() {
                             </div>
                         </div>
                         <div className="flex gap-3">
-                             <button onClick={() => setWishlist(!wishlist)} className={\`w-12 h-12 rounded-full flex items-center justify-center transition-all bg-white border shadow-sm \${wishlist ? 'border-rose-200 text-rose-500 bg-rose-50' : 'border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-300'}\`}>
+                             <button onClick={() => setWishlist(!wishlist)} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all bg-white border shadow-sm ${wishlist ? 'border-rose-200 text-rose-500 bg-rose-50' : 'border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-300'}`}>
                                  <Heart size={20} fill={wishlist ? "currentColor" : "none"} className={wishlist ? 'animate-bounce' : ''}/>
                              </button>
                              <button onClick={copyLink} className="w-12 h-12 rounded-full flex items-center justify-center transition-all bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-300 shadow-sm hover:-translate-y-1">
@@ -264,7 +264,7 @@ export default function PublicProfile() {
                                 { id: 'credits', icon: <Award size={16}/>, label: 'Pengalaman' },
                               ].map(tab => (
                                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} 
-                                     className={\`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-extrabold transition-all duration-300 \${activeTab === tab.id ? 'bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 -translate-y-0.5' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}\`}>
+                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-extrabold transition-all duration-300 ${activeTab === tab.id ? 'bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 -translate-y-0.5' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>
                                      {tab.icon} {tab.label}
                                  </button>
                               ))}
@@ -301,11 +301,11 @@ export default function PublicProfile() {
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 border-l-4 border-l-indigo-500">
                                             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tinggi</div>
-                                            <div className="text-lg font-black text-slate-900">{talent.height ? \`\${talent.height} cm\` : '-'}</div>
+                                            <div className="text-lg font-black text-slate-900">{talent.height ? `${talent.height} cm` : '-'}</div>
                                         </div>
                                         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 border-l-4 border-l-purple-500">
                                             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Berat</div>
-                                            <div className="text-lg font-black text-slate-900">{talent.weight ? \`\${talent.weight} kg\` : '-'}</div>
+                                            <div className="text-lg font-black text-slate-900">{talent.weight ? `${talent.weight} kg` : '-'}</div>
                                         </div>
                                         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 border-l-4 border-l-pink-500">
                                             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Usia / Umur</div>
@@ -361,7 +361,7 @@ export default function PublicProfile() {
                                                 return (
                                                     <div key={i} className="aspect-video bg-black rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative group cursor-pointer hover:-translate-y-1 transition-all">
                                                         {/* Fake Thumbnail Overlay -> iFrame swapping logic skipped for React, just direct iframe for simplicity and robustness */}
-                                                        <iframe src={\`https://www.youtube.com/embed/\${vidId}?rel=0\`} title="YouTube" frameBorder="0" allowFullScreen loading="lazy" className="absolute w-full h-full inset-0 z-10" />
+                                                        <iframe src={`https://www.youtube.com/embed/${vidId}?rel=0`} title="YouTube" frameBorder="0" allowFullScreen loading="lazy" className="absolute w-full h-full inset-0 z-10" />
                                                     </div>
                                                 )
                                             })}

@@ -20,6 +20,7 @@ PBKDF2_ITER = "100000"
 SSO_URL = "https://sso.orlandmanagement.com"
 TALENT_URL = "https://talent.orlandmanagement.com"
 CLIENT_URL = "https://client.orlandmanagement.com"
+ADMIN_URL = "https://admin.orlandmanagement.com"
 DASHBOARD_URL = "https://dashboard.orlandmanagement.com"
 API_URL = "https://api.orlandmanagement.com"
 

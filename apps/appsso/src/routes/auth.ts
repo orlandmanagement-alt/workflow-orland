@@ -3,16 +3,23 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { sign } from 'hono/jwt'
 import { hashData, verifyTurnstile, sendMail } from '../utils'
 
-type Bindings = { DB_SSO: D1Database; TURNSTILE_SECRET: string; RESEND_API_KEY?: string; JWT_SECRET?: string; CLIENT_URL?: string; TALENT_URL?: string }
+type Bindings = { DB_SSO: D1Database; TURNSTILE_SECRET: string; RESEND_API_KEY?: string; JWT_SECRET?: string; CLIENT_URL?: string; TALENT_URL?: string; ADMIN_URL?: string }
 const auth = new Hono<{ Bindings: Bindings }>()
 
 const SESSION_EXPIRY = 259200
 const COOKIE_OPTS = { domain: '.orlandmanagement.com', path: '/', httpOnly: true, secure: true, sameSite: 'None' as const }
 
-// FIX: Pastikan Role selalu HURUF KECIL
+// FIX: Routing berdasarkan role — admin diarahkan ke ADMIN_URL
 const getPortalUrl = async (env: Bindings, user: any, sid: string) => {
-  const safeRole = (user.role || 'talent').toLowerCase(); 
-  const baseUrl = safeRole === 'client' ? (env.CLIENT_URL || 'https://client.orlandmanagement.com') : (env.TALENT_URL || 'https://talent.orlandmanagement.com');
+  const safeRole = (user.role || 'talent').toLowerCase();
+  let baseUrl: string;
+  if (safeRole === 'super_admin' || safeRole === 'admin') {
+    baseUrl = env.ADMIN_URL || 'https://admin.orlandmanagement.com';
+  } else if (safeRole === 'client') {
+    baseUrl = env.CLIENT_URL || 'https://client.orlandmanagement.com';
+  } else {
+    baseUrl = env.TALENT_URL || 'https://talent.orlandmanagement.com';
+  }
   const now = getNow();
   const payload = { sub: user.id, role: safeRole, sid: sid, exp: now + SESSION_EXPIRY, iat: now };
   const token = await sign(payload, env.JWT_SECRET || 'orland-rahasia-utama-123');

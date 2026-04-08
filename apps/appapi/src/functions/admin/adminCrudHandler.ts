@@ -1,7 +1,10 @@
 import { Hono } from 'hono'
+import { requireRole } from '../../middleware/authRole'
 import { Bindings, Variables } from '../../index'
 
 const adminRouter = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+// Inisiasi Router khusus Admin
+const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // GLOBAL ADMIN MIDDLEWARE
 adminRouter.use('*', async (c, next) => {
@@ -11,6 +14,8 @@ adminRouter.use('*', async (c, next) => {
     }
     await next();
 });
+// Middleware: Pastikan hanya role admin / super_admin yang bisa mengakses seluruh rute di bawah ini
+router.use('*', requireRole(['admin', 'super_admin']))
 
 // 1. MASTER USERS: Fetch All Users
 adminRouter.get('/users', async (c) => {
@@ -21,6 +26,11 @@ adminRouter.get('/users', async (c) => {
            FROM users 
         `;
         let params: any[] = [];
+/**
+ * ==========================================
+ * MODUL 1: MASTER USERS (CRUD)
+ * ==========================================
+ */
 
         if (query) {
              sql += " WHERE (full_name LIKE ? OR email LIKE ?)";
@@ -37,8 +47,28 @@ adminRouter.get('/users', async (c) => {
         return c.json({ status: 'ok', data: enriched });
     } catch (err: any) {
         return c.json({ status: 'error', message: err.message }, 500);
+// GET /api/v1/admin/users - Tarik semua data user dengan fitur pencarian
+router.get('/users', async (c) => {
+  try {
+    const search = c.req.query('search') || '';
+    let query = `SELECT id, email, role, status, created_at FROM users`;
+    let params: any[] = [];
+    
+    if (search) {
+      query += ` WHERE email LIKE ? OR role LIKE ?`;
+      params = [`%${search}%`, `%${search}%`];
     }
 });
+    
+    query += ` ORDER BY created_at DESC LIMIT 100`;
+    
+    const { results } = await c.env.DB_SSO.prepare(query).bind(...params).all();
+    return c.json({ status: 'success', data: results });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return c.json({ status: 'error', message: 'Gagal memuat data pengguna' }, 500);
+  }
+})
 
 // 2. MASTER USERS: Change Status (Ban/Suspend/Active)
 adminRouter.patch('/users/:id/status', async (c) => {
@@ -50,6 +80,12 @@ adminRouter.patch('/users/:id/status', async (c) => {
         if (!['active', 'pending', 'suspended', 'deleted', 'banned'].includes(newStatus)) {
             return c.json({ status: 'error', message: 'Invalid status provided' }, 400);
         }
+// PATCH /api/v1/admin/users/:id/status - Ubah status (Banned/Suspend/Active)
+router.patch('/users/:id/status', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const newStatus = body.status; 
 
         const res = await c.env.DB_SSO.prepare("UPDATE users SET status = ? WHERE id = ?").bind(newStatus, id).run();
         
@@ -58,6 +94,8 @@ adminRouter.patch('/users/:id/status', async (c) => {
         return c.json({ status: 'ok', message: `User status successfully updated to ${newStatus}` });
     } catch (err: any) {
         return c.json({ status: 'error', message: err.message }, 500);
+    if (!['active', 'suspended', 'deleted', 'banned'].includes(newStatus)) {
+      return c.json({ status: 'error', message: 'Status tidak valid' }, 400);
     }
 });
 
@@ -74,6 +112,13 @@ adminRouter.get('/talents/pending', async (c) => {
         return c.json({ status: 'ok', data: [] });
     }
 });
+    await c.env.DB_SSO.prepare(`UPDATE users SET status = ? WHERE id = ?`).bind(newStatus, id).run();
+    return c.json({ status: 'success', message: `Status pengguna berhasil diubah menjadi ${newStatus}` });
+  } catch (error) {
+    console.error("Error updating user status:", error);
+    return c.json({ status: 'error', message: 'Gagal mengubah status' }, 500);
+  }
+})
 
 // 4. TALENTS: Verify Talent manually
 adminRouter.post('/talents/:id/verify', async (c) => {
@@ -85,6 +130,11 @@ adminRouter.post('/talents/:id/verify', async (c) => {
         return c.json({ status: 'error', message: err.message }, 500);
      }
 });
+/**
+ * ==========================================
+ * MODUL 2: VERIFIKASI TALENT (KYC)
+ * ==========================================
+ */
 
 // 5. PROJECTS / CASTING ADMIN OVERSIGHT
 adminRouter.get('/projects', async (c) => {
@@ -96,6 +146,15 @@ adminRouter.get('/projects', async (c) => {
          return c.json({ status: 'ok', data: [] });
     }
 });
+// GET /api/v1/admin/talents/pending - List talent yang butuh verifikasi
+router.get('/talents/pending', async (c) => {
+  try {
+    const { results } = await c.env.DB_CORE.prepare(`SELECT id, full_name, kyc_status, created_at FROM talents WHERE kyc_status = 'pending'`).all();
+    return c.json({ status: 'success', data: results });
+  } catch (error) {
+    return c.json({ status: 'error', message: 'Gagal memuat data talent' }, 500);
+  }
+})
 
 // 6. PROJECTS: Delete / Moderate
 adminRouter.delete('/projects/:id', async (c) => {
@@ -107,6 +166,16 @@ adminRouter.delete('/projects/:id', async (c) => {
         return c.json({ status: 'error', message: err.message }, 500);
     }
 });
+// POST /api/v1/admin/talents/:id/verify - Approve talent KYC
+router.post('/talents/:id/verify', async (c) => {
+  try {
+    const id = c.req.param('id');
+    await c.env.DB_CORE.prepare(`UPDATE talents SET kyc_status = 'verified', is_public = 1 WHERE id = ?`).bind(id).run();
+    return c.json({ status: 'success', message: 'Talent berhasil diverifikasi dan dipublikasikan' });
+  } catch (error) {
+    return c.json({ status: 'error', message: 'Gagal memverifikasi talent' }, 500);
+  }
+})
 
 // 7. PROJECTS: Force Resolve Dispute
 adminRouter.patch('/projects/:id/resolve', async (c) => {
@@ -123,6 +192,11 @@ adminRouter.patch('/projects/:id/resolve', async (c) => {
         return c.json({ status: 'error', message: err.message }, 500);
     }
 });
+/**
+ * ==========================================
+ * MODUL 3: MODERASI PROYEK (God-Mode)
+ * ==========================================
+ */
 
 // 8. FINANCIALS: Treasury Metrics & Withdrawals
 adminRouter.get('/financials', async (c) => {
@@ -167,6 +241,15 @@ adminRouter.get('/financials', async (c) => {
         return c.json({ status: 'error', message: err.message }, 500);
     }
 });
+// GET /api/v1/admin/projects - Lihat semua proyek yang berjalan
+router.get('/projects', async (c) => {
+  try {
+    const { results } = await c.env.DB_CORE.prepare(`SELECT id, title, client_id, status, created_at FROM projects ORDER BY created_at DESC`).all();
+    return c.json({ status: 'success', data: results });
+  } catch (error) {
+    return c.json({ status: 'error', message: 'Gagal memuat data proyek' }, 500);
+  }
+})
 
 adminRouter.patch('/financials/payouts/:id/approve', async (c) => {
     try {
@@ -177,5 +260,17 @@ adminRouter.patch('/financials/payouts/:id/approve', async (c) => {
         return c.json({ status: 'error', message: err.message }, 500);
     }
 });
+// DELETE /api/v1/admin/projects/:id - Hapus proyek fiktif / bermasalah
+router.delete('/projects/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    // Soft delete / flag as violation
+    await c.env.DB_CORE.prepare(`UPDATE projects SET status = 'deleted', moderation_flag = 1 WHERE id = ?`).bind(id).run();
+    return c.json({ status: 'success', message: 'Proyek berhasil diturunkan (take-down) oleh sistem' });
+  } catch (error) {
+    return c.json({ status: 'error', message: 'Gagal menghapus proyek' }, 500);
+  }
+})
 
 export default adminRouter;
+export default router

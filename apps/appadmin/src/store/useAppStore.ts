@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         set({ user: null, token: null, isAuthenticated: false });
         // Redirect ke SSO setelah logout
-        window.location.href = `https://sso.orlandmanagement.com?redirect_url=${encodeURIComponent(window.location.origin)}`;
+        window.location.href = `https://www.orlandmanagement.com?redirect_url=${encodeURIComponent(window.location.origin)}`;
       },
     }),
     {

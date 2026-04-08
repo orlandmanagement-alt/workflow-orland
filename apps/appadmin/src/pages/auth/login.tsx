@@ -9,7 +9,7 @@ export default function AdminLogin() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Endpoint SSO dengan identifikasi asal aplikasi
-  const ssoUrl = 'https://sso.orlandmanagement.com?app=admin';
+  const ssoUrl = 'https://www.orlandmanagement.com?app=admin';
 
   useEffect(() => {
     if (isAuthenticated) {

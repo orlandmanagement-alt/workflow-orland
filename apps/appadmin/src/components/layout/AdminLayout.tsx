@@ -2,28 +2,46 @@ import React, { useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useThemeStore } from '@/store/useAppStore';
 import { ShieldAlert, Users, LayoutDashboard, Wallet, Gavel, LogOut, Search, Moon, Sun, Settings } from 'lucide-react';
-
+import LoadingOverlay from '@/components/LoadingOverlay';
+import { getRedirectUrl } from '@/lib/roleRedirect';
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+  const [isChecking, setIsChecking] = React.useState(true);
 
-  // THE ULTIMATE GATEKEEPER - BLOCKED ANYONE EXCEPT ADMIN
-  if (!isAuthenticated || !user) {
-    // Redirect ke SSO dengan return URL
-    window.location.replace(
-      `https://sso.orlandmanagement.com?redirect_url=${encodeURIComponent(window.location.origin + '/auth/callback')}`
-    );
-    return null;
-  }
+  useEffect(() => {
+    const performCheck = () => {
+      if (!isAuthenticated || !user) {
+        // Redirect to SSO if not logged in
+        window.location.replace(
+          `https://www.orlandmanagement.com?redirect_url=${encodeURIComponent(window.location.origin + '/auth/callback')}`
+        );
+        return;
+      }
 
-  if (user.role !== 'admin') {
-    // If client or talent tries to enter Admin panel, nuke their token and kick to SSO
-    console.error('CRITICAL ACCESS VIOLATION: Role is not Admin. Force Logging Out.');
-    logout();
-    return null;
+      if (user.role !== 'admin') {
+        // Redirect to appropriate dashboard based on role without logout
+        const targetUrl = getRedirectUrl(user.role);
+        console.log(`Redirecting curious ${user.role} to their territory: ${targetUrl}`);
+        window.location.href = targetUrl;
+        return;
+      }
+
+      // If everything is fine, stop loading
+      setIsChecking(false);
+    };
+
+    // Small delay for better UX and animation feel
+    const timer = setTimeout(performCheck, 1200);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user]);
+
+  if (isChecking) {
+    return <LoadingOverlay />;
   }
 
   return <>{children}</>;
 };
+
 
 const MENU = [
   { path: '/admin', label: 'God Dashboard', icon: LayoutDashboard },

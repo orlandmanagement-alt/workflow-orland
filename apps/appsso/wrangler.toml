@@ -17,7 +17,7 @@ SESSION_TTL_MIN = "720"
 PBKDF2_ITER = "100000"
 
 # === DAFTAR URL ===
-SSO_URL = "https://sso.orlandmanagement.com"
+SSO_URL = "https://www.orlandmanagement.com"
 TALENT_URL = "https://talent.orlandmanagement.com"
 CLIENT_URL = "https://client.orlandmanagement.com"
 ADMIN_URL = "https://admin.orlandmanagement.com"

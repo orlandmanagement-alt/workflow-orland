@@ -55,5 +55,5 @@ Berikut adalah cetak biru (blueprint) status pengembangan sistem Admin (*appadmi
 > 5. Setelah sisi API selesai, pilih minimal SATU halaman krusial yakni **Tabel Master Users** di rute `apps/appadmin/src/pages/users/index.tsx` dan integrasikan API Fetch (`/admin/users`) tersebut ke dalam Tabel UI gaya Enterprise SaaS Tailwind. Berikan fungsi tombol "Banned" dan "Hapus" yang aktif.
 > 
 > Lakukan seluruh pengerjaan ini tanpa meminta _approval_ di setiap langkahnya. Langsung tulis kodenya (API dan UI secara terintegrasi) dan buatkan sebuah *Walkthrough* jika semuanya telah usai.
-> 
+> 3666z
 > **PROMPT END**

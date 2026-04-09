@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import axios, { AxiosError } from 'axios';
-import {
+import type {
   DashboardMetrics,
   TalentDashboard,
   AgencyDashboard,

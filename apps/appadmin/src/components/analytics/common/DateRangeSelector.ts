@@ -5,4 +5,4 @@
 
 export { DateRangeSelector as default } from './AnalyticsCommon';
 export { DateRangeSelector } from './AnalyticsCommon';
-export type { DateRange } from '../types/analytics';
+export type { DateRange } from '../../types/analytics';

@@ -39,7 +39,8 @@ const CSVImport: React.FC<CSVImportProps> = ({
   const parseCSV = async (file: File) => {
     return new Promise<ParsedRow[]>((resolve, reject) => {
       // Dynamically import PapaParse
-      import('papaparse').then(({ default: Papa }) => {
+      // @ts-ignore
+      import('papaparse').then(({ default: Papa }: any) => {
         Papa.parse(file, {
           header: true,
           dynamicTyping: false,

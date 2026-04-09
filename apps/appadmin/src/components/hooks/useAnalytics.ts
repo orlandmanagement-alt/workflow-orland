@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
+import type {
   DateRange,
   ExportRequest,
   ExportJob,
@@ -36,15 +36,15 @@ export function useAdminDashboard(dateRange: DateRange): UseAdminDashboardReturn
       setData({
         totalRevenue: {
           count: 250000,
-          trend: { label: 'Revenue', value: 250000, change: 12.5, changeType: 'increase' },
+          trend: { value: 250000, trend: 'up', changePercent: 12.5 },
         },
         totalUsers: {
           count: 1250,
-          trend: { label: 'Users', value: 1250, change: 8.3, changeType: 'increase' },
+          trend: { value: 1250, trend: 'up', changePercent: 8.3 },
         },
         activeProjects: {
           count: 45,
-          trend: { label: 'Projects', value: 45, change: 3.2, changeType: 'increase' },
+          trend: { value: 45, trend: 'up', changePercent: 3.2 },
         },
         platformMetrics: {
           successRate: 94.2,

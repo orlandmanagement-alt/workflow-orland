@@ -187,7 +187,7 @@ export async function compressMultipleAndUpload(files: File[]) {
  * Example 7: Setting Authentication Headers
  */
 export function setupAuthHeaders() {
-  const userId = localStorage.getItem('userId');
+  const userId = localStorage.getItem('userId') || '';
   const userTier = localStorage.getItem('userTier') || 'free';
   const userRole = localStorage.getItem('userRole') || 'talent';
 

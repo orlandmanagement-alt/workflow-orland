@@ -214,31 +214,31 @@ export const AvailabilityCalendar: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {availability.map((block) => {
-              const startDate = new Date(block.start_date)
-              const endDate = new Date(block.end_date)
+              const startDate = block.start_date ? new Date(block.start_date) : new Date()
+              const endDate = block.end_date ? new Date(block.end_date) : new Date()
               const days = Math.ceil(
                 (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
               )
 
               return (
                 <div
-                  key={block.id}
-                  className={`p-4 rounded-lg border ${getStatusColor(block.status)} space-y-2`}
+                  key={block.id || Math.random()}
+                  className={`p-4 rounded-lg border ${getStatusColor(block.status || '')} space-y-2`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <p className="font-semibold text-sm">
-                        {block.start_date} to {block.end_date}
+                        {block.start_date || 'N/A'} to {block.end_date || 'N/A'}
                       </p>
                       <p className="text-xs opacity-75 mt-1">{days} day(s)</p>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-1 bg-black bg-opacity-10 rounded text-xs font-semibold">
-                        {getStatusBadge(block.status)}
+                        {getStatusBadge(block.status || '')}
                       </span>
                       <button
-                        onClick={() => handleDelete(block.id)}
+                        onClick={() => handleDelete(block.id || '')}
                         className="p-1.5 hover:bg-black hover:bg-opacity-10 rounded transition"
                         title="Delete"
                       >

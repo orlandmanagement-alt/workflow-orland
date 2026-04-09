@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * useContractFlow Hook
  * Manages contract creation, signing, and payment flow

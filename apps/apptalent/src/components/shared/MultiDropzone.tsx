@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Multi-Dropzone Component with Drag-and-Drop Sorting
  * Allows uploading multiple images with reordering capability

@@ -28,7 +28,9 @@ export const trackProfileView = async (c: Context, talentId: string) => {
     `).bind(viewId, talentId, viewerId, userAgent, now).run();
 
     // Update talent analytics asynchronously (non-blocking)
-    updateTalentAnalytics(c.env, talentId).catch(err => 
+    updateTalentAnalytics(c.env, talentId).catch(err => {
+      console.error('Analytics update failed:', err);
+    });
   } catch (error) {
     // Don't fail the main request if tracking fails
   }

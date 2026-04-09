@@ -11,6 +11,7 @@ import type {
   AIMatchResult,
   TalentAnalytics,
   Availability,
+  AvailabilitySummary,
   WhiteLabelConfig,
   ApiResponse,
   ApiErrorResponse,
@@ -306,6 +307,28 @@ class Phase4ApiClient {
       message: 'An unexpected error occurred',
     }
   }
+
+  /**
+   * Parse error from any source
+   */
+  parseError(error: any): string {
+    if (typeof error === 'string') return error
+    if (error?.message) return error.message
+    if (error?.response?.data?.message) return error.response.data.message
+    return 'An unexpected error occurred'
+  }
+
+  /**
+   * Format number as IDR currency
+   */
+  formatIDR(value: number): string {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(value)
+  }
 }
 
 export const apiClient = new Phase4ApiClient()
+export const phase4API = apiClient

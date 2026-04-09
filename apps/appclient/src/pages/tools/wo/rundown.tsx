@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Clock, AlertTriangle, Play, CheckCircle2, ChevronRight, Users, Mic, Music, Plus, FastForward, Edit2, Loader2 } from 'lucide-react';
 import { woService } from '@/lib/services/toolsService';

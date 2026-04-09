@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { ClientDashboard as ClientDashboardType } from '../../types/analytics';
+import type { ClientDashboard as ClientDashboardType } from '../../types/analytics';
 import { MetricCard } from '../common/AnalyticsCommon';
 
 interface ClientDashboardProps {
@@ -18,17 +18,17 @@ export default function ClientDashboard({
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <MetricCard title="Total Projects" value={metrics?.projectMetrics?.total || 0} />
-        <MetricCard title="Active Projects" value={metrics?.projectMetrics?.active || 0} />
-        <MetricCard title="Completed" value={metrics?.projectMetrics?.completed || 0} />
-        <MetricCard title="Budget" value={`$${metrics?.projectMetrics?.budget || 0}`} />
+        <MetricCard label="Total Projects" value={metrics?.projectMetrics?.total || 0} />
+        <MetricCard label="Active Projects" value={metrics?.projectMetrics?.active || 0} />
+        <MetricCard label="Completed" value={metrics?.projectMetrics?.completed || 0} />
+        <MetricCard label="Budget" value={`$${metrics?.projectMetrics?.budget || 0}`} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <MetricCard title="Talents Hired" value={metrics?.talentMetrics?.hired || 0} />
-        <MetricCard title="Favorites" value={metrics?.talentMetrics?.favorites || 0} />
+        <MetricCard label="Talents Hired" value={metrics?.talentMetrics?.hired || 0} />
+        <MetricCard label="Favorites" value={metrics?.talentMetrics?.favorites || 0} />
         <MetricCard
-          title="Avg Rating"
+          label="Avg Rating"
           value={`${(metrics?.talentMetrics?.avgRating || 0).toFixed(1)}/5`}
         />
       </div>

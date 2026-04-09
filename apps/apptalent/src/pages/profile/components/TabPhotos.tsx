@@ -1,7 +1,7 @@
 import React from 'react';
 import { Camera, PlusCircle, Trash2, Lock } from 'lucide-react';
 import { useAuthStore } from '@/store/useAppStore';
-import { MultiDropzone } from '@/components/shared/MultiDropzone';
+import MultiDropzone from '@/components/shared/MultiDropzone';
 
 interface TabPhotosProps {
     data: any;

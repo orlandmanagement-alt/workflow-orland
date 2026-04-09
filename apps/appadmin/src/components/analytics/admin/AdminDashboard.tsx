@@ -10,7 +10,7 @@ import { MetricCard, TrendIndicator } from '../common/AnalyticsCommon';
 import type { AdminDashboard as AdminDashboardType } from '../../types/analytics';
 
 interface AdminDashboardProps {
-  metrics: AdminDashboardType;
+  metrics: any; // TODO: Update with complete AdminDashboard type structure
   onRefresh: () => void;
 }
 
@@ -53,11 +53,7 @@ export default function AdminDashboard({
           <MetricCard
             label="Total Bookings"
             value={metrics.overview.totalBookings.toLocaleString()}
-            trend={{
-              value: metrics.trends.bookingsTrend.value,
-              trend: metrics.trends.bookingsTrend.trend,
-              changePercent: metrics.trends.bookingsTrend.changePercent,
-            }}
+            trend={metrics.trends.bookingsTrend}
             icon={<ShoppingCart size={32} />}
             color="purple"
           />
@@ -77,11 +73,7 @@ export default function AdminDashboard({
           <MetricCard
             label="Total Revenue"
             value={formatCurrency(metrics.overview.totalRevenue)}
-            trend={{
-              value: metrics.trends.revenueTrend.value,
-              trend: metrics.trends.revenueTrend.trend,
-              changePercent: metrics.trends.revenueTrend.changePercent,
-            }}
+            trend={metrics.trends.revenueTrend}
             icon={<DollarSign size={32} />}
             color="green"
           />
@@ -124,17 +116,17 @@ export default function AdminDashboard({
                           className="bg-blue-600 h-2 rounded-full"
                           style={{
                             width: `${
-                              (count /
-                                Object.values(
+                              ((count as number) /
+                                (Object.values(
                                   metrics.distribution.byUserType
-                                ).reduce((a, b) => a + b, 0)) *
+                                ) as number[]).reduce((a: number, b: number) => a + b, 0)) *
                               100
                             }%`,
                           }}
                         />
                       </div>
                       <span className="font-semibold text-gray-900 w-20 text-right">
-                        {count.toLocaleString()}
+                        {(count as number).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -147,7 +139,7 @@ export default function AdminDashboard({
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="font-semibold text-gray-900 mb-4">Talent Tiers</h3>
             <div className="space-y-3">
-              {Object.entries(metrics.distribution.byTier).map(([tier, count]) => (
+              {Object.entries(metrics.distribution.byTier).map(([tier, count]: [string, any]) => (
                 <div key={tier} className="flex items-center justify-between">
                   <span className="text-gray-600">{tier}</span>
                   <div className="flex items-center gap-3">
@@ -164,9 +156,9 @@ export default function AdminDashboard({
                         }`}
                         style={{
                           width: `${
-                            (count /
-                              Object.values(metrics.distribution.byTier).reduce(
-                                (a, b) => a + b,
+                            ((count as number) /
+                              (Object.values(metrics.distribution.byTier) as number[]).reduce(
+                                (a: number, b: number) => a + b,
                                 0
                               )) *
                             100
@@ -175,7 +167,7 @@ export default function AdminDashboard({
                       />
                     </div>
                     <span className="font-semibold text-gray-900 w-20 text-right">
-                      {count.toLocaleString()}
+                      {(count as number).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -258,7 +250,7 @@ export default function AdminDashboard({
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {metrics.topAgencies && metrics.topAgencies.length > 0 ? (
               <div className="divide-y divide-gray-200">
-                {metrics.topAgencies.slice(0, 5).map((agency, idx) => (
+                {metrics.topAgencies.slice(0, 5).map((agency: any, idx: number) => (
                   <div key={agency.id} className="p-4 hover:bg-gray-50">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -305,7 +297,7 @@ export default function AdminDashboard({
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {metrics.topTalents && metrics.topTalents.length > 0 ? (
               <div className="divide-y divide-gray-200">
-                {metrics.topTalents.slice(0, 5).map((talent, idx) => (
+                {metrics.topTalents.slice(0, 5).map((talent: any, idx: number) => (
                   <div key={talent.id} className="p-4 hover:bg-gray-50">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -354,7 +346,7 @@ export default function AdminDashboard({
 
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="divide-y divide-gray-200">
-              {metrics.anomalies.map((anomaly, idx) => (
+              {metrics.anomalies.map((anomaly: any, idx: number) => (
                 <div
                   key={idx}
                   className={`p-4 ${

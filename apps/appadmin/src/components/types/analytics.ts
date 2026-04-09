@@ -8,27 +8,37 @@ export interface DateRange {
 }
 
 export interface MetricTrend {
-  label: string;
   value: number;
-  change: number;
-  changeType: 'increase' | 'decrease' | 'neutral';
+  trend?: 'up' | 'down' | 'stable';
+  changePercent?: number;
+  previousPeriod?: number;
 }
 
 export interface ExportRequest {
-  reportType: 'analytics' | 'custom' | 'financial';
-  dateRange: DateRange;
-  format: 'csv' | 'pdf' | 'xlsx';
+  reportType?: 'analytics' | 'custom' | 'financial';
+  dashboardType?: 'talent' | 'agency' | 'client' | 'admin' | string;
+  dateRange?: DateRange;
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
+  format: 'csv' | 'pdf' | 'excel';
   filters?: Record<string, any>;
+  includeMetrics?: string[];
+  includeCharts?: boolean;
 }
 
 export interface ExportJob {
   id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  userId?: string;
+  status: 'pending' | 'processing' | 'complete' | 'completed' | 'failed';
   createdAt: string;
   completedAt?: string;
   downloadUrl?: string;
+  fileUrl?: string;
   fileSize?: number;
-  fileName: string;
+  fileName?: string;
+  format?: string;
+  progress?: number;
+  errorMessage?: string;
 }
 
 export interface CustomReportFormData {

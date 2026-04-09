@@ -48,7 +48,7 @@ export const AnalyticsChart: React.FC = () => {
   const rank = getRankBadge(overview?.rank_tier || 'emerging')
 
   // Calculate max for chart scaling
-  const maxDailyViews = Math.max(...dailyBreakdown.map((d) => d.views), 1)
+  const maxDailyViews = Math.max(...dailyBreakdown.map((d: any) => d.views), 1)
 
   return (
     <div className="w-full space-y-6">
@@ -124,7 +124,7 @@ export const AnalyticsChart: React.FC = () => {
 
         {dailyBreakdown.length > 0 ? (
           <div className="space-y-3">
-            {dailyBreakdown.map((day) => (
+            {dailyBreakdown.map((day: any) => (
               <div key={day.date} className="flex items-center gap-3">
                 <p className="text-sm text-gray-600 w-20">{day.date}</p>
                 <div className="flex-1 bg-gray-200 rounded-full h-8 overflow-hidden">

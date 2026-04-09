@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { TalentDashboard as TalentDashboardType } from '../../types/analytics';
+import type { TalentDashboard as TalentDashboardType } from '../../types/analytics';
 import { MetricCard, TrendIndicator } from '../common/AnalyticsCommon';
 
 interface TalentDashboardProps {
@@ -18,18 +18,18 @@ export default function TalentDashboard({
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <MetricCard title="Profile Views" value={metrics?.profileStats?.views || 0} />
-        <MetricCard title="Applications" value={metrics?.profileStats?.applications || 0} />
+        <MetricCard label="Profile Views" value={metrics?.profileStats?.views || 0} />
+        <MetricCard label="Applications" value={metrics?.profileStats?.applications || 0} />
         <MetricCard
-          title="Booking Rate"
+          label="Booking Rate"
           value={`${metrics?.profileStats?.bookingRate || 0}%`}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <MetricCard title="This Month" value={`$${metrics?.earnings?.thisMonth || 0}`} />
-        <MetricCard title="Last Month" value={`$${metrics?.earnings?.lastMonth || 0}`} />
-        <MetricCard title="Total Earned" value={`$${metrics?.earnings?.totalEarned || 0}`} />
+        <MetricCard label="This Month" value={`$${metrics?.earnings?.thisMonth || 0}`} />
+        <MetricCard label="Last Month" value={`$${metrics?.earnings?.lastMonth || 0}`} />
+        <MetricCard label="Total Earned" value={`$${metrics?.earnings?.totalEarned || 0}`} />
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">

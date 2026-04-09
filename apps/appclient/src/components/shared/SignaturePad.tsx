@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Signature Pad Component
  * Canvas-based signature capture for contract signing

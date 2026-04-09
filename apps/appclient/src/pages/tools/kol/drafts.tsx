@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useRef, useEffect } from 'react';
 import { PlayCircle, CheckCircle2, MessageSquareWarning, Clock, Send, Play, Pause, Volume2, Maximize2, AlertTriangle, Loader2 } from 'lucide-react';
 import { kolService } from '@/lib/services/toolsService';

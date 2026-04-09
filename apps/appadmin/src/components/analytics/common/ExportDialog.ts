@@ -5,4 +5,4 @@
 
 export { ExportDialog as default } from './AnalyticsCommon';
 export { ExportDialog } from './AnalyticsCommon';
-export type { DateRange, ExportRequest, ExportJob } from '../types/analytics';
+export type { DateRange, ExportRequest, ExportJob } from '../../types/analytics';

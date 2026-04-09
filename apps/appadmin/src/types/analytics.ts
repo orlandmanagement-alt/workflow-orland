@@ -320,6 +320,41 @@ export interface UseExportReturn {
   checkStatus: (jobId: string) => Promise<ExportJob | null>;
 }
 
+export interface UseAdminDashboardReturn {
+  data?: AdminDashboard;
+  loading: boolean;
+  error?: Error;
+  refresh: () => Promise<void>;
+}
+
+export interface UseAgencyDashboardReturn {
+  data?: AgencyDashboard;
+  loading: boolean;
+  error?: Error;
+  refresh: () => Promise<void>;
+}
+
+export interface UseTalentDashboardReturn {
+  data?: TalentDashboard;
+  loading: boolean;
+  error?: Error;
+  refresh: () => Promise<void>;
+}
+
+export interface UseClientDashboardReturn {
+  data?: ClientDashboard;
+  loading: boolean;
+  error?: Error;
+  refresh: () => Promise<void>;
+}
+
+export interface UseCustomReportsReturn {
+  createReport: (data: CustomReportFormData) => Promise<string>;
+  reports: Array<{ id: string; name: string; lastRun?: string }>;
+  loading: boolean;
+  error?: Error;
+}
+
 // ============================================================================
 // FORM TYPES
 // ============================================================================

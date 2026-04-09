@@ -14,7 +14,7 @@ import {
   X,
   Calendar,
 } from 'lucide-react';
-import { MetricTrend, DateRange, ExportRequest, ExportJob } from '../types/analytics';
+import type { MetricTrend, DateRange, ExportRequest, ExportJob } from '../../types/analytics';
 
 // ============================================================================
 // METRIC CARD COMPONENT
@@ -368,16 +368,16 @@ export function ExportDialog({
               <p className="text-sm">
                 <strong>Status:</strong> {exportJob.status}
               </p>
-              {exportJob.progress > 0 && (
+              {(exportJob.progress ?? 0) > 0 && (
                 <div className="mt-2">
                   <div className="w-full bg-gray-300 rounded-full h-2">
                     <div
                       className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{ width: `${exportJob.progress}%` }}
+                      style={{ width: `${(exportJob.progress ?? 0)}%` }}
                     />
                   </div>
                   <p className="text-xs text-gray-600 mt-1">
-                    {exportJob.progress}%
+                    {(exportJob.progress ?? 0)}%
                   </p>
                 </div>
               )}

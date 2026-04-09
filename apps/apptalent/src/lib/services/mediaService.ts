@@ -35,15 +35,17 @@ export const mediaService = {
     const { uploadUrl, publicUrl, fileKey } = presignedRes.data;
 
     // Step 2: Upload file langsung ke R2
-const uploadRes = await fetch(uploadUrl, {
-  method: 'PUT',
-  headers: { 
-    'Content-Type': file.type, // Pastikan ini persis sama dengan yang dikirim di Step 1
-    // Hapus 'X-Amz-Content-Sha256' jika backend (Worker) tidak mengaturnya di Signature
-  },
-  body: file,
-  cache: 'no-store',
-});
+    // CRITICAL: Presigned URL handles AWS signature natively
+    // Do NOT include X-Amz-Content-Sha256 header from frontend
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': file.type,
+        // REMOVED: 'X-Amz-Content-Sha256' - backend CDN handles this
+      },
+      body: file,
+      cache: 'no-store', // Bypass PWA service worker for accurate upload
+    });
 
 if (!uploadRes.ok) {
   // Tambahkan log ini untuk melihat detail error dari R2 (biasanya berupa XML)

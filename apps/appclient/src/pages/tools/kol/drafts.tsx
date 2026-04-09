@@ -1,27 +1,40 @@
-import { useState, useRef } from 'react';
-import { PlayCircle, CheckCircle2, MessageSquareWarning, Clock, Send, Play, Pause, Volume2, Maximize2 } from 'lucide-react';
-
-// Simulasi Data Draft Video
-const MOCK_DRAFT = {
-  talentName: 'Jessica Wong',
-  campaign: 'Ramadhan Glow Soap TikTok',
-  status: 'Waiting Review',
-  videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', // Dummy Vertical Video URL
-  duration: 15,
-  comments: [
-    { id: 1, time: '00:04', text: 'Tolong logo Glow Soap di pojok kiri atas jangan tertutup rambut.', author: 'Brand Manager' },
-    { id: 2, time: '00:10', text: 'Intonasi saat bilang "Diskon 50%" tolong lebih semangat ya Jess.', author: 'Creative Director' }
-  ]
-};
+import { useState, useRef, useEffect } from 'react';
+import { PlayCircle, CheckCircle2, MessageSquareWarning, Clock, Send, Play, Pause, Volume2, Maximize2, AlertTriangle, Loader2 } from 'lucide-react';
+import { kolService } from '@/lib/services/toolsService';
 
 export default function KOLDraftReview() {
+  // Get draftId from URL params or use default
+  const draftId = new URLSearchParams(window.location.search).get('id') || 'draft-1';
+  
+  const [draft, setDraft] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [newComment, setNewComment] = useState('');
-  const [comments, setComments] = useState(MOCK_DRAFT.comments);
+  const [comments, setComments] = useState<any[]>([]);
   const [reviewStatus, setReviewStatus] = useState<string | null>(null);
-  
+  const [submitting, setSubmitting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Fetch draft on mount
+  useEffect(() => {
+    const fetchDraft = async () => {
+      try {
+        setLoading(true);
+        const data = await kolService.getDraft(draftId);
+        setDraft(data);
+        setComments(data.comments || []);
+      } catch (err: any) {
+        console.error('Failed to fetch draft:', err);
+        setError(err.message || 'Gagal memuat draft video');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDraft();
+  }, [draftId]);
 
   // Toggle Play/Pause
   const togglePlay = () => {
@@ -44,24 +57,37 @@ export default function KOLDraftReview() {
       return `${m}:${s}`;
   };
 
-  // Tambah Komentar dengan Timestamp
-  const handleAddComment = (e: React.FormEvent) => {
+  // Tambah Komentar dengan Timestamp dan API Call
+  const handleAddComment = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newComment.trim()) return;
       
-      const comment = {
+      try {
+        setSubmitting(true);
+        // Call API to add comment
+        await kolService.addDraftComment(draftId, {
+          text: newComment,
+          timestamp: currentTime
+        });
+
+        const comment = {
           id: Date.now(),
           time: formatTime(currentTime),
           text: newComment,
           author: 'Anda (Client)'
-      };
-      setComments([...comments, comment].sort((a, b) => a.time.localeCompare(b.time)));
-      setNewComment('');
-      
-      // Auto-pause saat ngetik/kirim komen
-      if (videoRef.current && isPlaying) {
+        };
+        setComments([...comments, comment].sort((a, b) => a.time.localeCompare(b.time)));
+        setNewComment('');
+        
+        // Auto-pause saat ngetik/kirim komen
+        if (videoRef.current && isPlaying) {
           videoRef.current.pause();
           setIsPlaying(false);
+        }
+      } catch (err: any) {
+        alert('Gagal menambahkan komentar: ' + (err.message || 'Unknown error'));
+      } finally {
+        setSubmitting(false);
       }
   };
 
@@ -76,41 +102,84 @@ export default function KOLDraftReview() {
       setIsPlaying(false);
   };
 
-  const handleDecision = (decision: 'Approve' | 'Revise') => {
-      setReviewStatus(decision);
-      if(decision === 'Approve') alert('Video disetujui! Notifikasi akan dikirim ke Talent untuk segera di-posting.');
-      else alert('Permintaan revisi dikirim! Talent akan menerima notifikasi beserta catatan timestamp Anda.');
+  const handleDecision = async (decision: 'Approve' | 'Revise') => {
+      try {
+        setSubmitting(true);
+        setReviewStatus(decision);
+        
+        if (decision === 'Approve') {
+          await kolService.approveDraft(draftId);
+          alert('Video disetujui! Notifikasi akan dikirim ke Talent untuk segera di-posting.');
+        } else {
+          await kolService.requestDraftRevision(draftId, { comments });
+          alert('Permintaan revisi dikirim! Talent akan menerima notifikasi beserta catatan timestamp Anda.');
+        }
+      } catch (err: any) {
+        alert('Gagal memproses keputusan: ' + (err.message || 'Unknown error'));
+        setReviewStatus(null);
+      } finally {
+        setSubmitting(false);
+      }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 pb-20 h-[calc(100vh-100px)] flex flex-col">
       
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-6 rounded-3xl flex items-start gap-4 shrink-0">
+          <AlertTriangle className="text-red-600 dark:text-red-400 shrink-0 mt-1" size={24} />
+          <div className="flex-1">
+            <h2 className="font-bold text-red-900 dark:text-red-400 mb-1">Gagal Memuat Draft</h2>
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          </div>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg">
+            Coba Lagi
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="animate-spin mx-auto mb-3 text-brand-500" size={32} />
+            <p className="font-bold text-slate-600 dark:text-slate-400">Memuat draft video...</p>
+          </div>
+        </div>
+      ) : !draft ? (
+        <div className="bg-slate-100 dark:bg-slate-800 p-12 rounded-3xl text-center">
+          <PlayCircle className="mx-auto mb-4 text-slate-400" size={40} />
+          <p className="text-slate-600 dark:text-slate-400 font-bold">Draft tidak ditemukan</p>
+        </div>
+      ) : (
+      <>
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 shrink-0">
         <div>
             <div className="flex items-center gap-2 mb-2">
                 <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wider">KOL Content</span>
-                <span className="text-xs font-bold text-slate-500">{MOCK_DRAFT.campaign}</span>
+                <span className="text-xs font-bold text-slate-500">{draft.campaign || 'Campaign'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center tracking-tight leading-none">
-                <PlayCircle className="mr-3 text-brand-500" size={32}/> Draft: {MOCK_DRAFT.talentName}
+                <PlayCircle className="mr-3 text-brand-500" size={32}/> Draft: {draft.talent_name || 'Talent'}
             </h1>
         </div>
         
         <div className="flex gap-3 w-full sm:w-auto">
             <button 
                 onClick={() => handleDecision('Revise')}
-                disabled={reviewStatus !== null}
+                disabled={reviewStatus !== null || submitting}
                 className="flex-1 sm:flex-none flex items-center justify-center px-6 py-3 bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 hover:bg-amber-200 dark:hover:bg-amber-900/40 rounded-xl text-sm font-bold shadow-sm transition-colors disabled:opacity-50"
             >
-                <MessageSquareWarning size={18} className="mr-2"/> Minta Revisi
+                {submitting && reviewStatus === 'Revise' ? <Loader2 size={18} className="animate-spin mr-2"/> : <MessageSquareWarning size={18} className="mr-2"/>}
+                Minta Revisi
             </button>
             <button 
                 onClick={() => handleDecision('Approve')}
-                disabled={reviewStatus !== null}
+                disabled={reviewStatus !== null || submitting}
                 className="flex-1 sm:flex-none flex items-center justify-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-lg transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
             >
-                <CheckCircle2 size={18} className="mr-2"/> Setujui Tayang (Approve)
+                {submitting && reviewStatus === 'Approve' ? <Loader2 size={18} className="animate-spin mr-2"/> : <CheckCircle2 size={18} className="mr-2"/>}
+                Setujui Tayang (Approve)
             </button>
         </div>
       </div>
@@ -123,7 +192,7 @@ export default function KOLDraftReview() {
               {/* Video Element (Simulated Vertical) */}
               <video 
                   ref={videoRef}
-                  src={MOCK_DRAFT.videoUrl}
+                  src={draft.video_url || draft.videoUrl}
                   className="h-full w-full object-cover aspect-[9/16]"
                   onTimeUpdate={handleTimeUpdate}
                   onEnded={() => setIsPlaying(false)}
@@ -134,7 +203,7 @@ export default function KOLDraftReview() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none flex flex-col justify-between p-4">
                   {/* Top Bar */}
                   <div className="flex justify-between items-center text-white/80">
-                      <span className="text-xs font-bold px-2 py-1 bg-black/40 rounded-lg backdrop-blur-sm">Draft Ver. 1</span>
+                      <span className="text-xs font-bold px-2 py-1 bg-black/40 rounded-lg backdrop-blur-sm">{draft.version || 'Draft Ver. 1'}</span>
                       <Volume2 size={18} />
                   </div>
                   
@@ -149,7 +218,7 @@ export default function KOLDraftReview() {
                   <div className="space-y-2 pointer-events-auto">
                       <div className="flex justify-between text-[10px] font-bold text-white font-mono drop-shadow-md">
                           <span>{formatTime(currentTime)}</span>
-                          <span>{formatTime(MOCK_DRAFT.duration)}</span>
+                          <span>{formatTime(draft.duration || 15)}</span>
                       </div>
                       
                       {/* Custom Progress Bar */}
@@ -220,15 +289,17 @@ export default function KOLDraftReview() {
                       />
                       <button 
                           type="submit" 
-                          disabled={!newComment.trim()}
+                          disabled={!newComment.trim() || submitting}
                           className="px-5 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl shadow-md hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 flex items-center"
                       >
-                          <Send size={18} />
+                          {submitting ? <Loader2 size={18} className="animate-spin"/> : <Send size={18} />}
                       </button>
                   </form>
               </div>
           </div>
       </div>
+      </>
+      )}
 
     </div>
   )

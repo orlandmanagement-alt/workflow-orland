@@ -1,18 +1,40 @@
-import { useState } from 'react';
-import { Briefcase, LayoutGrid, KanbanSquare, Plus, MoreHorizontal, Users, Wallet } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Briefcase, LayoutGrid, KanbanSquare, Plus, MoreHorizontal, Users, Wallet, AlertTriangle } from 'lucide-react';
+import { projectService } from '@/lib/services/projectService';
 
-// Simulasi Database Proyek Klien
-const MOCK_PROJECTS = [
-  { id: 'PRJ-001', title: 'TVC Ramadhan Glow Soap', type: 'Commercial', status: 'Produksi', budget: 'Rp 250 Jt', booked: 8, image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&q=80&w=400' },
-  { id: 'PRJ-002', title: 'Film Action "Garuda"', type: 'Movie', status: 'Casting', budget: 'Rp 1.2 M', booked: 12, image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=400' },
-  { id: 'PRJ-003', title: 'Launching Product X', type: 'Event', status: 'Draft', budget: 'Rp 75 Jt', booked: 0, image: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=400' },
-  { id: 'PRJ-004', title: 'KOL Tiktok Skincare', type: 'Influencer', status: 'Selesai', budget: 'Rp 30 Jt', booked: 3, image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=400' },
-];
-
+// Status grouping for Kanban
 const COLUMNS = ['Draft', 'Casting', 'Produksi', 'Selesai'];
+
+const STATUS_MAP: Record<string, 'draft' | 'casting' | 'production' | 'done'> = {
+  'Draft': 'draft',
+  'Casting': 'casting',
+  'Produksi': 'production',
+  'Selesai': 'done'
+};
 
 export default function ProjectsHub() {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch projects on mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setLoading(true);
+        const data = await projectService.getMyProjects();
+        setProjects(data);
+      } catch (err: any) {
+        console.error('Failed to fetch projects:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-6">
@@ -44,12 +66,35 @@ export default function ProjectsHub() {
       </div>
 
       {/* ========================================= */}
+      {/* ERROR ALERT */}
+      {/* ========================================= */}
+      {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1">
+                  <div className="p-2 bg-red-100 dark:bg-red-800 rounded-full text-red-600 dark:text-red-300 shrink-0"><AlertTriangle size={20} /></div>
+                  <div>
+                      <h3 className="font-bold text-red-900 dark:text-red-400">Gagal Memuat Proyek</h3>
+                      <p className="text-sm text-red-700 dark:text-red-300 mt-0.5">{error}</p>
+                  </div>
+              </div>
+              <button onClick={() => window.location.reload()} className="w-full sm:w-auto whitespace-nowrap px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors">
+                  Coba Lagi
+              </button>
+          </div>
+      )}
+
+      {/* ========================================= */}
       {/* VIEW 1: KANBAN BOARD (ENTERPRISE STYLE)   */}
       {/* ========================================= */}
-      {viewMode === 'kanban' && (
+      {viewMode === 'kanban' && !error && (
         <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
             {COLUMNS.map(columnName => {
-                const columnProjects = MOCK_PROJECTS.filter(p => p.status === columnName);
+                // Filter projects by status
+                const columnProjects = projects.filter(p => {
+                  // Normalize project status to compare with column name
+                  const projectStatus = p.status_display || p.status;
+                  return projectStatus === columnName;
+                });
                 
                 return (
                     <div key={columnName} className="min-w-[300px] sm:min-w-[340px] flex-shrink-0 snap-center flex flex-col h-full bg-slate-100/50 dark:bg-slate-800/20 p-4 rounded-3xl border border-slate-200/50 dark:border-slate-700/50">
@@ -94,7 +139,7 @@ export default function ProjectsHub() {
       {/* ========================================= */}
       {/* VIEW 2: LIST VIEW (DATA TABLE)            */}
       {/* ========================================= */}
-      {viewMode === 'list' && (
+      {viewMode === 'list' && !error && (
         <div className="bg-white dark:bg-dark-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -108,7 +153,7 @@ export default function ProjectsHub() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                        {MOCK_PROJECTS.map((project) => (
+                        {projects.map((project) => (
                             <tr key={project.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                                 <td className="p-5 pl-6 flex items-center gap-4">
                                     <img src={project.image} alt="thumb" className="w-12 h-12 rounded-xl object-cover shrink-0" />

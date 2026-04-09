@@ -62,12 +62,17 @@ export const apiRequest = async (url: string, options: any = {}) => {
     };
 
     // 2. KUNCI PENYELESAIAN: Hanya tambahkan payload data jika BUKAN GET / HEAD
+    // GET dan HEAD requests TIDAK BOLEH memiliki body (spec HTTP compliance)
     if (method !== 'GET' && method !== 'HEAD') {
        const payload = options.body || options.data;
        if (payload) {
            // Axios lebih menyukai object JSON mentah daripada string
            config.data = typeof payload === 'string' ? JSON.parse(payload) : payload;
        }
+    } else {
+       // Untuk GET/HEAD, pastikan tidak ada body atau data yang terkirim
+       delete config.data;
+       delete config.body;
     }
 
     // 3. Eksekusi API

@@ -1,10 +1,48 @@
 import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
+import { requireRole } from '../../middleware/authRole'
 import { Bindings, Variables } from '../../index'
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// MENGAMBIL DATA PROFIL
-router.get('/me', async (c) => {
+const updateTalentSchema = z.object({
+  full_name: z.string().min(2).max(100).optional(),
+  category: z.string().max(50).optional(),
+  interests: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(),
+  height: z.string().optional(),
+  weight: z.string().optional(),
+  birth_date: z.string().optional(),
+  gender: z.string().optional(),
+  headshot: z.string().optional(),
+  side_view: z.string().optional(),
+  sideView: z.string().optional(),
+  full_height: z.string().optional(),
+  fullHeight: z.string().optional(),
+  showreels: z.array(z.string()).optional(),
+  audios: z.array(z.string()).optional(),
+  additional_photos: z.array(z.string()).optional(),
+  instagram: z.string().optional(),
+  tiktok: z.string().optional(),
+  twitter: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  union_affiliation: z.string().optional(),
+  eye_color: z.string().optional(),
+  hair_color: z.string().optional(),
+  hip_size: z.string().optional(),
+  chest_bust: z.string().optional(),
+  body_type: z.string().optional(),
+  specific_characteristics: z.string().optional(),
+  tattoos: z.string().optional(),
+  piercings: z.string().optional(),
+  ethnicity: z.string().optional(),
+  location: z.string().optional(),
+})
+
+// MENGAMBIL DATA PROFIL - Auth: Talent Only
+router.get('/me', requireRole(['talent']), async (c) => {
   const userId = c.get('userId')
   try {
     const talent = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE user_id = ?').bind(userId).first()
@@ -25,15 +63,14 @@ router.get('/me', async (c) => {
     const ssoUser = await c.env.DB_SSO.prepare('SELECT full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
     return c.json({ status: 'ok', data: ssoUser, is_new: true })
   } catch (err: any) {
-    console.error("GET /me Error:", err.message)
     return c.json({ status: 'error', message: 'Gagal memuat profil' }, 500)
   }
 })
 
-// MENYIMPAN/MEMPERBARUI DATA PROFIL
-router.put('/me', async (c) => {
+// MENYIMPAN/MEMPERBARUI DATA PROFIL - Auth: Talent Only
+router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema), async (c) => {
   const userId = c.get('userId')
-  const body = await c.req.json()
+  const body = c.req.valid('json')
 
   // PERBAIKAN: Mengubah nilai "undefined" menjadi "null" agar Database D1 tidak crash!
   const fullName = body.full_name || null;
@@ -130,9 +167,7 @@ router.put('/me', async (c) => {
     return c.json({ status: 'ok', data: updated })
 
   } catch (err: any) {
-    // Menangkap error spesifik dari D1 (misal: kolom tidak ada di tabel)
-    console.error("🔥 ERROR DATABASE (PUT /me):", err.message || err);
-    return c.json({ status: 'error', message: err.message || 'Gagal menyimpan ke Database.' }, 500)
+    return c.json({ status: 'error', message: 'Gagal menyimpan ke Database.' }, 500)
   }
 })
 

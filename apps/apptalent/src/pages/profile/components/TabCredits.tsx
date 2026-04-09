@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { apiRequest } from '@/lib/api';
-import { X, PlusCircle } from 'lucide-react';
+import { X, PlusCircle, Upload } from 'lucide-react';
+import { strictCompressForThumbnail } from '@/lib/imageCompressor';
+import { mediaService } from '@/lib/services/mediaService';
 
 interface TabCreditsProps {
     data: any;
@@ -10,9 +12,11 @@ export function TabCredits({ data }: TabCreditsProps) {
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [credits, setCredits] = useState<any[]>(data?.experiences || []);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [creditThumbnail, setCreditThumbnail] = useState<string | null>(null);
 
     const [form, setForm] = useState({
-        title: '', month: 'January', year: new Date().getFullYear().toString(), company: '', description: ''
+        title: '', month: 'January', year: new Date().getFullYear().toString(), company: '', description: '', thumbnail_url: '' as string | null
     });
 
     const currentYear = new Date().getFullYear();
@@ -27,19 +31,45 @@ export function TabCredits({ data }: TabCreditsProps) {
             const res: any = await apiRequest(`/talents/${data.talent_id}/experiences`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    title: form.title, month: form.month, year: parseInt(form.year), company: form.company, description: form.description
+                    title: form.title, 
+                    month: form.month, 
+                    year: parseInt(form.year), 
+                    company: form.company, 
+                    description: form.description,
+                    thumbnail_url: creditThumbnail || null
                 })
             });
 
             if (res.status === 'ok' || res.id) {
-                setCredits([{ exp_id: res.id, ...form, year: parseInt(form.year) }, ...credits]);
-                setForm({ title: '', month: 'January', year: currentYear.toString(), company: '', description: '' });
+                setCredits([{ exp_id: res.id, ...form, year: parseInt(form.year), thumbnail_url: creditThumbnail }, ...credits]);
+                setForm({ title: '', month: 'January', year: currentYear.toString(), company: '', description: '', thumbnail_url: '' });
+                setCreditThumbnail(null);
                 setShowForm(false);
             }
         } catch (err: any) {
             alert('Failed to save credit: ' + err.message);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingImage(true);
+        try {
+            // Compress using strictCompress for thumbnail
+            const compressed = await strictCompressForThumbnail(file);
+            console.log(`Compressed: ${compressed.sizeKB}KB (${compressed.width}x${compressed.height})`);
+
+            // Upload to R2 via mediaService
+            const uploadedMedia = await mediaService.uploadMedia(file, 'talents');
+            setCreditThumbnail(uploadedMedia.public_url);
+        } catch (err: any) {
+            alert('Failed to upload credit image: ' + err.message);
+        } finally {
+            setUploadingImage(false);
         }
     };
 
@@ -98,6 +128,48 @@ export function TabCredits({ data }: TabCreditsProps) {
                     <div className="flex flex-col gap-1.5 mb-6">
                         <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest">Description</label>
                         <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Describe your role and responsibilities..." rows={3} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-4 py-3 outline-none focus:border-brand-500 text-[13px] font-medium dark:text-white resize-y" />
+                    </div>
+
+                    {/* ENTERPRISE: Credit Thumbnail Upload */}
+                    <div className="flex flex-col gap-1.5 mb-6">
+                        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest">Thumbnail Photo (Optional)</label>
+                        <div className="flex gap-3 items-end">
+                            <div className="flex-1">
+                                <input 
+                                    type="file" 
+                                    id="credit-thumbnail"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    disabled={uploadingImage}
+                                    className="hidden"
+                                />
+                                <label 
+                                    htmlFor="credit-thumbnail"
+                                    className={`block w-full border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-center cursor-pointer hover:border-brand-500/50 hover:bg-brand-50/50 dark:hover:bg-brand-900/10 transition-colors ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
+                                    {creditThumbnail ? (
+                                        <div className="flex items-center gap-2 justify-center text-green-600 font-bold text-sm">
+                                            ✓ Photo Added ({creditThumbnail.split('/').pop()})
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center text-slate-500">
+                                            <Upload size={18} className="mb-1" />
+                                            <span className="text-xs">Click to upload or drag (optional)</span>
+                                        </div>
+                                    )}
+                                </label>
+                            </div>
+                            {creditThumbnail && (
+                                <button 
+                                    type="button"
+                                    onClick={() => setCreditThumbnail(null)}
+                                    className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors"
+                                >
+                                    Remove
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">Auto-compressed to &lt;100KB for fast loading</p>
                     </div>
 
                     <div className="flex gap-3">

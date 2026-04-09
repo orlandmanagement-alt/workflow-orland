@@ -36,14 +36,17 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
       if (!presignedRes || !presignedRes.uploadUrl) throw new Error("Gagal mengambil Presigned URL");
 
       // 3. Modus bypass: Upload dari Browser -> Cloudflare R2
+      // CRITICAL: Presigned URL handles AWS signature natively
+      // Do NOT include X-Amz-Content-Sha256 header from frontend
       setLoadingText(`Mengunggah ${type} ke Cloudflare...`);
       const r2Res = await fetch(presignedRes.uploadUrl, {
           method: 'PUT',
           headers: { 
-              'Content-Type': compressedFile.type // Cukup ini saja!
+              'Content-Type': compressedFile.type, // Only Content-Type needed
+              // REMOVED: X-Amz-Content-Sha256 - backend CDN handles this
           },
           body: compressedFile,
-          cache: 'no-store'
+          cache: 'no-store' // Bypass PWA service worker for accurate upload
       });
 
       if (!r2Res.ok) throw new Error(`Gagal mengunggah ${type}`);

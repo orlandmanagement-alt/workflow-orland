@@ -1,5 +1,7 @@
 import React from 'react';
 import { Users, Activity, DollarSign, AlertTriangle, ShieldAlert, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import ChatStatsWidget from '@/components/dashboard/ChatStatsWidget';
+import NotificationStatsWidget from '@/components/dashboard/NotificationStatsWidget';
 
 export default function AdminDashboard() {
   const stats = [
@@ -75,6 +77,16 @@ export default function AdminDashboard() {
                  </div>
               ))}
            </div>
+        </div>
+      </div>
+
+      {/* Chat & Notification Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+          <ChatStatsWidget />
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+          <NotificationStatsWidget />
         </div>
       </div>
     </div>

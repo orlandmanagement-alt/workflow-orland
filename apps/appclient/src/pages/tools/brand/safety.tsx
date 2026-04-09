@@ -1,52 +1,60 @@
 import { useState } from 'react';
-import { ShieldAlert, ShieldCheck, Radar, Search, AlertTriangle, AlertOctagon, Activity, ChevronRight, Info } from 'lucide-react';
-
-// Simulasi Data Hasil Scan
-const MOCK_RESULT = {
-  username: '@jessicawong_official',
-  platform: 'Instagram & TikTok',
-  scanCount: 12450, // Jumlah postingan/komen yang discan
-  safetyScore: 35, // 0-100 (Di bawah 50 = Bahaya)
-  status: 'HIGH RISK',
-  flaggedWords: [
-    { word: 'B*doh', count: 12, context: 'Cyberbullying (2022)' },
-    { word: 'P*litik K*tor', count: 8, context: 'Hate Speech (2023)' },
-    { word: 'Gemb*l', count: 3, context: 'Classism (2021)' }
-  ],
-  flaggedPosts: [
-    { date: '12 Okt 2022', text: 'Dasar b*doh banget sih netizen, gitu aja nggak paham!', platform: 'Twitter' },
-    { date: '05 Mar 2023', text: 'Semua p*litik k*tor, muak liat muka mereka di TV.', platform: 'Instagram' }
-  ]
-};
+import { ShieldAlert, ShieldCheck, Radar, Search, AlertTriangle, AlertOctagon, Activity, ChevronRight, Info, Loader2 } from 'lucide-react';
+import { brandService } from '@/lib/services/toolsService';
 
 export default function BrandSafetyScanner() {
   const [username, setUsername] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [scanLogs, setScanLogs] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleScan = (e: React.FormEvent) => {
+  const handleScan = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!username.trim()) return;
 
       setIsScanning(true);
       setResult(null);
+      setError(null);
       setScanLogs(['Menghubungkan ke API Sosial Media...']);
 
-      // Simulasi Logika Radar Scanning
-      setTimeout(() => setScanLogs(prev => [...prev, `Mengunduh riwayat ${username}...`]), 1000);
-      setTimeout(() => setScanLogs(prev => [...prev, 'Menjalankan NLP Sentiment Analysis...']), 2000);
-      setTimeout(() => setScanLogs(prev => [...prev, 'Mencocokkan dengan Database Blacklist Orland...']), 3000);
-      setTimeout(() => setScanLogs(prev => [...prev, 'Menghitung Skor Keamanan (Safety Score)...']), 4000);
+      try {
+        // Simulasi scan logs
+        setTimeout(() => setScanLogs(prev => [...prev, `Mengunduh riwayat ${username}...`]), 1000);
+        setTimeout(() => setScanLogs(prev => [...prev, 'Menjalankan NLP Sentiment Analysis...']), 2000);
+        setTimeout(() => setScanLogs(prev => [...prev, 'Mencocokkan dengan Database Blacklist Orland...']), 3000);
+        setTimeout(() => setScanLogs(prev => [...prev, 'Menghitung Skor Keamanan (Safety Score)...']), 4000);
 
-      setTimeout(() => {
-          setIsScanning(false);
-          setResult(MOCK_RESULT); // Munculkan hasil berisiko tinggi
-      }, 5000);
+        // Call API
+        const response = await brandService.scanTalentSafety(username);
+        
+        setTimeout(() => {
+            setIsScanning(false);
+            setResult(response);
+        }, 5000);
+      } catch (err: any) {
+        console.error('Scan error:', err);
+        setError(err.message || 'Gagal memindai talent');
+        setIsScanning(false);
+      }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 pb-20">
+      
+      {/* ERROR ALERT */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-6 rounded-3xl flex items-start gap-4">
+          <AlertTriangle className="text-red-600 dark:text-red-400 shrink-0 mt-1" size={24} />
+          <div className="flex-1">
+            <h2 className="font-bold text-red-900 dark:text-red-400 mb-1">Scan Error</h2>
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          </div>
+          <button onClick={() => setError(null)} className="text-red-600 dark:text-red-400 hover:text-red-700">
+            Tutup
+          </button>
+        </div>
+      )}
       
       {/* HEADER TINGKAT TINGGI (ANALITIS & SERIUS) */}
       <div className="bg-slate-900 dark:bg-black rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden border border-slate-800">
@@ -74,6 +82,7 @@ export default function BrandSafetyScanner() {
                         placeholder="Contoh: @rezadian_real" 
                         className="w-full pl-11 pr-4 py-4 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 outline-none transition-shadow" 
                         required
+                        disabled={isScanning}
                     />
                 </div>
                 <button 
@@ -81,7 +90,7 @@ export default function BrandSafetyScanner() {
                     disabled={isScanning || !username}
                     className="px-8 py-4 bg-white text-slate-900 font-black rounded-xl shadow-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center whitespace-nowrap"
                 >
-                    {isScanning ? 'Memindai...' : 'Mulai Scan AI'}
+                    {isScanning ? <><Loader2 size={18} className="animate-spin mr-2"/> Memindai...</> : 'Mulai Scan AI'}
                 </button>
             </form>
         </div>
@@ -142,7 +151,7 @@ export default function BrandSafetyScanner() {
                       <p className="text-xs text-slate-500 mt-4 leading-relaxed">Dari {result.scanCount.toLocaleString()} interaksi digital, AI menemukan anomali sentimen negatif ekstrem di masa lalu akun <span className="font-bold">{result.username}</span>.</p>
                   </div>
 
-                  <button className="w-full py-3 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center">
+                  <button className="w-full py-3 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center" onClick={() => { setResult(null); setUsername(''); }}>
                       <Search size={16} className="mr-2"/> Cek Username Lain
                   </button>
               </div>

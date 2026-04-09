@@ -1,5 +1,5 @@
 export const sendNotification = async (env: any, payload: { to: string, type: 'wa' | 'email', message: string }) => {
-  console.log(`[NOTIF] Mengirim ${payload.type} ke ${payload.to}: ${payload.message}`);
+  // Notification dispatch (production)
   
   // LOGIKA EMAIL (via Resend.com)
   if (payload.type === 'email' && env.RESEND_API_KEY) {

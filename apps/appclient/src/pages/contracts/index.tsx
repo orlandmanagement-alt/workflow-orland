@@ -1,17 +1,43 @@
-import { useState } from 'react';
-import { FileSignature, FileText, Download, Eye, Plus, AlertTriangle, CheckCircle2, ShieldAlert, Clock, X } from 'lucide-react';
-
-// Simulasi Database Dokumen Legal
-const MOCK_CONTRACTS = [
-  { id: 'DOC-099', title: 'Usage Rights: TVC Glow Soap', type: 'Izin Tayang (TV/Digital)', talent: 'Sarah Lee', validUntil: '12 Mei 2026', status: 'EXPIRING SOON', daysLeft: 14 },
-  { id: 'DOC-098', title: 'SPK & Kontrak Eksklusif', type: 'Kontrak Kerja (SPK)', talent: 'Budi Santoso', validUntil: 'Selesai Proyek', status: 'SIGNED', daysLeft: null },
-  { id: 'DOC-095', title: 'Non-Disclosure Agreement (NDA)', type: 'Kerahasiaan (NDA)', talent: 'Semua Talent (Film Garuda)', validUntil: 'Permanen', status: 'SIGNED', daysLeft: null },
-  { id: 'DOC-092', title: 'SPK KOL Campaign Ramadhan', type: 'Kontrak Kerja (SPK)', talent: 'Jessica Wong', validUntil: 'Menunggu TTD', status: 'PENDING', daysLeft: null },
-];
+import { useState, useEffect } from 'react';
+import { FileSignature, FileText, Download, Eye, Plus, AlertTriangle, CheckCircle2, ShieldAlert, Clock, X, Loader2 } from 'lucide-react';
+import { phase4API } from '@/lib/phase4API';
 
 export default function ContractsHub() {
-  const [contracts, setContracts] = useState(MOCK_CONTRACTS);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [viewDoc, setViewDoc] = useState<any>(null); // State untuk PDF Viewer Modal
+  const [stats, setStats] = useState({
+    expiring: 0,
+    pending: 0,
+    active: 0
+  });
+
+  // Fetch contracts from API
+  useEffect(() => {
+    const fetchContracts = async () => {
+      try {
+        setLoading(true);
+        const response = await phase4API.getContracts();
+        if (response.status === 'success' && response.data) {
+          setContracts(response.data);
+          
+          // Calculate stats
+          const expiring = response.data.filter((c: any) => c.status === 'expiring_soon').length;
+          const pending = response.data.filter((c: any) => c.status === 'pending').length;
+          const active = response.data.filter((c: any) => c.status === 'signed').length;
+          
+          setStats({ expiring, pending, active });
+        }
+      } catch (err) {
+        console.error('Failed to fetch contracts:', err);
+        // Keep fallback empty array
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContracts();
+  }, []);
 
   const getStatusBadge = (status: string, daysLeft: number | null) => {
       if (status === 'EXPIRING SOON') {
@@ -56,17 +82,17 @@ export default function ContractsHub() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <div className="bg-pink-50 dark:bg-pink-900/10 p-6 rounded-3xl border border-pink-200 dark:border-pink-800/50 shadow-sm flex flex-col">
               <span className="text-xs font-bold text-pink-600 dark:text-pink-400 uppercase tracking-wider mb-2 flex items-center"><ShieldAlert size={14} className="mr-1"/> Usage Right Expiring</span>
-              <h2 className="text-3xl font-black text-pink-700 dark:text-pink-300 mb-1">1 Dokumen</h2>
+              <h2 className="text-3xl font-black text-pink-700 dark:text-pink-300 mb-1">{stats.expiring} Dokumen</h2>
               <p className="text-xs text-pink-600/70 dark:text-pink-400/70">Masa tayang iklan akan habis bulan ini.</p>
           </div>
           <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
               <span className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-2 flex items-center"><Clock size={14} className="mr-1"/> Menunggu Tanda Tangan</span>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">1 SPK</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{stats.pending} SPK</h2>
               <p className="text-xs text-slate-500">Talent belum menandatangani kontrak.</p>
           </div>
           <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
               <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2 flex items-center"><CheckCircle2 size={14} className="mr-1"/> Kontrak Aktif</span>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">45 Dokumen</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{stats.active} Dokumen</h2>
               <p className="text-xs text-slate-500">Aman dan mengikat secara hukum.</p>
           </div>
       </div>
@@ -77,7 +103,18 @@ export default function ContractsHub() {
               <h3 className="font-bold text-lg text-slate-900 dark:text-white">Arsip Dokumen Aktif</h3>
           </div>
           
-          <div className="overflow-x-auto">
+          {loading ? (
+            <div className="p-8 text-center flex items-center justify-center gap-2">
+              <Loader2 className="animate-spin text-brand-500" size={24} />
+              <span className="text-slate-600 dark:text-slate-400 font-bold">Memuat kontrak...</span>
+            </div>
+          ) : contracts.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+              <FileText className="mx-auto mb-3 opacity-50" size={40} />
+              <p className="font-bold">Belum ada kontrak</p>
+            </div>
+          ) : contracts.length > 0 ? (
+            <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/60">
@@ -118,7 +155,8 @@ export default function ContractsHub() {
                       ))}
                   </tbody>
               </table>
-          </div>
+            </div>
+          ) : null}
       </div>
 
       {/* PDF VIEWER MODAL SIMULATION */}

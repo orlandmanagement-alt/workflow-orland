@@ -1,29 +1,58 @@
 import { useState } from 'react';
 import { Sparkles, Heart, X, MapPin, DollarSign, Calendar, LayoutGrid, Layers, CheckCircle2, Building2 } from 'lucide-react';
+import { applicationsService } from '@/lib/services/applicationsService';
+import type { ApplicationPayload } from '@/types/application.types';
 
 // Data Simulasi Proyek (Nantinya dari API)
 const MOCK_JOBS = [
-  { id: 1, title: "Main Talent TVC Skincare", client: "Glow Up Beauty", fee: "Rp 8.000.000", location: "Studio Alam, Depok", date: "12 April 2026", tags: ["Beauty", "Commercial"], image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&q=80&w=800&h=1000" },
-  { id: 2, title: "Pemeran Pembantu (Aksi)", client: "MD Entertainment", fee: "Rp 15.000.000", location: "Jakarta Pusat", date: "20-25 April 2026", tags: ["Film", "Action"], image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800&h=1000" },
-  { id: 3, title: "Model Runaway JFW", client: "Erigo x Orland", fee: "Rp 5.500.000", location: "Senayan City", date: "05 Mei 2026", tags: ["Catwalk", "Fashion"], image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&q=80&w=800&h=1000" },
-  { id: 4, title: "Bintang Video Klip", client: "Sony Music ID", fee: "Rp 4.000.000", location: "Bali", date: "10 Mei 2026", tags: ["Music Video", "Actor"], image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800&h=1000" },
+  { id: 1, project_id: 'PRJ-001', title: "Main Talent TVC Skincare", client: "Glow Up Beauty", fee: "Rp 8.000.000", location: "Studio Alam, Depok", date: "12 April 2026", tags: ["Beauty", "Commercial"], image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&q=80&w=800&h=1000" },
+  { id: 2, project_id: 'PRJ-002', title: "Pemeran Pembantu (Aksi)", client: "MD Entertainment", fee: "Rp 15.000.000", location: "Jakarta Pusat", date: "20-25 April 2026", tags: ["Film", "Action"], image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800&h=1000" },
+  { id: 3, project_id: 'PRJ-003', title: "Model Runaway JFW", client: "Erigo x Orland", fee: "Rp 5.500.000", location: "Senayan City", date: "05 Mei 2026", tags: ["Catwalk", "Fashion"], image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&q=80&w=800&h=1000" },
+  { id: 4, project_id: 'PRJ-004', title: "Bintang Video Klip", client: "Sony Music ID", fee: "Rp 4.000.000", location: "Bali", date: "10 Mei 2026", tags: ["Music Video", "Actor"], image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800&h=1000" },
 ];
 
 export default function AIMatch() {
   const [viewMode, setViewMode] = useState<'swipe' | 'list'>('swipe');
   const [jobs, setJobs] = useState(MOCK_JOBS);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   // Menangani aksi Swipe / Tombol
-  const handleAction = (direction: 'left' | 'right', id: number) => {
+  const handleAction = async (direction: 'left' | 'right', id: number) => {
+    const job = jobs.find(j => j.id === id);
+    if (!job) return;
+
     setSwipeDirection(direction);
+    
+    // Jika swipe kanan, kirim lamaran
+    if (direction === 'right') {
+      setIsApplying(true);
+      setApplyError(null);
+      
+      try {
+        const payload: ApplicationPayload = {
+          projectId: job.project_id,
+          roleId: `ROLE-${job.id}`, // Mock role ID, should come from API
+          coverLetter: `Saya tertarik untuk melamar ${job.title} di ${job.client}.`,
+        };
+        
+        const result = await applicationsService.applyForProject(payload);
+        console.log('Application submitted:', result);
+        
+        // Show success message
+        alert(`Berhasil Melamar! AI Orland telah mengirimkan portofolio Anda ke ${job.client}.`);
+      } catch (err: any) {
+        console.error('Application error:', err);
+        setApplyError(err.message || 'Gagal mengirim lamaran');
+        alert(`Error: ${err.message || 'Gagal mengirim lamaran'}`);
+      } finally {
+        setIsApplying(false);
+      }
+    }
     
     // Memberikan waktu untuk animasi kartu terbang sebelum menghapus dari state
     setTimeout(() => {
-        if (direction === 'right') {
-            // Logika ketika Talent Melamar (Swipe Kanan / Heart)
-            alert(`Berhasil Melamar! AI Orland telah mengirimkan portofolio Anda ke Klien.`);
-        }
         setJobs(prev => prev.filter(job => job.id !== id));
         setSwipeDirection(null);
     }, 400);
@@ -99,11 +128,21 @@ export default function AIMatch() {
 
                             {/* Tombol Swipe Action */}
                             <div className="flex justify-center gap-6 mt-4">
-                                <button onClick={() => handleAction('left', currentJob.id)} className="h-16 w-16 sm:h-20 sm:w-20 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-red-500 shadow-[0_10px_30px_rgba(239,68,68,0.2)] hover:scale-110 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all border border-slate-200 dark:border-slate-700 group">
+                                <button 
+                                  onClick={() => handleAction('left', currentJob.id)} 
+                                  disabled={isApplying}
+                                  className="h-16 w-16 sm:h-20 sm:w-20 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-red-500 shadow-[0_10px_30px_rgba(239,68,68,0.2)] hover:scale-110 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all border border-slate-200 dark:border-slate-700 group disabled:opacity-50 disabled:cursor-not-allowed">
                                     <X size={32} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
                                 </button>
-                                <button onClick={() => handleAction('right', currentJob.id)} className="h-16 w-16 sm:h-20 sm:w-20 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full flex items-center justify-center text-white shadow-[0_10px_30px_rgba(59,130,246,0.4)] hover:scale-110 hover:shadow-[0_10px_40px_rgba(59,130,246,0.6)] transition-all group border-2 border-brand-300/50">
-                                    <Heart size={32} strokeWidth={2.5} className="fill-white group-hover:scale-110 transition-transform" />
+                                <button 
+                                  onClick={() => handleAction('right', currentJob.id)} 
+                                  disabled={isApplying}
+                                  className="h-16 w-16 sm:h-20 sm:w-20 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full flex items-center justify-center text-white shadow-[0_10px_30px_rgba(59,130,246,0.4)] hover:scale-110 hover:shadow-[0_10px_40px_rgba(59,130,246,0.6)] transition-all group border-2 border-brand-300/50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isApplying ? (
+                                      <Sparkles size={32} className="animate-spin" />
+                                    ) : (
+                                      <Heart size={32} strokeWidth={2.5} className="fill-white group-hover:scale-110 transition-transform" />
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -141,9 +180,26 @@ export default function AIMatch() {
                                 </div>
 
                                 <div className="flex gap-3 mt-auto">
-                                    <button onClick={() => handleAction('left', job.id)} className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 transition-colors">Lewati</button>
-                                    <button onClick={() => handleAction('right', job.id)} className="flex-1 py-2.5 bg-brand-600 text-white font-bold rounded-xl shadow-lg hover:bg-brand-700 transition-colors flex items-center justify-center">
-                                        Lamar Sekarang <Sparkles size={16} className="ml-2"/>
+                                    <button 
+                                      onClick={() => handleAction('left', job.id)} 
+                                      disabled={isApplying}
+                                      className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                      Lewati
+                                    </button>
+                                    <button 
+                                      onClick={() => handleAction('right', job.id)} 
+                                      disabled={isApplying}
+                                      className="flex-1 py-2.5 bg-brand-600 text-white font-bold rounded-xl shadow-lg hover:bg-brand-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {isApplying ? (
+                                          <>
+                                            <Sparkles size={16} className="animate-spin mr-2" />
+                                            Mengirim...
+                                          </>
+                                        ) : (
+                                          <>
+                                            Lamar Sekarang <Sparkles size={16} className="ml-2"/>
+                                          </>
+                                        )}
                                     </button>
                                 </div>
                             </div>

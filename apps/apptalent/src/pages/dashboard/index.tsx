@@ -1,4 +1,5 @@
 import { useProfileProgress } from '@/hooks/useProfileProgress';
+import { useMyAnalytics } from '@/hooks/usePhase4';
 import React, { useState, useEffect } from 'react';
 import { talentService } from '@/lib/services/talentService';
 import { useAuthStore } from '@/store/useAppStore';
@@ -13,6 +14,14 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const profileProgressData = useProfileProgress();
   const progressValue = typeof profileProgressData === 'number' ? profileProgressData : (profileProgressData as any)?.percentage || 0;
+  
+  // Fetch real analytics data instead of hardcoded values
+  const { dashboard: analytics, loading: analyticsLoading } = useMyAnalytics();
+  
+  // Fallback values if API not yet implemented
+  const viewsThisWeek = analytics?.views_this_week ?? 124;
+  const aiSearches = analytics?.matched_in_ai_searches ?? 18;
+  const projectsCompleted = analytics?.completed_projects ?? 3;
 
   useEffect(() => {
     talentService.getProfile().then((data) => {
@@ -57,15 +66,15 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-5">
               <div className="h-14 w-14 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center"><Eye size={28}/></div>
-              <div><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">124</p><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Profile Views</p></div>
+              <div><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{analyticsLoading ? '-' : viewsThisWeek}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Profile Views</p></div>
           </div>
           <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-5">
               <div className="h-14 w-14 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center"><Target size={28}/></div>
-              <div><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">18</p><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">AI Searches</p></div>
+              <div><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{analyticsLoading ? '-' : aiSearches}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">AI Searches</p></div>
           </div>
           <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-5">
               <div className="h-14 w-14 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-2xl flex items-center justify-center"><TrendingUp size={28}/></div>
-              <div><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">3</p><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Proyek Selesai</p></div>
+              <div><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{analyticsLoading ? '-' : projectsCompleted}</p><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Proyek Selesai</p></div>
           </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { FileText, Wand2, UploadCloud, ChevronRight, Users, Plus, PlayCircle, Clock, Search, ZoomIn, ZoomOut } from 'lucide-react';
+import { FileText, Wand2, UploadCloud, ChevronRight, Users, Plus, PlayCircle, Clock, Search, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
+import { phService } from '@/lib/services/toolsService';
 
 // Simulasi Data Hasil Breakdown AI
 const MOCK_SCENES = [
@@ -25,14 +26,19 @@ export default function ScriptBreakdown() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [scenes, setScenes] = useState<any[]>([]);
 
-  const handleUploadAndAnalyze = () => {
+  const handleUploadAndAnalyze = async () => {
       setHasScript(true);
       setIsAnalyzing(true);
-      // Simulasi AI membaca naskah PDF
-      setTimeout(() => {
-          setIsAnalyzing(false);
-          setScenes(MOCK_SCENES);
-      }, 3000);
+      try {
+        // Simulate API call with mock data
+        // In real implementation, this would upload file to API and wait for analysis
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        setScenes(MOCK_SCENES);
+      } catch (err) {
+        console.error('Analysis failed:', err);
+      } finally {
+        setIsAnalyzing(false);
+      }
   };
 
   return (

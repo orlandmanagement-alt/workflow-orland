@@ -5,6 +5,10 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   user: any | null; // Tempat menyimpan data dari API (email, nama, dll)
+  // UPGRADE: Enterprise SaaS User Model
+  accountTier?: 'free' | 'premium';
+  role?: string; // 'talent', 'agency', 'client', 'admin'
+  agencyId?: string | null; // Null jika talent bebas, filled jika talent di agency
   login: (token: string, userData?: any) => void;
   setUser: (userData: any) => void;
   logout: () => void;
@@ -16,9 +20,32 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       user: null,
-      login: (token, userData = null) => set({ token, isAuthenticated: true, user: userData }),
-      setUser: (userData) => set({ user: userData }),
-      logout: () => set({ token: null, isAuthenticated: false, user: null }),
+      accountTier: 'free',
+      role: 'talent',
+      agencyId: null,
+      login: (token, userData = null) => set({ 
+        token, 
+        isAuthenticated: true, 
+        user: userData,
+        // Extract enterprise fields from userData if available
+        accountTier: userData?.account_tier || 'free',
+        role: userData?.role || 'talent',
+        agencyId: userData?.agency_id || null
+      }),
+      setUser: (userData) => set((state) => ({ 
+        user: userData,
+        accountTier: userData?.account_tier || state.accountTier,
+        role: userData?.role || state.role,
+        agencyId: userData?.agency_id !== undefined ? userData.agency_id : state.agencyId
+      })),
+      logout: () => set({ 
+        token: null, 
+        isAuthenticated: false, 
+        user: null,
+        accountTier: 'free',
+        role: 'talent',
+        agencyId: null
+      }),
     }),
     { name: 'orland-auth-storage' }
   )

@@ -50,7 +50,6 @@ router.get('/', async (c) => {
 
     return c.json({ status: 'ok', data: roster, source: 'd1_rebuilt' });
   } catch (err: any) {
-    console.error("GET /public/talents Error:", err.message);
     return c.json({ status: 'error', message: 'Gagal memuat direktori talent' }, 500);
   }
 });
@@ -80,7 +79,6 @@ router.get('/:id', async (c) => {
 
     return c.json({ status: 'ok', data: talent })
   } catch (err: any) {
-    console.error("GET /public/talents/:id Error:", err.message)
     return c.json({ status: 'error', message: 'Database error' }, 500)
   }
 })

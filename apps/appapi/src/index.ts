@@ -2,6 +2,9 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { getCookie } from 'hono/cookie'
 
+// Cloudflare Workers type imports
+import type { D1Database, KVNamespace, R2Bucket, Fetcher } from '@cloudflare/workers-types'
+
 import talentRouter from './functions/talents/talentHandler'
 import experienceRouter from './functions/talents/experienceHandler'
 import certificationRouter from './functions/talents/certificationHandler'
@@ -35,8 +38,14 @@ import systemToolsRouter from './functions/system/systemToolsHandler'
 import miscToolsRouter from './functions/tools/miscToolsHandler'
 import publicTalentRouter from './functions/public/publicTalentHandler'
 import adminCrudRouter from './functions/admin/adminCrudHandler'
+import adminChatRouter from './functions/admin/adminChatHandler'
+import fintechRouter from './functions/fintech/fintechHandler'
+import aiMatchRouter from './functions/ai/aiMatchHandler'
+import analyticsRouter from './functions/analytics/analyticsHandler'
+import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
+import availabilityRouter from './functions/calendar/availabilityHandler'
 
-export type Bindings = { DB_CORE: D1Database; DB_LOGS: D1Database; DB_SSO: D1Database; ORLAND_CACHE: KVNamespace; R2_MEDIA: R2Bucket; JWT_SECRET: string; TALENT_URL: string; CLIENT_URL: string; CF_ACCOUNT_ID: string; R2_ACCESS_KEY_ID: string; R2_SECRET_ACCESS_KEY: string }
+export type Bindings = { DB_CORE: D1Database; DB_LOGS: D1Database; DB_SSO: D1Database; ORLAND_CACHE: KVNamespace; R2_MEDIA: R2Bucket; R2_BUCKET?: R2Bucket; R2_PUBLIC_URL?: string; JWT_SECRET: string; TALENT_URL: string; CLIENT_URL: string; CF_ACCOUNT_ID: string; R2_ACCESS_KEY_ID: string; R2_SECRET_ACCESS_KEY: string; CF_AI_GATEWAY?: Fetcher }
 export type Variables = { userId: string; userRole: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
@@ -97,7 +106,7 @@ app.use('/api/v1/*', async (c, next) => {
   }
 })
 
-app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 30 }))
+app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 38 }))
 app.get('/api/v1/auth/verify-session', (c) => c.json({ status: 'ok', userId: c.get('userId'), userRole: c.get('userRole') }))
 
 app.route('/api/v1/talents', talentRouter)
@@ -134,6 +143,17 @@ app.route('/api/v1/tools', miscToolsRouter)
 app.route('/api/v1', miscToolsRouter)
 app.route('/api/v1/public/talents', publicTalentRouter)
 app.route('/api/v1/admin', adminCrudRouter)
+app.route('/api/v1/admin', adminChatRouter)
+app.route('/api/v1/contracts', fintechRouter)
+app.route('/api/v1/ai', aiMatchRouter)
+app.route('/api/v1/talents', analyticsRouter)
+app.route('/api/v1/rankings', analyticsRouter)
+app.route('/api/v1/dashboard', analyticsRouter)
+app.route('/api/v1/agencies', whitelabelRouter)
+app.route('/api/v1/whitelabel', whitelabelRouter)
+app.route('/api/v1/talents', availabilityRouter)
+app.route('/api/v1/public', availabilityRouter)
+app.route('/api/v1/admin', availabilityRouter)
 
 // PUBLIC R2 MEDIA SERVER (Tanpa JWT)
 app.get("/api/v1/public/media/:key", async (c) => {

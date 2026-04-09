@@ -1,2 +1,120 @@
-package-lock.json
+# ============================================================
+# ENVIRONMENT VARIABLES & SECRETS (CRITICAL - NEVER COMMIT)
+# ============================================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+.dev.vars
+.dev.vars.toml
+wrangler.toml.local
+.wrangler/
+credentials.json
+service-account-key.json
+firebase-key.json
+secrets.json
+
+# ============================================================
+# DEPENDENCIES
+# ============================================================
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============================================================
+# BUILD OUTPUTS
+# ============================================================
+dist/
+out/
+build/
+.next/
+.cache
+.turbo/
+
+# ============================================================
+# IDE & EDITOR
+# ============================================================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-project
+*.sublime-workspace
+.iml
+
+# ============================================================
+# OS FILES
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================================
+# LOGS
+# ============================================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================================
+# TESTING
+# ============================================================
+coverage/
+.nyc_output/
+*.lcov
+
+# ============================================================
+# LOCAL DATABASE FILES
+# ============================================================
+*.sqlite
+*.sqlite3
+*.db
+db.sqlite
+backup-*.sql
+export-*.json
+
+# ============================================================
+# TEMPORARY FILES
+# ============================================================
+tmp/
+temp/
+*.tmp
+*.bak
+
+# ============================================================
+# APPLICATION SPECIFIC
+# ============================================================
+apps/apptalent/.next
+apps/apptalent/dist
+apps/apptalent/.wrangler
+apps/appclient/.next
+apps/appclient/dist
+apps/appclient/.wrangler
+apps/appadmin/.next
+apps/appadmin/dist
+apps/appadmin/.wrangler
+apps/appapi/.wrangler
+apps/appapi/dist
+apps/appsso/.wrangler
+apps/appsso/dist
+apps/appcdn/.wrangler
+apps/appcdn/dist
+
+# ============================================================
+# OPTIONAL BUT RECOMMENDED
+# ============================================================
+.vercel/
+.turbo/
+out/
+*.tsbuildinfo

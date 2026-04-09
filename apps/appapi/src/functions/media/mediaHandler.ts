@@ -46,7 +46,6 @@ router.post('/upload-url', requireRole(['admin', 'client', 'talent']), async (c)
     })
 
   } catch (error: any) {
-      console.error("Presigned URL Error:", error);
       return c.json({ status: 'error', message: error.message }, 500);
   }
 })

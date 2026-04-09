@@ -1,0 +1,39 @@
+{
+  "name": "@orland/dependencies-mission",
+  "version": "1.0.0",
+  "description": "Required dependencies for Mission 1 & Mission 2 implementation",
+  "private": true,
+  "dependencies": {
+    "@dnd-kit/core": "^6.0.0",
+    "@dnd-kit/sortable": "^7.0.0",
+    "@dnd-kit/utilities": "^3.2.0",
+    "lucide-react": "^0.263.0",
+    "papaparse": "^5.4.0"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.3.0"
+  },
+  "scripts": {
+    "install:apptalent": "cd apps/apptalent && npm install",
+    "install:appapi": "cd apps/appapi && npm install"
+  },
+  "installation": {
+    "notes": [
+      "Run: npm install papaparse @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities lucide-react --save",
+      "Or copy dependencies to package.json in apptalent and appapi",
+      "The following files have been created:",
+      "  Backend:",
+      "    - apps/appapi/migrations/021_DB_CORE_premium_tiers_agency.sql",
+      "    - apps/appapi/migrations/022_DB_CORE_bulk_operations_sorting.sql",
+      "    - apps/appapi/src/utils/maskingUtils.ts",
+      "    - apps/appapi/src/middleware/authMiddleware.ts",
+      "    - apps/appapi/src/routes/publicTalentsRoute.ts",
+      "    - apps/appapi/src/routes/agencyRoute.ts",
+      "  Frontend:",
+      "    - apps/apptalent/src/lib/imageCompressor.ts",
+      "    - apps/apptalent/src/components/shared/MultiDropzone.tsx",
+      "    - apps/apptalent/src/components/shared/CSVImport.tsx",
+      "    - apps/apptalent/src/components/agency/AgencyRoster.tsx"
+    ]
+  }
+}

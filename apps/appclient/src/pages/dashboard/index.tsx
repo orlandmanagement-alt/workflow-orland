@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, Wallet, Briefcase, Users, CheckCircle, Clock, ArrowRight, PlayCircle, FileText, ChevronRight } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/useAppStore';
 
-// Simulasi Data Tugas (Pending Approvals)
+// Simulasi Data Tugas (Pending Approvals) - akan diganti dengan API
 const PENDING_TASKS = [
   { id: 1, type: 'kol_draft', project: 'Campaign Ramadhan TVC', talent: 'Sarah (KOL)', action: 'Review Video Draft', time: '2 jam lalu', status: 'Urgent' },
   { id: 2, type: 'selftape', project: 'Film Action 2027', talent: 'Budi Santoso', action: 'Approve Casting', time: '5 jam lalu', status: 'Normal' },
@@ -9,7 +11,45 @@ const PENDING_TASKS = [
 ];
 
 export default function ClientDashboard() {
-  const [isEscrowLow] = useState(true); // Simulasi saldo Escrow menipis
+  const [metrics, setMetrics] = useState({
+    burnRate: 0,
+    burnPercentage: 90,
+    activeProjects: 12,
+    totalTalentBooked: 84,
+    escrowBalance: 5000000,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEscrowLow, setIsEscrowLow] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const user = useAuthStore((state) => state.user);
+
+  // Fetch real metrics dari API
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        // Panggil API untuk dashboard metrics
+        const response = await api.get('/dashboard/client/metrics');
+        if (response.data?.data) {
+          setMetrics({
+            burnRate: response.data.data.burn_rate || 450000000,
+            burnPercentage: response.data.data.burn_percentage || 90,
+            activeProjects: response.data.data.active_projects || 12,
+            totalTalentBooked: response.data.data.total_talent_booked || 84,
+            escrowBalance: response.data.data.escrow_balance || 5000000,
+          });
+          setIsEscrowLow(response.data.data.escrow_low || false);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch metrics:', err);
+        setError(err.message || 'Gagal memuat metrik dashboard');
+        // Keep fallback values
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
@@ -25,8 +65,24 @@ export default function ClientDashboard() {
           </button>
       </div>
 
+      {/* ERROR ALERT */}
+      {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1">
+                  <div className="p-2 bg-red-100 dark:bg-red-800 rounded-full text-red-600 dark:text-red-300 shrink-0"><AlertTriangle size={20} /></div>
+                  <div>
+                      <h3 className="font-bold text-red-900 dark:text-red-400">Gagal Memuat Dashboard</h3>
+                      <p className="text-sm text-red-700 dark:text-red-300 mt-0.5">{error}</p>
+                  </div>
+              </div>
+              <button onClick={() => window.location.reload()} className="w-full sm:w-auto whitespace-nowrap px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors">
+                  Coba Lagi
+              </button>
+          </div>
+      )}
+
       {/* ALERT ESCROW (CALL TO ACTION) */}
-      {isEscrowLow && (
+      {isEscrowLow && !error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                   <div className="p-2 bg-red-100 dark:bg-red-800 rounded-full text-red-600 dark:text-red-300 shrink-0"><AlertTriangle size={20} /></div>
@@ -49,24 +105,24 @@ export default function ClientDashboard() {
                   <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center"><Wallet size={24}/></div>
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Burn Rate</span>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Rp 450 Jt</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Rp {(metrics.burnRate / 1000000).toFixed(0)} Jt</h2>
               <p className="text-sm text-slate-500 mb-4">Dari total alokasi Rp 500 Jt</p>
               
               {/* Visualisasi Burn Rate Bar */}
               <div className="relative h-24 w-24 mx-auto mb-4">
                   <svg className="w-full h-full" viewBox="0 0 100 100">
                       <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="8" className="text-slate-100 dark:text-slate-800" />
-                      <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="251.2" strokeDashoffset="25" className="text-red-500" strokeLinecap="round" />
+                      <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="251.2" strokeDashoffset={`${25 * (100 - metrics.burnPercentage) / 100}`} className="text-red-500" strokeLinecap="round" />
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center font-black text-xl">90%</div>
+                  <div className="absolute inset-0 flex items-center justify-center font-black text-xl">{metrics.burnPercentage}%</div>
               </div>
               <div className="mt-auto">
                   <div className="flex justify-between text-xs font-bold mb-1.5">
-                      <span className="text-red-500">90% Terpakai</span>
-                      <span className="text-slate-400">Sisa 10%</span>
+                      <span className="text-red-500">{metrics.burnPercentage}% Terpakai</span>
+                      <span className="text-slate-400">Sisa {100 - metrics.burnPercentage}%</span>
                   </div>
                   <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-amber-400 to-red-500 w-[90%] rounded-full"></div>
+                      <div className="h-full bg-gradient-to-r from-amber-400 to-red-500 rounded-full" style={{ width: `${metrics.burnPercentage}%` }}></div>
                   </div>
               </div>
           </div>
@@ -77,7 +133,7 @@ export default function ClientDashboard() {
                   <div className="h-12 w-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center"><Briefcase size={24}/></div>
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Proyek Aktif</span>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">12 Campaign</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{metrics.activeProjects} Campaign</h2>
               <p className="text-sm text-slate-500 mb-4"><span className="text-green-500 font-bold">+2</span> dibanding bulan lalu</p>
               
               <button className="mt-auto flex items-center justify-between w-full py-2 px-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 rounded-lg transition-colors">
@@ -91,7 +147,7 @@ export default function ClientDashboard() {
                   <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center"><Users size={24}/></div>
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Talent Booked</span>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">84 Orang</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{metrics.totalTalentBooked} Orang</h2>
               <p className="text-sm text-slate-500 mb-4">Tersebar di berbagai event</p>
               
               <button className="mt-auto flex items-center justify-between w-full py-2 px-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 rounded-lg transition-colors">

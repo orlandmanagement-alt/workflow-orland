@@ -1,5 +1,7 @@
 import React from 'react';
-import { Camera, PlusCircle, Trash2 } from 'lucide-react';
+import { Camera, PlusCircle, Trash2, Lock } from 'lucide-react';
+import { useAuthStore } from '@/store/useAppStore';
+import { MultiDropzone } from '@/components/shared/MultiDropzone';
 
 interface TabPhotosProps {
     data: any;
@@ -9,20 +11,32 @@ interface TabPhotosProps {
 }
 
 export function TabPhotos({ data, uploading, handleUpload, handleDelete }: TabPhotosProps) {
+    const accountTier = useAuthStore((state) => state.accountTier || 'free');
     const additionalPhotos = data?.additional_photos || [];
-    const addonSlots = [0, 1, 2];
+    
+    // ENTERPRISE GATING: Premium tier allows 10 extra photos, free allows only 3
+    const maxAdditionalPhotos = accountTier === 'premium' ? 10 : 3;
+    const canAddMore = additionalPhotos.length < maxAdditionalPhotos;
+    const addonSlots = Array.from({ length: maxAdditionalPhotos }, (_, i) => i);
 
-    const PhotoCard = ({ type, title, img, index, ratio = "aspect-[4/5]" }: any) => {
+    const PhotoCard = ({ type, title, img, index, ratio = "aspect-[4/5]", disabled = false }: any) => {
         const isUp = index !== undefined ? uploading[`${type}-${index}`] : uploading[type];
         
         return (
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900/50 p-3 relative group">
+            <div className={`border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900/50 p-3 relative group ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <h4 className="text-[11px] font-black tracking-widest text-slate-500 mb-3 px-1 text-center truncate">{title}</h4>
-                <input type="file" id={`upload-${type}-${index ?? ''}`} className="hidden" accept="image/*" onChange={(e) => handleUpload(e, type, index)} disabled={isUp} />
+                <input 
+                    type="file" 
+                    id={`upload-${type}-${index ?? ''}`} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={(e) => handleUpload(e, type, index)} 
+                    disabled={isUp || disabled} 
+                />
                 
                 <label 
                     htmlFor={`upload-${type}-${index ?? ''}`} 
-                    className={`w-full ${ratio} rounded-xl block relative bg-slate-100 dark:bg-slate-800 overflow-hidden cursor-pointer flex flex-col justify-center items-center transition-opacity ${isUp ? 'opacity-50 pointer-events-none' : ''}`}
+                    className={`w-full ${ratio} rounded-xl block relative bg-slate-100 dark:bg-slate-800 overflow-hidden flex flex-col justify-center items-center transition-opacity ${isUp ? 'opacity-50 pointer-events-none' : disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                     {isUp ? (
                         <div className="text-center z-10 flex flex-col items-center">
@@ -73,15 +87,51 @@ export function TabPhotos({ data, uploading, handleUpload, handleDelete }: TabPh
             <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
                 <div className="mb-6 flex justify-between items-end">
                     <div>
-                        <h3 className="font-black tracking-tight text-slate-900 dark:text-white text-lg">Additional Photos</h3>
-                        <p className="text-sm text-slate-500 font-medium">Add up to 3 extra photos to showcase different looks.</p>
+                        <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-black tracking-tight text-slate-900 dark:text-white text-lg">Additional Photos</h3>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${accountTier === 'premium' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                {accountTier === 'premium' ? '🚀 Premium' : '📦 Free Tier'}
+                            </span>
+                        </div>
+                        <p className="text-sm text-slate-500 font-medium">
+                            {accountTier === 'premium' 
+                                ? `Upload up to ${maxAdditionalPhotos} extra photos to showcase different looks.`
+                                : `Free tier: ${maxAdditionalPhotos} photos max. Upgrade to Premium for ${maxAdditionalPhotos > 3 ? maxAdditionalPhotos : 10} photos.`
+                            }
+                        </p>
                     </div>
                 </div>
 
+                {additionalPhotos.length >= maxAdditionalPhotos && accountTier === 'free' && (
+                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                        <Lock size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-bold text-amber-900 text-sm">Limit Reached</p>
+                            <p className="text-amber-700 text-xs mt-1">Upgrade to Premium Tier to add more photos and unlock advanced features.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                    {addonSlots.map((index) => (
-                        <PhotoCard key={index} type="additional_photos" index={index} title={`EXTRA LOOK ${index + 1}`} img={additionalPhotos[index]} />
-                    ))}
+                    {addonSlots.map((index) => {
+                        const isDisabled = index >= additionalPhotos.length && !canAddMore;
+                        return (
+                            <div key={index} className={isDisabled ? 'opacity-50 pointer-events-none' : ''}>
+                                <PhotoCard 
+                                    type="additional_photos" 
+                                    index={index} 
+                                    title={`EXTRA LOOK ${index + 1}`} 
+                                    img={additionalPhotos[index]}
+                                    disabled={isDisabled}
+                                />
+                                {isDisabled && (
+                                    <div className="mt-2 flex items-center gap-1 text-xs text-amber-600 font-bold">
+                                        <Lock size={12} /> Premium Only
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>

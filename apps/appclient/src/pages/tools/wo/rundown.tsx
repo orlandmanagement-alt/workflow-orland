@@ -1,53 +1,85 @@
-import { useState } from 'react';
-import { Clock, AlertTriangle, Play, CheckCircle2, ChevronRight, Users, Mic, Music, Plus, FastForward, Edit2 } from 'lucide-react';
-
-// Fungsi Helper: Menggeser waktu HH:MM sebanyak N menit
-const addMinutes = (timeStr: string, minsToAdd: number) => {
-  const [h, m] = timeStr.split(':').map(Number);
-  const date = new Date();
-  date.setHours(h, m + minsToAdd, 0, 0);
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-};
-
-// Simulasi Data Rundown
-const INITIAL_RUNDOWN = [
-  { id: 1, startTime: '08:00', endTime: '09:00', activity: 'Persiapan & Check Sound', pic: 'Tim WO & Band', talent: ['Sarah (Singer)'], status: 'DONE' },
-  { id: 2, startTime: '09:00', endTime: '09:30', activity: 'Penyambutan Tamu VIP', pic: 'Usher', talent: ['Budi (Usher)', 'Siska (Usher)'], status: 'ONGOING' },
-  { id: 3, startTime: '09:30', endTime: '10:00', activity: 'Grand Entrance Pengantin', pic: 'MC', talent: ['Reza (MC)'], status: 'UPCOMING' },
-  { id: 4, startTime: '10:00', endTime: '10:15', activity: 'First Dance & Wedding Kiss', pic: 'MC & Band', talent: ['Reza (MC)', 'Sarah (Singer)'], status: 'UPCOMING' },
-  { id: 5, startTime: '10:15', endTime: '11:00', activity: 'Sesi Foto & Ramah Tamah', pic: 'Tim WO', talent: [], status: 'UPCOMING' },
-  { id: 6, startTime: '11:00', endTime: '12:00', activity: 'Makan Siang (Acoustic Set)', pic: 'Band', talent: ['Sarah (Singer)'], status: 'UPCOMING' },
-];
+import { useState, useEffect } from 'react';
+import { Clock, AlertTriangle, Play, CheckCircle2, ChevronRight, Users, Mic, Music, Plus, FastForward, Edit2, Loader2 } from 'lucide-react';
+import { woService } from '@/lib/services/toolsService';
 
 export default function WORundown() {
-  const [rundown, setRundown] = useState(INITIAL_RUNDOWN);
+  const [projectId] = useState('project-1'); // Could be from URL params
+  const [rundown, setRundown] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isShifting, setIsShifting] = useState(false);
 
-  // Fitur Darurat: Geser Semua Jadwal
-  const handleEmergencyShift = () => {
-      if (confirm('PERINGATAN DARURAT: Anda yakin ingin memundurkan SELURUH sisa acara sebanyak 15 Menit? Notifikasi akan dikirim ke semua Talent.')) {
-          setIsShifting(true);
-          setTimeout(() => {
-              setRundown(prev => prev.map(item => {
-                  if (item.status === 'DONE') return item; // Yang sudah selesai tidak digeser
-                  return {
-                      ...item,
-                      startTime: addMinutes(item.startTime, 15),
-                      endTime: addMinutes(item.endTime, 15)
-                  };
-              }));
-              setIsShifting(false);
-          }, 800);
+  // Fetch rundown on mount
+  useEffect(() => {
+    const fetchRundown = async () => {
+      try {
+        setLoading(true);
+        const data = await woService.getRundown(projectId);
+        setRundown(data);
+      } catch (err: any) {
+        console.error('Failed to fetch rundown:', err);
+        setError(err.message || 'Gagal memuat rundown');
+        setRundown([]);
+      } finally {
+        setLoading(false);
       }
+    };
+
+    fetchRundown();
+  }, [projectId]);
+
+  // Update status via API
+  const setStatus = async (id: string, newStatus: string) => {
+    try {
+      await woService.updateRundownStatus(id, newStatus as any);
+      setRundown(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+    } catch (err: any) {
+      alert('Gagal mengupdate status: ' + (err.message || 'Unknown error'));
+    }
   };
 
-  const setStatus = (id: number, newStatus: string) => {
-      setRundown(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+  // Fitur Darurat: Geser Semua Jadwal
+  const handleEmergencyShift = async () => {
+      if (confirm('PERINGATAN DARURAT: Anda yakin ingin memundurkan SELURUH sisa acara sebanyak 15 Menit? Notifikasi akan dikirim ke semua Talent.')) {
+          try {
+            setIsShifting(true);
+            const response = await woService.shiftRundown(projectId, 15);
+            // Update local state with shifted data
+            setRundown(response);
+            alert('Jadwal berhasil dimundurkan 15 menit!');
+          } catch (err: any) {
+            alert('Gagal menggeser jadwal: ' + (err.message || 'Unknown error'));
+          } finally {
+            setIsShifting(false);
+          }
+      }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 pb-20">
       
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-6 rounded-3xl flex items-start gap-4">
+          <AlertTriangle className="text-red-600 dark:text-red-400 shrink-0 mt-1" size={24} />
+          <div className="flex-1">
+            <h2 className="font-bold text-red-900 dark:text-red-400 mb-1">Gagal Memuat Rundown</h2>
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          </div>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg">
+            Coba Lagi
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center p-12">
+          <div className="text-center">
+            <Loader2 className="animate-spin mx-auto mb-3 text-brand-500" size={32} />
+            <p className="font-bold text-slate-600 dark:text-slate-400">Memuat rundown...</p>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* HEADER & EMERGENCY ACTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 bg-slate-900 dark:bg-[#0b141a] p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-800 relative overflow-hidden">
         {/* Background Accent */}
@@ -56,7 +88,7 @@ export default function WORundown() {
         <div className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
                 <span className="bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[10px] font-black uppercase px-2.5 py-1 rounded tracking-widest">Live Event</span>
-                <span className="text-xs font-bold text-slate-400">Pernikahan Raffi & Gigi</span>
+                <span className="text-xs font-bold text-slate-400">Event Rundown</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center tracking-tight leading-none">
                 <Clock className="mr-3 text-brand-400" size={32}/> Minute-by-Minute
@@ -72,7 +104,8 @@ export default function WORundown() {
                 disabled={isShifting}
                 className="flex-1 sm:flex-none flex items-center justify-center px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-900/50 transition-all hover:scale-105 disabled:opacity-70 disabled:hover:scale-100"
             >
-                <FastForward size={18} className="mr-2"/> Geser Semua +15 Menit
+                {isShifting ? <Loader2 size={18} className="animate-spin mr-2"/> : <FastForward size={18} className="mr-2"/>}
+                {isShifting ? 'Menggeser...' : 'Geser Semua +15 Menit'}
             </button>
         </div>
       </div>
@@ -169,6 +202,8 @@ export default function WORundown() {
               </table>
           </div>
       </div>
+      </>
+      )}
 
     </div>
   )

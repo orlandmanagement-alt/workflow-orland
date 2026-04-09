@@ -27,12 +27,16 @@ router.put('/bookings/:booking_id/status', requireRole(['admin', 'client']), zVa
     
   if (result.meta.changes === 0) return c.json({ status: 'error', message: 'Booking not found' }, 404)
   if (body.status === "Offered") {
-    const talent = await c.env.DB_CORE.prepare("SELECT full_name FROM talents WHERE talent_id = (SELECT talent_id FROM project_talents WHERE booking_id = ?)").bind(c.req.param("booking_id")).first();
-    await sendNotification(c.env, {
-      to: "talent-email@example.com",
-      type: "email",
-      message: `Halo ${talent.full_name}, Anda mendapatkan tawaran (OFFER) baru dari Orland Management. Silakan cek aplikasi Anda!`
-    });
+    const bookingData = await c.env.DB_CORE.prepare(
+      "SELECT t.full_name, u.email FROM talents t JOIN users u ON t.user_id = u.id WHERE t.talent_id = (SELECT talent_id FROM project_talents WHERE booking_id = ?)"
+    ).bind(c.req.param("booking_id")).first<any>();
+    if (bookingData?.email) {
+      await sendNotification(c.env, {
+        to: bookingData.email,
+        type: "email",
+        message: `Halo ${bookingData.full_name}, Anda mendapatkan tawaran (OFFER) baru dari Orland Management. Silakan cek aplikasi Anda!`
+      });
+    }
   }
   return c.json({ status: 'ok', message: 'Status updated' })
 })

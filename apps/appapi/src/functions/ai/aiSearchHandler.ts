@@ -36,7 +36,6 @@ router.post('/search-similarity', requireRole(['admin', 'client']), zValidator('
     return c.json({ status: 'ok', matches: results || [], ai_status: c.env.TALENT_VECTORS ? 'live' : 'fallback' });
     
   } catch (e) {
-    console.error("AI Match Error:", e);
     return c.json({ status: 'error', message: 'Gagal melakukan pencarian berbasis AI' }, 500);
   }
 })

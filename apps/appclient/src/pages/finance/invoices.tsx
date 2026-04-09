@@ -1,18 +1,57 @@
-import { useState } from 'react';
-import { FileText, Download, UploadCloud, ShieldCheck, AlertCircle, Clock, Filter, Search, CheckCircle2, Loader2, X } from 'lucide-react';
-
-// Simulasi Data Tagihan (Invoices)
-const MOCK_INVOICES = [
-  { id: 'INV-2026-041', project: 'TVC Ramadhan Glow Soap', amount: 'Rp 45.000.000', dueDate: '15 Apr 2026', status: 'UNPAID', type: 'DP 50%' },
-  { id: 'INV-2026-038', project: 'Film Action "Garuda"', amount: 'Rp 120.000.000', dueDate: '10 Apr 2026', status: 'ESCROW HELD', type: 'Full Payment' },
-  { id: 'INV-2026-025', project: 'KOL Tiktok Skincare', amount: 'Rp 30.000.000', dueDate: '01 Mar 2026', status: 'RELEASED', type: 'Full Payment' },
-  { id: 'INV-2026-022', project: 'Photoshoot Katalog', amount: 'Rp 15.000.000', dueDate: '20 Feb 2026', status: 'RELEASED', type: 'Full Payment' },
-];
+import { useState, useEffect } from 'react';
+import { FileText, Download, UploadCloud, ShieldCheck, AlertCircle, Clock, Filter, Search, CheckCircle2, Loader2, X, AlertTriangle } from 'lucide-react';
+import { phase4API } from '@/lib/phase4API';
 
 export default function FinanceHub() {
-  const [invoices, setInvoices] = useState(MOCK_INVOICES);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [stats, setStats] = useState({
+    unpaid: 'Rp 0',
+    escrowHeld: 'Rp 0',
+    totalReleased: 'Rp 0'
+  });
+
+  // Fetch invoices from API
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        setLoading(true);
+        const response = await phase4API.getInvoices();
+        if (response.status === 'success' && response.data) {
+          setInvoices(response.data);
+          
+          // Calculate stats from API data
+          const unpaidTotal = response.data
+            .filter((inv: any) => inv.status === 'UNPAID')
+            .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+          const escrowTotal = response.data
+            .filter((inv: any) => inv.status === 'ESCROW HELD')
+            .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+          const releasedTotal = response.data
+            .filter((inv: any) => inv.status === 'RELEASED')
+            .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+          
+          setStats({
+            unpaid: `Rp ${(unpaidTotal / 1000000).toFixed(0)} Jt`,
+            escrowHeld: `Rp ${(escrowTotal / 1000000).toFixed(0)} Jt`,
+            totalReleased: `Rp ${(releasedTotal / 1000000).toFixed(0)} Jt`
+          });
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch invoices:', err);
+        setError(err.message || 'Gagal memuat data invoices');
+        // Set default fallback values
+        setInvoices([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvoices();
+  }, []);
 
   const handleUploadProof = () => {
       setIsUploading(true);
@@ -21,6 +60,16 @@ export default function FinanceHub() {
           setIsUploading(false);
           setInvoices(prev => prev.map(inv => inv.id === selectedInvoice.id ? { ...inv, status: 'ESCROW HELD' } : inv));
           setSelectedInvoice(null);
+          // Recalculate stats
+          const updatedInvoices = invoices.map(inv => inv.id === selectedInvoice.id ? { ...inv, status: 'ESCROW HELD' } : inv);
+          const unpaidTotal = updatedInvoices.filter((inv: any) => inv.status === 'UNPAID').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+          const escrowTotal = updatedInvoices.filter((inv: any) => inv.status === 'ESCROW HELD').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+          const releasedTotal = updatedInvoices.filter((inv: any) => inv.status === 'RELEASED').reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0);
+          setStats({
+            unpaid: `Rp ${(unpaidTotal / 1000000).toFixed(0)} Jt`,
+            escrowHeld: `Rp ${(escrowTotal / 1000000).toFixed(0)} Jt`,
+            totalReleased: `Rp ${(releasedTotal / 1000000).toFixed(0)} Jt`
+          });
           alert('Bukti transfer berhasil diunggah! Dana Anda kini aman di Escrow Orland sampai project selesai.');
       }, 2500);
   };
@@ -44,20 +93,36 @@ export default function FinanceHub() {
         </div>
       </div>
 
+      {/* ERROR ALERT */}
+      {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1">
+                  <div className="p-2 bg-red-100 dark:bg-red-800 rounded-full text-red-600 dark:text-red-300 shrink-0"><AlertTriangle size={20} /></div>
+                  <div>
+                      <h3 className="font-bold text-red-900 dark:text-red-400">Gagal Memuat Invoices</h3>
+                      <p className="text-sm text-red-700 dark:text-red-300 mt-0.5">{error}</p>
+                  </div>
+              </div>
+              <button onClick={() => window.location.reload()} className="w-full sm:w-auto whitespace-nowrap px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors">
+                  Coba Lagi
+              </button>
+          </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-red-200 dark:border-red-900/30 shadow-sm shadow-red-500/5 flex flex-col">
               <span className="text-xs font-bold text-red-500 uppercase tracking-wider mb-2 flex items-center"><AlertCircle size={14} className="mr-1"/> Harus Dibayar (Unpaid)</span>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Rp 45 Jt</h2>
-              <p className="text-xs text-slate-500">1 Tagihan jatuh tempo segera</p>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{stats.unpaid}</h2>
+              <p className="text-xs text-slate-500">{invoices.filter(inv => inv.status === 'UNPAID').length} Tagihan jatuh tempo segera</p>
           </div>
           <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/10 p-6 rounded-3xl border border-amber-200 dark:border-amber-800/50 shadow-sm flex flex-col">
               <span className="text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider mb-2 flex items-center"><ShieldCheck size={14} className="mr-1"/> Dana Aman (Escrow Held)</span>
-              <h2 className="text-3xl font-black text-amber-900 dark:text-amber-400 mb-1">Rp 120 Jt</h2>
-              <p className="text-xs text-amber-700/70 dark:text-amber-500/70">Menunggu 1 proyek selesai</p>
+              <h2 className="text-3xl font-black text-amber-900 dark:text-amber-400 mb-1">{stats.escrowHeld}</h2>
+              <p className="text-xs text-amber-700/70 dark:text-amber-500/70">Menunggu {invoices.filter(inv => inv.status === 'ESCROW HELD').length} proyek selesai</p>
           </div>
           <div className="bg-white dark:bg-dark-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center"><CheckCircle2 size={14} className="mr-1"/> Total Tersalurkan</span>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Rp 45 Jt</h2>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{stats.totalReleased}</h2>
               <p className="text-xs text-slate-500">Sepanjang tahun 2026</p>
           </div>
       </div>
@@ -79,8 +144,21 @@ export default function FinanceHub() {
               </div>
           </div>
           
-          {/* DATA TABLE */}
-          <div className="overflow-x-auto">
+          {/* LOADING STATE */}
+          {loading && !error ? (
+            <div className="p-8 text-center flex items-center justify-center gap-2">
+              <Loader2 className="animate-spin text-brand-500" size={24} />
+              <span className="text-slate-600 dark:text-slate-400 font-bold">Memuat invoices...</span>
+            </div>
+          ) : !error && invoices.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+              <FileText className="mx-auto mb-3 opacity-50" size={40} />
+              <p className="font-bold">Belum ada invoices</p>
+            </div>
+          ) : !error ? (
+            <>
+              {/* DATA TABLE */}
+              <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/60">
@@ -100,7 +178,7 @@ export default function FinanceHub() {
                                   <p className="text-[10px] text-slate-500 font-mono mt-0.5">{inv.id}</p>
                               </td>
                               <td className="p-4"><span className="text-xs text-slate-600 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">{inv.type}</span></td>
-                              <td className="p-4"><span className="font-black text-slate-900 dark:text-white text-base">{inv.amount}</span></td>
+                              <td className="p-4"><span className="font-black text-slate-900 dark:text-white text-base">{typeof inv.amount === 'number' ? `Rp ${(inv.amount / 1000000).toFixed(1)} Jt` : inv.amount}</span></td>
                               <td className="p-4">
                                   <div className={`flex items-center text-xs font-bold ${inv.status === 'UNPAID' ? 'text-red-500' : 'text-slate-500'}`}>
                                       <Clock size={12} className="mr-1.5"/> {inv.dueDate}
@@ -126,6 +204,13 @@ export default function FinanceHub() {
                   </tbody>
               </table>
           </div>
+            </>
+          ) : (
+            <div className="p-8 text-center text-red-500">
+              <AlertCircle className="mx-auto mb-3 opacity-50" size={40} />
+              <p className="font-bold">{error}</p>
+            </div>
+          )}
       </div>
 
       {/* MODAL UPLOAD BUKTI TRANSFER (SECURE PAYMENT UPLOADER) */}
@@ -149,7 +234,7 @@ export default function FinanceHub() {
                       <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 mb-6 flex items-start gap-3">
                           <ShieldCheck size={20} className="text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                           <p className="text-xs text-amber-800 dark:text-amber-400/90 leading-relaxed">
-                              Silakan transfer sebesar <b className="font-black text-amber-900 dark:text-amber-300">{selectedInvoice.amount}</b> ke rekening <b>BCA 1234567890 a.n Orland Management Escrow</b>. Dana akan ditahan dengan aman dan tidak disalurkan ke Talent sebelum proyek selesai 100%.
+                              Silakan transfer sebesar <b className="font-black text-amber-900 dark:text-amber-300">{typeof selectedInvoice.amount === 'number' ? `Rp ${(selectedInvoice.amount / 1000000).toFixed(1)} Jt` : selectedInvoice.amount}</b> ke rekening <b>BCA 1234567890 a.n Orland Management Escrow</b>. Dana akan ditahan dengan aman dan tidak disalurkan ke Talent sebelum proyek selesai 100%.
                           </p>
                       </div>
 

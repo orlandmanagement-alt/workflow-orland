@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { sign } from 'hono/jwt'
 import { hashData, verifyTurnstile, sendMail } from '../utils'
+import type { D1Database } from '@cloudflare/workers-types'
 
 type Bindings = { DB_SSO: D1Database; TURNSTILE_SECRET: string; RESEND_API_KEY?: string; JWT_SECRET?: string; CLIENT_URL?: string; TALENT_URL?: string; ADMIN_URL?: string }
 const auth = new Hono<{ Bindings: Bindings }>()
@@ -70,11 +71,10 @@ auth.post('/register', async (c) => {
     
     // FIX ANTI CRASH: Bungkus pengiriman email agar tidak mematikan server jika API Resend error
     try { await sendMail(c.env, cleanEmail, tokenUUID, 'activation'); } 
-    catch (mailErr) { console.error("Mail Error:", mailErr); }
+    catch (mailErr) { /* Silent email error handling */ }
     
     return c.json({ status: "ok", message: "Registrasi Sukses! Cek Email." })
   } catch (err) {
-    console.error("Crash Registrasi:", err);
     return c.json({ status: "error", message: "Gagal menyimpan data ke server." }, 500)
   }
 })
@@ -142,7 +142,7 @@ auth.post('/request-otp', async (c) => {
   await c.env.DB_SSO.prepare("DELETE FROM otp_requests WHERE identifier=? AND purpose=?").bind(user.email, body.purpose).run()
   await c.env.DB_SSO.prepare("INSERT INTO otp_requests (id, identifier, code, purpose, expires_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), user.email, otp, body.purpose, now + 180).run()
   
-  try { await sendMail(c.env, user.email, otp, body.purpose); } catch (e) { console.error("Mail Error"); }
+  try { await sendMail(c.env, user.email, otp, body.purpose); } catch (e) { /* Silent email error */ }
   return c.json({ status: "ok", message: "OTP Terkirim." })
 })
 
@@ -152,12 +152,12 @@ auth.post('/setup-pin', async (c) => handleOtpVerify(c, 'setup-pin'))
 async function handleOtpVerify(c: any, actionType: string) {
   const body = await c.req.json()
   const id = (body.identifier || "").trim().toLowerCase()
-  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND status != 'deleted'").bind(id, id).first<any>()
+  const user: any = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND status != 'deleted'").bind(id, id).first()
   if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
   
   const purp = actionType === "login" ? "login" : "setup-pin"
   const now = getNow()
-  const otpRow = await c.env.DB_SSO.prepare("SELECT * FROM otp_requests WHERE identifier=? AND code=? AND purpose=? AND expires_at > ?").bind(user.email, body.otp, purp, now).first<any>()
+  const otpRow: any = await c.env.DB_SSO.prepare("SELECT * FROM otp_requests WHERE identifier=? AND code=? AND purpose=? AND expires_at > ?").bind(user.email, body.otp, purp, now).first()
   if (!otpRow) return c.json({ status: "error", message: "OTP salah/expired." }, 400)
   
   await c.env.DB_SSO.prepare("DELETE FROM otp_requests WHERE id=?").bind(otpRow.id).run()

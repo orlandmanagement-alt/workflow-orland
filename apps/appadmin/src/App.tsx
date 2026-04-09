@@ -8,6 +8,9 @@ import FinanceTreasury from '@/pages/finance';
 import ProjectOverwatch from '@/pages/projects';
 import DisputeResolution from '@/pages/disputes';
 import AdminDashboard from '@/pages/dashboard';
+import AdminChatManagement from '@/pages/chat/management';
+import AdminNotifications from '@/pages/notifications';
+import AdminSystemHealth from '@/pages/system/health';
 import { useThemeStore } from '@/store/useAppStore';
 
 function App() {
@@ -37,6 +40,9 @@ function App() {
           <Route path="finance" element={<FinanceTreasury />} />
           <Route path="projects" element={<ProjectOverwatch />} />
           <Route path="disputes" element={<DisputeResolution />} />
+          <Route path="chat/*" element={<AdminChatManagement />} />
+          <Route path="notifications" element={<AdminNotifications />} />
+          <Route path="system/health" element={<AdminSystemHealth />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/admin" replace />} />

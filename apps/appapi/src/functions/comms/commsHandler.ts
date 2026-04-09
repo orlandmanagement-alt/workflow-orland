@@ -42,7 +42,6 @@ router.post('/whatsapp/blast', requireRole(['admin', 'superadmin']), async (c) =
          await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('sent', blastId).run();
       }
     } catch(err) {
-      console.error("Blast Fonnte Error:", err);
       await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('failed', blastId).run();
     }
   }
@@ -120,7 +119,6 @@ router.post('/email/newsletters', requireRole(['admin', 'superadmin']), async (c
            await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('sent', newsletterId).run();
         }
       } catch (err) {
-        console.error("Resend API Error:", err);
         await c.env.DB_LOGS.prepare('UPDATE comms_logs SET status = ? WHERE id = ?').bind('failed', newsletterId).run();
       }
     }

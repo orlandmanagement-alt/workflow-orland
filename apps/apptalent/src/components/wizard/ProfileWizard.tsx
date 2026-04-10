@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useProfileFormState } from '@/hooks/useProfileFormState';
 import { CheckCircle, ChevronRight, X } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { useAuthStore } from '@/store/useAppStore';
@@ -12,8 +13,11 @@ import Step6_Review from './steps/Step6_Review';
 
 export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<any>({});
   const [loadingInitial, setLoadingInitial] = useState(true);
+  const [initialData, setInitialData] = useState<any>({});
+  const [hookReady, setHookReady] = useState(false);
+  // Initialize the SaaS-standard form state hook after fetching draft
+  const formState = useProfileFormState<any>(initialData);
 
   // Mengambil profile draft sebelumnya (jika ada yang terputus)
 // Mengambil profile draft sebelumnya dan menentukan langkah terakhir
@@ -23,8 +27,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
         const res = await apiRequest('/talents/me');
         if (res.status === 'ok' && res.data) {
            const d = res.data;
-           setFormData(d);
-           
+           setInitialData(d);
            // LOGIKA AUTO-RESUME (Cek mana yang masih kosong)
            if (!d.full_name || !d.category || !d.height || !d.weight || !d.gender) {
                setCurrentStep(1); // Balik ke Info Dasar
@@ -40,11 +43,11 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
         console.error("Gagal menarik draft awal profil");
       } finally {
         setLoadingInitial(false);
+        setHookReady(true);
       }
     };
     fetchDraft();
   }, []);
-  const updateFormData = (data: any) => setFormData((prev: any) => ({...prev, ...data}));
 
   const goNext = () => setCurrentStep(prev => Math.min(prev + 1, 6));
   const goBack = () => setCurrentStep(prev => Math.max(prev - 1, 1));
@@ -53,7 +56,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
       setLoadingInitial(true);
       await apiRequest('/talents/me', {
          method: 'PUT',
-         body: JSON.stringify(formData)
+         body: JSON.stringify(formState.values)
       });
       if (onClose) onClose();
       window.location.reload(); 
@@ -64,7 +67,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  if (loadingInitial) {
+  if (loadingInitial || !hookReady) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#0a192f]/95 backdrop-blur flex items-center justify-center p-4">
         <div className="animate-pulse flex flex-col items-center">
@@ -103,22 +106,55 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
         {/* Step Content Area (Slide & Fade) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 animate-in fade-in zoom-in-95 duration-300 relative">
           {currentStep === 1 && (
-            <Step1_BasicInfo data={formData} onUpdate={updateFormData} onNext={goNext} />
+            <Step1_BasicInfo
+              data={formState.values}
+              fieldStatus={formState.fieldStatus}
+              onUpdate={formState.updateField}
+              onNext={goNext}
+              undo={formState.undo}
+              redo={formState.redo}
+              canUndo={formState.canUndo}
+              canRedo={formState.canRedo}
+            />
           )}
           {currentStep === 2 && (
-            <Step2_Media data={formData} onUpdate={updateFormData} onNext={goNext} onBack={goBack} />
+            <Step2_Media
+              data={formState.values}
+              fieldStatus={formState.fieldStatus}
+              onUpdate={formState.updateField}
+              onNext={goNext}
+              onBack={goBack}
+            />
           )}
           {currentStep === 3 && (
-            <Step3_Social data={formData} onUpdate={updateFormData} onNext={goNext} onBack={goBack} />
+            <Step3_Social
+              data={formState.values}
+              fieldStatus={formState.fieldStatus}
+              onUpdate={formState.updateField}
+              onNext={goNext}
+              onBack={goBack}
+            />
           )}
           {currentStep === 4 && (
-            <Step4_Assets data={formData} onUpdate={updateFormData} onNext={goNext} onBack={goBack} />
+            <Step4_Assets
+              data={formState.values}
+              fieldStatus={formState.fieldStatus}
+              onUpdate={formState.updateField}
+              onNext={goNext}
+              onBack={goBack}
+            />
           )}
           {currentStep === 5 && (
-            <Step5_Experience data={formData} onUpdate={updateFormData} onNext={goNext} onBack={goBack} />
+            <Step5_Experience
+              data={formState.values}
+              fieldStatus={formState.fieldStatus}
+              onUpdate={formState.updateField}
+              onNext={goNext}
+              onBack={goBack}
+            />
           )}
           {currentStep === 6 && (
-            <Step6_Review data={formData} onBack={goBack} onFinish={finishWizard} />
+            <Step6_Review data={formState.values} onBack={goBack} onFinish={finishWizard} />
           )}
         </div>
 

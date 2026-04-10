@@ -8,9 +8,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // Tambahkan dua baris ini untuk memaksa penggunaan satu versi React
-      'react': path.resolve(__dirname, './node_modules/react'),
-      'react-dom': path.resolve(__dirname, './node_modules/react-dom')
     },
+    // Gunakan dedupe untuk memaksa resolusi ke satu versi React di monorepo
+    dedupe: ['react', 'react-dom']
   },
 })

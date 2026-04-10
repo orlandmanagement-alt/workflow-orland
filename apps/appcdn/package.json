@@ -9,11 +9,13 @@
     "build": "echo 'No build required'"
   },
   "dependencies": {
-    "hono": "^4.2.0"
+    "hono": "^4.2.0",
+    "jspdf": "4.2.1",
+    "vite": "8.0.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240405.0",
     "typescript": "^5.4.0",
-    "wrangler": "^3.50.0"
+    "wrangler": "^4.81.1"
   }
 }

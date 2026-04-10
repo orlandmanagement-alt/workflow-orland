@@ -4,9 +4,12 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "drizzle-orm": "latest"
+    "drizzle-orm": "latest",
+    "jspdf": "4.2.1",
+    "vite": "8.0.8",
+    "wrangler": "4.81.1"
   },
   "devDependencies": {
-    "drizzle-kit": "latest"
+    "drizzle-kit": "^0.31.10"
   }
 }

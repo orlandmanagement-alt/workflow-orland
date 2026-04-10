@@ -1,0 +1,153 @@
+<div class="sidebar-overlay z-[9990]" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
+<div class="sidebar-menu sidebar-luxury fixed top-0 right-0 h-full w-[85%] max-w-[360px] flex flex-col p-6 z-[9995]" id="sidebarMenu">
+    
+    <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgVpqQMJFRdXF4QuDMjhryuV3tLim3yNpixQZVfRyTZB1l0IA39IPmFQ9cTb6xky2WPsOCNUolVaJlRSTGpews_x3fEF2pudK4B9kGgaVd8rDr9kY8a9aT_AAYRxg6nEkyYcku5SjKozwUmzGTwqEYQBxfPHuICbyR36FbCyk84_bMWd-S5751CeWMS2sI/s150-rw/1000140217.png" alt="Orland Logo" class="h-7 brightness-0 invert opacity-90" />
+        <div class="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer text-white/50 hover:bg-red-500 hover:text-white transition-all transform hover:rotate-90" onclick="toggleSidebar()">
+            <i class="fa-solid fa-times"></i>
+        </div>
+    </div>
+
+    <div id="mob-auth-loading" class="hidden"></div>
+
+    <div id="mob-auth-guest" class="mb-5 block">
+        <button type="button" onclick="toggleSidebar(); toggleAuthUI('view-login');" class="w-full py-3.5 rounded-xl text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2" style="background: var(--grad-btn);">
+            <i class="fa-regular fa-user"></i> 
+            <span class="konten-id">Masuk / Daftar Akun</span><span class="konten-en">Sign In / Register</span>
+        </button>
+    </div>
+
+    <div id="mob-auth-loggedin" class="mb-5 hidden flex-col gap-3">
+        <div class="flex items-center gap-3 p-3.5 rounded-xl bg-white/5 border border-white/10 shadow-inner">
+            <img id="mob-user-avatar" src="" class="w-11 h-11 rounded-full border-2 border-indigo-400/50 object-cover" />
+            <div class="overflow-hidden">
+                <p id="mob-user-name" class="text-sm font-bold text-white leading-tight mb-0.5 truncate">Memuat...</p>
+                <p id="mob-user-role" class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">ROLE</p>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-2">
+            <a href="#" id="mob-link-dashboard" class="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 text-xs font-semibold border border-white/5 transition-all">
+                <i class="fa-solid fa-border-all w-4 text-center"></i> Dashboard
+            </a>
+            <a href="#" class="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 text-xs font-semibold border border-white/5 transition-all">
+                <i class="fa-regular fa-id-badge w-4 text-center"></i> Profil
+            </a>
+            <a href="#" class="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 text-xs font-semibold border border-white/5 transition-all">
+                <i class="fa-solid fa-shield-halved w-4 text-center"></i> Keamanan
+            </a>
+            <button onclick="handleLogout()" class="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 text-red-400 hover:text-white hover:bg-red-500 text-xs font-semibold border border-red-500/20 transition-all text-left">
+                <i class="fa-solid fa-power-off w-4 text-center"></i> Keluar
+            </button>
+        </div>
+    </div>
+
+    <ul class="flex flex-col gap-1 overflow-y-auto pb-4 flex-1 pr-2 custom-scrollbar border-t border-white/10 pt-4">
+        
+        <li>
+            <a href="/" class="group mobile-hover-gradient flex items-center gap-3 font-medium text-slate-300 py-3 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-all duration-300">
+                <i class="fa-solid fa-house w-5 text-center text-slate-500 group-hover:text-indigo-400 transition-colors"></i> 
+                <span class="group-hover:translate-x-1 transition-transform duration-300">
+                    <span class="konten-id">Beranda</span><span class="konten-en">Home</span>
+                </span>
+            </a>
+        </li>
+
+        <li>
+            <a href="javascript:void(0)" onclick="toggleSub('subProfileMobile', this)" class="group mobile-hover-gradient flex items-center justify-between font-medium text-slate-300 py-3 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-all duration-300">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-user w-5 text-center text-slate-500 group-hover:text-indigo-400 transition-colors"></i> 
+                    <span class="group-hover:translate-x-1 transition-transform duration-300">
+                        <span class="konten-id">Profil</span><span class="konten-en">Profile</span>
+                    </span>
+                </div>
+                <span class="sub-toggle text-slate-500 text-sm transition-transform duration-300 group-hover:text-white"><i class="fa-solid fa-chevron-down"></i></span>
+            </a>
+            <ul class="mobile-sub" id="subProfileMobile">
+                <li><a href="/p/about.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-building text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Tentang Kami</span><span class="konten-en">About</span></span></a></li>
+                <li><a href="/p/news.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-newspaper text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Berita</span><span class="konten-en">News</span></span></a></li>
+                <li><a href="/p/portofolio.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-briefcase text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Portofolio</span><span class="konten-en">Portofolio</span></span></a></li>
+                <li><a href="/p/gallery.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-image text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Galeri</span><span class="konten-en">Gallery</span></span></a></li>
+                <li><a href="/p/contact.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-phone text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Kontak</span><span class="konten-en">Contact</span></span></a></li>
+            </ul>
+        </li>
+
+        <li>
+            <a href="javascript:void(0)" onclick="toggleSub('subClientMobile', this)" class="group mobile-hover-gradient flex items-center justify-between font-medium text-slate-300 py-3 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-all duration-300">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-handshake w-5 text-center text-slate-500 group-hover:text-indigo-400 transition-colors"></i> 
+                    <span class="group-hover:translate-x-1 transition-transform duration-300">
+                        <span class="konten-id">Layanan Klien</span><span class="konten-en">Client Services</span>
+                    </span>
+                </div>
+                <span class="sub-toggle text-slate-500 text-sm transition-transform duration-300 group-hover:text-white"><i class="fa-solid fa-chevron-down"></i></span>
+            </a>
+            <ul class="mobile-sub" id="subClientMobile">
+                <li><a href="/p/tvc-production.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-clapperboard text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Produksi TVC</span><span class="konten-en">TVC Production</span></span></a></li>
+                <li><a href="/p/eo-wo-partnership.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-clapperboard text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">EO/WO & Event</span><span class="konten-en">EO/WO & Event</span></span></a></li>
+                <li><a href="/p/influencer-marketing-agency.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-clapperboard text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Marketing Agency</span><span class="konten-en">KOL Specialist</span></span></a></li>
+            </ul>
+        </li>
+
+        <li>
+            <a href="/p/talent-roster.html" class="group mobile-hover-gradient flex items-center gap-3 font-medium text-slate-300 py-3 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-all duration-300">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-star w-5 text-center text-slate-500 group-hover:text-indigo-400 transition-colors"></i> 
+                    <span class="group-hover:translate-x-1 transition-transform duration-300">
+                        <span class="konten-id">Daftar Talent</span><span class="konten-en">Talent Roster</span>
+                    </span>
+                </div>
+            </a>
+        </li>
+
+        <li>
+            <a href="javascript:void(0)" onclick="toggleSub('subAcademyMobile', this)" class="group mobile-hover-gradient flex items-center justify-between font-medium text-slate-300 py-3 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-all duration-300">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-graduation-cap w-5 text-center text-slate-500 group-hover:text-indigo-400 transition-colors"></i> 
+                    <span class="group-hover:translate-x-1 transition-transform duration-300">
+                        <span class="konten-id">Akademi</span><span class="konten-en">Academy</span>
+                    </span>
+                </div>
+                <span class="sub-toggle text-slate-500 text-sm transition-transform duration-300 group-hover:text-white"><i class="fa-solid fa-chevron-down"></i></span>
+            </a>
+            <ul class="mobile-sub" id="subAcademyMobile">
+                <li><a href="/p/acting-class.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-chalkboard-user text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Kelas Akting</span><span class="konten-en">Acting Class</span></span></a></li>
+                <li><a href="/p/modeling-class.html" class="group/sub text-slate-400 hover:text-white py-2 flex items-center gap-3 px-6 rounded-lg hover:bg-white/5 transition-all duration-300"><i class="fa-solid fa-person-walking text-[10px] text-slate-500 group-hover/sub:text-indigo-400 transition-colors"></i> <span class="group-hover/sub:translate-x-1 transition-transform duration-300"><span class="konten-id">Kelas Modeling</span><span class="konten-en">Modeling Class</span></span></a></li>
+            </ul>
+        </li>
+
+        <li>
+            <a href="/p/casting-events.html" class="group mobile-hover-gradient flex items-center gap-3 font-medium text-slate-300 py-3 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-all duration-300">
+                <i class="fa-solid fa-calendar-check w-5 text-center text-slate-500 group-hover:text-indigo-400 transition-colors"></i> 
+                <span class="group-hover:translate-x-1 transition-transform duration-300">
+                    <span class="konten-id">Casting & Acara</span><span class="konten-en">Casting & Events</span>
+                </span>
+            </a>
+        </li>
+    </ul>
+    
+    <div class="mb-4 flex items-center justify-between bg-white/5 p-1 rounded-xl border border-white/10 mt-4">
+        <button id="btn-mob-en" onclick="switchLanguage('en')" class="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg bg-transparent text-slate-400 text-[11px] font-semibold hover:text-white hover:bg-white/5 transition-all">
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhlTbzYSbPDI5mAYHs3CZJqo9iatVMwxI3AomLw1GvPiR-UrEjes3vBVku-1ZZhDqDaO7dA2tx4l44YnOYJmhphhnL0M6fJJpR8fMFeNcu2K06PdXw1CZKkcvbdOpLixLLzFKUx4aPQgGeUNTaFl5JF4U5flaaoj9Hbx1wKdRo0i9ustObXl-d0rU21jSM/s1600/en.png" id="img-mob-en" class="w-3.5 h-3.5 rounded-full opacity-50" /> English
+        </button>
+        <button id="btn-mob-id" onclick="switchLanguage('id')" class="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg bg-white/10 shadow-sm text-white text-[11px] font-semibold transition-all">
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgqzPQ7IVyQ5qGO9xpnf-ntBGfed92glN-AQWec5DbgJxGvbaiCZ7sjL6NAkZLR8nBNOXmAq896On3HpTHiqEtrDzGGkPa5MMbvkD6D2t3CPWPHOLLStc8XsuZ6ZuG6d3cAIi3BTav6OlsiirqOLvTUZvNkEvKjT-k44CTMZKw0LrDR1sT6pUeHKM0bmik/s1600/id.png" id="img-mob-id" class="w-3.5 h-3.5 rounded-full" /> Bahasa
+        </button>
+    </div>
+
+    <div class="mt-2 pt-5 border-t border-white/10 flex justify-center gap-4">
+        <a href="#" class="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-gradient-to-tr hover:from-yellow-500 hover:via-pink-500 hover:to-purple-500 hover:text-white hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+            <i class="fa-brands fa-instagram text-sm"></i>
+        </a>
+        <a href="#" class="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-[#1877F2] hover:text-white hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+            <i class="fa-brands fa-facebook-f text-sm"></i>
+        </a>
+        <a href="#" class="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-[#FF0000] hover:text-white hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+            <i class="fa-brands fa-youtube text-sm"></i>
+        </a>
+        <a href="#" class="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:bg-black hover:text-white hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+            <i class="fa-brands fa-tiktok text-sm"></i>
+        </a>
+    </div>
+</div>

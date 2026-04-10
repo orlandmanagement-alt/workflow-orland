@@ -9,11 +9,13 @@
   "dependencies": {
     "@hono/zod-validator": "latest",
     "hono": "latest",
+    "jspdf": "4.2.1",
+    "vite": "8.0.8",
     "zod": "latest"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240320.0",
     "typescript": "^5.0.0",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.81.1"
   }
 }

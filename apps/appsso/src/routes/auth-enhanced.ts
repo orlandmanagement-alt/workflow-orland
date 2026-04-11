@@ -67,7 +67,7 @@ async function getCurrentUser(c: Context<{ Bindings: Bindings }>) {
   if (!session) return null
 
   const user = await c.env.DB_SSO.prepare(
-    'SELECT id, email, full_name, role, status FROM users WHERE id = ?'
+    'SELECT id, email, first_name, last_name, user_type as role, is_active FROM users WHERE id = ?'
   )
     .bind(session.user_id)
     .first<any>()
@@ -192,14 +192,18 @@ auth.post('/register', async (c) => {
     const userId = generateUUID()
     const activationToken = generateOTP()
 
+    // Memisahkan full name menjadi first_name dan last_name secara sederhana
+    const nameParts = (body.fullName || 'User').split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
     await c.env.DB_SSO.prepare(
       `INSERT INTO users (
-        id, email, full_name, role, status,
-        password_hash, password_salt,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)`
+        id, email, phone, first_name, last_name, user_type, is_active, email_verified,
+        password_hash, password_salt
+      ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`
     )
-      .bind(userId, email, body.fullName || 'User', body.role, hash, salt, now, now)
+      .bind(userId, email, body.phone || null, firstName, lastName, body.role, hash, salt)
       .run()
 
     // Create activation token
@@ -275,7 +279,7 @@ auth.post('/login-password', async (c) => {
 
     // Step 4: Fetch user
     const user = await c.env.DB_SSO.prepare(
-      'SELECT * FROM users WHERE (email = ? OR phone = ?) AND status != "deleted"'
+      'SELECT *, user_type as role FROM users WHERE (email = ? OR phone = ?) AND is_active = 1'
     )
       .bind(identifier, identifier)
       .first<any>()
@@ -306,7 +310,7 @@ auth.post('/login-password', async (c) => {
     }
 
     // Step 6: Check if account is pending activation
-    if (user.status === 'pending') {
+    if (user.email_verified === 0) {
       return c.json(
         { status: 'error', message: 'Account not activated. Check your email for activation link.' },
         { status: 403 }
@@ -479,13 +483,13 @@ auth.post('/validate-session', async (c) => {
     }
 
     const user = await c.env.DB_SSO.prepare(
-      'SELECT id, email, role, status FROM users WHERE id = ?'
+      'SELECT id, email, user_type as role, is_active FROM users WHERE id = ?'
     )
       .bind(session.user_id)
       .first<any>()
 
-    if (!user || user.status === 'deleted') {
-      return c.json({ valid: false, message: 'User not found' })
+    if (!user || user.is_active === 0) {
+      return c.json({ valid: false, message: 'User not found or inactive' })
     }
 
     return c.json({

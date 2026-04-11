@@ -4,7 +4,7 @@
 import { Hono, Context } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { sign } from 'hono/jwt'
-import { Buffer } from 'node:buffer' // 👈 TAMBAHKAN BARIS INI
+import { Buffer } from 'node:buffer'
 
 import {
   hashPasswordPBKDF2,
@@ -22,6 +22,7 @@ import {
 } from '../utils/security'
 import { verifyTurnstile, sendMail } from '../utils'
 
+// 1. Daftarkan semua variabel yang ada di Cloudflare Dashboard agar dikenali oleh TypeScript
 type Bindings = {
   DB_SSO: D1Database
   TURNSTILE_SECRET: string
@@ -30,21 +31,27 @@ type Bindings = {
   TALENT_URL?: string
   CLIENT_URL?: string
   ADMIN_URL?: string
+  PBKDF2_ITER?: string
+  SESSION_TTL_MIN?: string
+  COOKIE_DOMAIN?: string
 }
 
-const COOKIE_OPTS = {
-  domain: '.orlandmanagement.com',
+const auth = new Hono<{ Bindings: Bindings }>()
+
+const getNow = () => Math.floor(Date.now() / 1000)
+const getClientIp = (c: Context): string => c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+
+// Helper Dinamis untuk Opsi Cookie (Mengambil dari env)
+const getCookieOpts = (env: Bindings) => ({
+  domain: env.COOKIE_DOMAIN || '.orlandmanagement.com',
   path: '/',
   httpOnly: true,
   secure: true,
   sameSite: 'Lax' as const,
-}
+})
 
-const SESSION_EXPIRY = 43200 // 12 hours
-const getNow = () => Math.floor(Date.now() / 1000)
-const getClientIp = (c: Context): string => c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
-
-const auth = new Hono<{ Bindings: Bindings }>()
+// Helper Dinamis untuk Umur Sesi (Mengambil dari env, default 720 menit / 12 jam)
+const getSessionExpiry = (env: Bindings) => Number(env.SESSION_TTL_MIN || 720) * 60
 
 /**
  * ========================================
@@ -52,7 +59,6 @@ const auth = new Hono<{ Bindings: Bindings }>()
  * ========================================
  */
 
-// Helper: Tentukan URL Redirect berdasarkan Tipe User
 async function getPortalUrl(env: Bindings, user: any, sid: string) {
   const safeRole = (user.user_type || 'talent').toLowerCase();
   let baseUrl: string;
@@ -66,7 +72,8 @@ async function getPortalUrl(env: Bindings, user: any, sid: string) {
   }
   
   const now = getNow();
-  const payload = { sub: user.id, role: safeRole, sid: sid, exp: now + SESSION_EXPIRY, iat: now };
+  const sessionExp = getSessionExpiry(env);
+  const payload = { sub: user.id, role: safeRole, sid: sid, exp: now + sessionExp, iat: now };
   const token = await sign(payload, env.JWT_SECRET || 'orland-rahasia-utama-123');
   
   const params = new URLSearchParams({ 
@@ -83,16 +90,18 @@ async function getPortalUrl(env: Bindings, user: any, sid: string) {
 async function createSession(c: Context<{ Bindings: Bindings }>, user: any, ipAddress: string, userAgent: string) {
   const now = getNow()
   const sessionId = generateUUID()
-  const expiresAt = now + SESSION_EXPIRY
+  const sessionExp = getSessionExpiry(c.env)
+  const expiresAt = now + sessionExp
 
   await c.env.DB_SSO.prepare(
     `INSERT INTO sessions (session_id, user_id, ip_address, user_agent, expires_at, created_at, is_active)
      VALUES (?, ?, ?, ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), 1)`
   ).bind(sessionId, user.id, ipAddress, userAgent, expiresAt, now).run()
 
-  setCookie(c, 'sid', sessionId, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
+  setCookie(c, 'sid', sessionId, { ...getCookieOpts(c.env), maxAge: sessionExp })
   return { sessionId, expiresAt, redirectUrl: await getPortalUrl(c.env, user, sessionId) }
 }
+
 
 /**
  * ========================================

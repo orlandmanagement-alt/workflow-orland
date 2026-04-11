@@ -264,7 +264,7 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
-
+		
         {/* TAB 2: ATRIBUT FISIK */}
         {tab === 'physical' && (
           <div className="space-y-6 animate-in slide-in-from-bottom-2">
@@ -314,8 +314,36 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+		
+		{/* TAB 3: MEDIA (COMP CARD) */}
+        {tab === 'media' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-2">
+            <div className="bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-800 p-5 rounded-2xl">
+                <h3 className="font-black text-brand-800 dark:text-brand-300 mb-1">Unggah Comp Card Resmi</h3>
+                <p className="text-sm text-brand-600/80 dark:text-brand-400/80 mb-4">Format PDF atau Image (Maks 5MB). Comp Card ini akan langsung dikirim ke klien saat Anda melamar proyek.</p>
+                <div className="border-2 border-dashed border-brand-300 dark:border-brand-700/50 bg-white dark:bg-slate-900 rounded-xl p-8 text-center cursor-pointer hover:bg-brand-50 transition-colors">
+                  <Upload size={32} className="mx-auto text-brand-400 mb-3" />
+                  <span className="font-bold text-brand-600">Klik untuk mengunggah file</span>
+                </div>
+            </div>
 
-        {/* TAB 3: KEAHLIAN */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+              {['headshot_url', 'full_body_url', 'showreel_url'].map((type) => (
+                <div key={type}>
+                  <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+                    {type.split('_')[0]} Image
+                  </label>
+                  <div className="aspect-[4/5] bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-brand-300 hover:text-brand-500 cursor-pointer transition-colors">
+                     <Camera size={32} className="mb-2 opacity-50" />
+                     <span className="text-xs font-bold">Upload Foto</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+		
+        {/* TAB 4: KEAHLIAN */}
         {tab === 'skills' && (
           <div className="space-y-8 animate-in slide-in-from-bottom-2">
             <div>
@@ -359,33 +387,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* TAB 4: MEDIA (COMP CARD) */}
-        {tab === 'media' && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-2">
-            <div className="bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-800 p-5 rounded-2xl">
-                <h3 className="font-black text-brand-800 dark:text-brand-300 mb-1">Unggah Comp Card Resmi</h3>
-                <p className="text-sm text-brand-600/80 dark:text-brand-400/80 mb-4">Format PDF atau Image (Maks 5MB). Comp Card ini akan langsung dikirim ke klien saat Anda melamar proyek.</p>
-                <div className="border-2 border-dashed border-brand-300 dark:border-brand-700/50 bg-white dark:bg-slate-900 rounded-xl p-8 text-center cursor-pointer hover:bg-brand-50 transition-colors">
-                  <Upload size={32} className="mx-auto text-brand-400 mb-3" />
-                  <span className="font-bold text-brand-600">Klik untuk mengunggah file</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-              {['headshot_url', 'full_body_url', 'showreel_url'].map((type) => (
-                <div key={type}>
-                  <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
-                    {type.split('_')[0]} Image
-                  </label>
-                  <div className="aspect-[4/5] bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-brand-300 hover:text-brand-500 cursor-pointer transition-colors">
-                     <Camera size={32} className="mb-2 opacity-50" />
-                     <span className="text-xs font-bold">Upload Foto</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        
 
         {/* TAB 5: RATE CARD */}
         {tab === 'rates' && (

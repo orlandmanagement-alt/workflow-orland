@@ -44,8 +44,8 @@ export default function AuthCallback() {
 
       login(token, { 
   id: userId, 
-  full_name: name, // Sinkronkan dengan dashboard/index.tsx
-  email, 
+  full_name: name, // Gunakan full_name agar muncul di Dashboard
+  email: email, 
   role: 'talent' 
 });
       

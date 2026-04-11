@@ -3,11 +3,12 @@ import { cors } from 'hono/cors'
 import { getCookie } from 'hono/cookie'
 import { verify } from 'hono/jwt'
 
-
 // Cloudflare Workers type imports
 import type { D1Database, KVNamespace, R2Bucket, Fetcher } from '@cloudflare/workers-types'
 
-// Import semua Router
+/**
+ * IMPORT SEMUA ROUTER FUNGSIONAL
+ */
 import talentRouter from './functions/talents/talentHandler'
 import experienceRouter from './functions/talents/experienceHandler'
 import certificationRouter from './functions/talents/certificationHandler'
@@ -48,6 +49,9 @@ import analyticsRouter from './functions/analytics/analyticsHandler'
 import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
 
+/**
+ * TYPE DEFINITIONS
+ */
 export type Bindings = { 
   DB_CORE: D1Database; 
   DB_LOGS: D1Database; 
@@ -59,6 +63,7 @@ export type Bindings = {
   CLIENT_URL: string; 
   ADMIN_URL: string;
 }
+
 export type Variables = { 
   userId: string; 
   userRole: string; 
@@ -68,7 +73,8 @@ export type Variables = {
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 /**
- * 1. CONFIGURASI CORS PRO (Multi-Domain & Credentials)
+ * 1. KONFIGURASI CORS PRO (Multi-Domain & Credentials)
+ * Mengizinkan akses dari seluruh ekosistem Orland Management.
  */
 app.use('*', cors({ 
   origin: (origin) => {
@@ -90,48 +96,60 @@ app.use('*', cors({
 }))
 
 /**
- * 2. GLOBAL GATEKEEPER MIDDLEWARE (Sync dengan DB_SSO Schema)
+ * 2. GLOBAL GATEKEEPER MIDDLEWARE (Sync dengan DB_SSO Skema 027)
+ * Memvalidasi sesi pengguna secara real-time terhadap Database SSO.
  */
-// UPDATE MIDDLEWARE GATEKEEPER (SYNC DENGAN SKEMA 027)
 app.use('/api/v1/*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return await next()
   if (c.req.path.startsWith('/api/v1/public/')) return await next()
   
   let sid = null;
 
-  // JALUR 1: Ekstrak SID dari JWT (Authorization Header)
+  // JALUR 1: Ekstrak SID dari JWT (Header Authorization)
   const authHeader = c.req.header('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      // Decode JWT menggunakan Secret yang sama dengan SSO
+      // Decode JWT menggunakan Secret terpusat
       const payload = await verify(token, c.env.JWT_SECRET);
-      sid = payload.sid; // Ini adalah session_id asli (UUID)
-    } catch (e) { console.error("JWT Expired/Invalid"); }
+      sid = payload.sid; // Mendapatkan session_id (UUID) asli
+    } catch (e) { 
+      console.warn("JWT Verification Failed atau Kadaluarsa"); 
+    }
   }
 
-  // JALUR 2: Cek Cookie 'sid' jika jalur 1 gagal
+  // JALUR 2: Cek Cookie 'sid' jika jalur 1 gagal (Silent Auth)
   if (!sid) sid = getCookie(c, 'sid');
 
-  if (!sid) return c.json({ status: "error", message: "Unauthorized" }, 401);
+  if (!sid) return c.json({ status: "error", message: "Unauthorized: Sesi tidak ditemukan" }, 401);
 
-  // QUERY: Gunakan session_id (Sync dengan SQL 027)
-  const session = await c.env.DB_SSO.prepare(
-    "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
-  ).bind(sid).first<any>();
+  try {
+    // QUERY SESI: Menggunakan kolom session_id & is_active sesuai Skema 027
+    const session = await c.env.DB_SSO.prepare(
+      "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
+    ).bind(sid).first<{ user_id: string }>();
 
-  if (!session) return c.json({ status: "error", message: "Session Invalid" }, 401);
+    if (!session) return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid atau telah berakhir" }, 401);
 
-  // VALIDASI USER (Sync dengan SQL 027: id, user_type, is_active)
-  const user = await c.env.DB_SSO.prepare(
-    "SELECT id, user_type, is_active FROM users WHERE id = ?"
-  ).bind(session.user_id).first<any>();
-  
-  if (!user || user.is_active === 0) return c.json({ status: "error", message: "User Nonaktif" }, 401);
+    // VALIDASI USER: Menggunakan kolom id, user_type, dan is_active sesuai Skema 027
+    const user = await c.env.DB_SSO.prepare(
+      "SELECT id, user_type, is_active FROM users WHERE id = ?"
+    ).bind(session.user_id).first<{ id: string, user_type: string, is_active: number }>();
+    
+    if (!user || user.is_active === 0) {
+      return c.json({ status: "error", message: "Unauthorized: Akun ditangguhkan atau tidak ditemukan" }, 401);
+    }
 
-  c.set('userId', user.id);
-  c.set('userRole', user.user_type);
-  await next();
+    // Set variabel context untuk digunakan oleh router internal
+    c.set('userId', user.id);
+    c.set('userRole', user.user_type); // Memetakan user_type ke role
+    c.set('userTier', 'free'); // Default tier (bisa ditambahkan ke skema users jika diperlukan)
+    
+    await next();
+  } catch (err) {
+    console.error("Critical Auth Error:", err);
+    return c.json({ status: "error", message: "Internal Server Error saat validasi sesi" }, 500);
+  }
 });
 
 /**
@@ -144,7 +162,7 @@ app.get('/api/v1/auth/verify-session', (c) => c.json({
   userRole: c.get('userRole') 
 }))
 
-// MOUNTING SEMUA ROUTER
+// MOUNTING SEMUA ROUTER BISNIS
 app.route('/api/v1/talents', talentRouter)
 app.route('/api/v1/talents', experienceRouter)
 app.route('/api/v1/talents', certificationRouter)
@@ -191,15 +209,18 @@ app.route('/api/v1/public', availabilityRouter)
 
 /**
  * 4. PUBLIC R2 MEDIA ACCESS
+ * Menyediakan akses langsung ke file media di Cloudflare R2 secara publik.
  */
 app.get("/api/v1/public/media/:key", async (c) => {
   const key = c.req.param("key");
   const object = await c.env.R2_MEDIA.get(key);
   if (!object) return c.text("Gambar Tidak Ditemukan", 404);
+  
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set("etag", object.httpEtag);
-  headers.set("Cache-Control", "public, max-age=31536000");
+  headers.set("Cache-Control", "public, max-age=31536000"); // Cache 1 tahun
+  
   return new Response(object.body, { headers });
 });
 

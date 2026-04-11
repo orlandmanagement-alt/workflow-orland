@@ -46,7 +46,8 @@ const getCookieOpts = (env: Bindings) => ({
   path: '/',
   httpOnly: true,
   secure: true,
-  sameSite: 'Lax' as const,
+  // GANTI: Dari 'Lax' menjadi 'None' agar lebih lancar saat redirect antar subdomain
+  sameSite: 'None' as const, 
 })
 
 // Helper Dinamis untuk Umur Sesi (default 720 menit / 12 jam)

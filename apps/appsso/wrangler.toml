@@ -1,6 +1,7 @@
 name = "workflow-orland"
 main = "src/index.ts"
 compatibility_date = "2024-03-26"
+compatibility_flags = ["nodejs_compat"]
 
 assets = { directory = "./public" }
 

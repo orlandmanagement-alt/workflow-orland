@@ -1,7 +1,7 @@
 // Enhanced Auth Service with PBKDF2, Rate Limiting & Brute-Force Protection
 // File: apps/appsso/src/utils/crypto.ts
 
-import { webcrypto } from 'crypto'
+//import { crypto } from 'crypto'
 
 const PBKDF2_ITERATIONS = 100_000
 const SALT_LENGTH = 32
@@ -11,7 +11,7 @@ const KEY_LENGTH = 32
  * Generate cryptographically secure random bytes
  */
 export async function generateSalt(length: number = SALT_LENGTH): Promise<Uint8Array> {
-  return webcrypto.getRandomValues(new Uint8Array(length))
+  return crypto.getRandomValues(new Uint8Array(length))
 }
 
 /**
@@ -35,7 +35,7 @@ export async function hashPasswordPBKDF2(
   const passwordData = encoder.encode(passwordWithPepper)
   
   // PBKDF2-SHA256
-  const hash = await webcrypto.subtle.pbkdf2(
+  const hash = await crypto.subtle.pbkdf2(
     passwordData,
     salt,
     PBKDF2_ITERATIONS,
@@ -74,7 +74,7 @@ export async function verifyPasswordPBKDF2(
     const passwordData = encoder.encode(passwordWithPepper)
     
     // Recompute hash with stored salt
-    const hash = await webcrypto.subtle.pbkdf2(
+    const hash = await crypto.subtle.pbkdf2(
       passwordData,
       salt,
       PBKDF2_ITERATIONS,
@@ -110,7 +110,7 @@ function constantTimeCompare(a: string, b: string): boolean {
  */
 export async function sha256(data: string): Promise<string> {
   const encoder = new TextEncoder()
-  const buf = await webcrypto.subtle.digest('SHA-256', encoder.encode(data))
+  const buf = await crypto.subtle.digest('SHA-256', encoder.encode(data))
   return Buffer.from(buf).toString('hex')
 }
 
@@ -119,7 +119,7 @@ export async function sha256(data: string): Promise<string> {
  */
 export function generateUUID(): string {
   return `${1e7}${-1e3}${-4e3}${-8e3}${-1e11}`.replace(/[018]/g, (c: string) =>
-    (parseInt(c) ^ (webcrypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (parseInt(c) / 4)))
+    (parseInt(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (parseInt(c) / 4)))
     ).toString(16)
   )
 }

@@ -19,7 +19,7 @@ import {
   unlockAccount,
   validateSessionContext,
 } from '../utils/security'
-import { verifyTurnstile, sendMail } from '../utils/mail'
+import { verifyTurnstile, sendMail } from '../utils'
 
 type Bindings = {
   DB_SSO: D1Database

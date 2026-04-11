@@ -12,7 +12,9 @@ const allowedOrigins = [
   'https://admin.orlandmanagement.com',
   'https://agency.orlandmanagement.com',
   'https://sso.orlandmanagement.com',
-  'http://localhost:5173' // Sangat berguna saat kamu sedang coding/testing di komputer lokal
+  'https://www.orlandmanagement.com', // 👈 TAMBAHKAN INI (Dengan www)
+  'https://orlandmanagement.com',     // 👈 TAMBAHKAN INI (Tanpa www)
+  'http://localhost:5173'
 ];
 
 // 2. Terapkan konfigurasi CORS Dinamis

@@ -51,6 +51,28 @@ window.switchMode = function(mode) {
 window.renderTurnstileWidgets = function() { if (!window.turnstile) return; ['turnstile-login', 'turnstile-register'].forEach(id => { const el = document.getElementById(id); if (el && !el.hasChildNodes()) window.turnstile.render(el, { sitekey: TURNSTILE_SITE_KEY, theme: 'light' }); }); }
 window.resetTurnstile = function() { if (window.turnstile) window.turnstile.reset(); }
 
+// Tambahkan di mana saja (disarankan di dekat fungsi login lainnya)
+window.handleGoogleLogin = async function(response) {
+    if (!response || !response.credential) {
+        return window.showToast("Google Login dibatalkan atau gagal", "error");
+    }
+    
+    window.showToast("Memverifikasi Google...", "info");
+    
+    // Nanti kamu bisa menambahkan endpoint `/api/auth/google` di backend
+    // untuk memproses JWT token ini (response.credential)
+    console.log("Token JWT dari Google:", response.credential);
+    
+    // Contoh pemanggilan ke backend (sementara di-comment karena belum ada endpoint-nya di backend)
+    /*
+    const res = await sendApi('google', { token: response.credential });
+    if(res.status === 'ok') { 
+        doRedirectCountdown(res.role || 'User', "Login Google Sukses!", res.redirect_url); 
+    } else { 
+        window.showToast(res.message, "error"); 
+    }
+    */
+}
 async function sendApi(action, payload) { 
     try { 
         const res = await fetch(`/api/auth/${action}`, { 

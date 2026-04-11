@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { getCookie } from 'hono/cookie'
+import { verify } from 'hono/jwt'
 
 // Cloudflare Workers type imports
 import type { D1Database, KVNamespace, R2Bucket, Fetcher } from '@cloudflare/workers-types'
 
+// Import semua Router
 import talentRouter from './functions/talents/talentHandler'
 import experienceRouter from './functions/talents/experienceHandler'
 import certificationRouter from './functions/talents/certificationHandler'
@@ -45,12 +47,28 @@ import analyticsRouter from './functions/analytics/analyticsHandler'
 import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
 
-export type Bindings = { DB_CORE: D1Database; DB_LOGS: D1Database; DB_SSO: D1Database; ORLAND_CACHE: KVNamespace; R2_MEDIA: R2Bucket; R2_BUCKET?: R2Bucket; R2_PUBLIC_URL?: string; JWT_SECRET: string; TALENT_URL: string; CLIENT_URL: string; CF_ACCOUNT_ID: string; R2_ACCESS_KEY_ID: string; R2_SECRET_ACCESS_KEY: string; CF_AI_GATEWAY?: Fetcher }
-export type Variables = { userId: string; userRole: string; userTier: string }
+export type Bindings = { 
+  DB_CORE: D1Database; 
+  DB_LOGS: D1Database; 
+  DB_SSO: D1Database; 
+  ORLAND_CACHE: KVNamespace; 
+  R2_MEDIA: R2Bucket; 
+  JWT_SECRET: string; 
+  TALENT_URL: string; 
+  CLIENT_URL: string; 
+  ADMIN_URL: string;
+}
+export type Variables = { 
+  userId: string; 
+  userRole: string; 
+  userTier: string;
+}
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// 1. KONFIGURASI CORS: Mendukung Credentials untuk Cookie antar-domain
+/**
+ * 1. CONFIGURASI CORS PRO (Multi-Domain & Credentials)
+ */
 app.use('*', cors({ 
   origin: (origin) => {
     const allowedDomains = [
@@ -60,8 +78,8 @@ app.use('*', cors({
       'https://talent.orlandmanagement.com',
       'https://client.orlandmanagement.com',
       'http://localhost:8787',
-      'http://localhost:3000',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      'http://localhost:3000'
     ];
     return allowedDomains.includes(origin) ? origin : null;
   },
@@ -70,60 +88,81 @@ app.use('*', cors({
   credentials: true 
 }))
 
-// 2. MIDDLEWARE GATEKEEPER GLOBAL (SYNC DENGAN SKEMA 027)
+/**
+ * 2. GLOBAL GATEKEEPER MIDDLEWARE (Sync dengan DB_SSO Schema)
+ */
 app.use('/api/v1/*', async (c, next) => {
+  // Lewati pengecekan untuk preflight dan endpoint publik
   if (c.req.method === 'OPTIONS') return await next()
   if (c.req.path.startsWith('/api/v1/public/')) return await next()
   
-  let userId = null;
+  let sid = null;
 
-  // JALUR A: Cek Bearer Token dari Header Authorization
+  // JALUR A: Bearer Token (JWT dari Authorization Header)
   const authHeader = c.req.header('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    // PERBAIKAN: Gunakan session_id sesuai skema baru
-    const session = await c.env.DB_SSO.prepare(
-      "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
-    ).bind(token).first<any>();
-    if (session) userId = session.user_id;
-  }
-
-  // JALUR B: Cek Cookie 'sid' jika Bearer Token tidak ada
-  if (!userId) {
-    const sid = getCookie(c, 'sid');
-    if (sid) {
-      const session = await c.env.DB_SSO.prepare(
-        "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
-      ).bind(sid).first<any>();
-      if (session) userId = session.user_id;
+    try {
+      // Decode JWT untuk mendapatkan Session ID (sid)
+      const payload = await verify(token, c.env.JWT_SECRET);
+      sid = payload.sid;
+    } catch (e) {
+      console.warn("JWT Verification Failed atau Token Expired");
     }
   }
 
-  if (!userId) {
-    return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid atau telah berakhir" }, 401);
+  // JALUR B: Cookie 'sid' (Gagal jalur A atau request langsung dari browser)
+  if (!sid) {
+    sid = getCookie(c, 'sid');
   }
 
-  // VALIDASI USER (SYNC DENGAN SKEMA 027)
-  // Perbaikan: Gunakan user_type, is_active, dan id
-  const user = await c.env.DB_SSO.prepare(
-    "SELECT id, user_type, is_active FROM users WHERE id = ?"
-  ).bind(userId).first<any>();
-  
-  if (!user || user.is_active === 0) {
-    return c.json({ status: "error", message: "Unauthorized: Akun tidak ditemukan atau dinonaktifkan" }, 401);
+  // Jika tidak ada Session ID sama sekali
+  if (!sid) {
+    return c.json({ status: "error", message: "Unauthorized: Sesi tidak ditemukan" }, 401);
   }
 
-  // Inject data ke context agar bisa dibaca router/middleware lain
-  c.set('userId', user.id);
-  c.set('userRole', user.user_type);
-  
-  await next();
+  try {
+    // 3. VALIDASI SESI KE DATABASE SSO (Sesuai skema session_id)
+    const session = await c.env.DB_SSO.prepare(
+      "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
+    ).bind(sid).first<any>();
+
+    if (!session) {
+      return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid atau telah berakhir" }, 401);
+    }
+
+    // 4. VALIDASI USER (Sesuai skema user_type & is_active)
+    const user = await c.env.DB_SSO.prepare(
+      "SELECT id, user_type, is_active FROM users WHERE id = ?"
+    ).bind(session.user_id).first<any>();
+    
+    if (!user || user.is_active === 0) {
+      return c.json({ status: "error", message: "Unauthorized: Akun ditangguhkan" }, 401);
+    }
+
+    // Simpan ke context agar bisa digunakan oleh requireRole/Handler
+    c.set('userId', user.id);
+    c.set('userRole', user.user_type);
+    c.set('userTier', 'free'); // Default tier, bisa diupgrade dengan kolom tambahan di DB
+    
+    await next();
+  } catch (err) {
+    console.error("Auth Middleware Error:", err);
+    return c.json({ status: "error", message: "Internal Server Error saat validasi sesi" }, 500);
+  }
 });
 
-// ROUTES DEFINITION
+/**
+ * 3. ROUTING PORTAL ORLAND
+ */
 app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 42 }))
-app.get('/api/v1/auth/verify-session', (c) => c.json({ status: 'ok', userId: c.get('userId'), userRole: c.get('userRole') }))
+app.get('/api/v1/auth/verify-session', (c) => c.json({ 
+  status: 'ok', 
+  userId: c.get('userId'), 
+  userRole: c.get('userRole') 
+}))
 
+// MOUNTING SEMUA ROUTER
 app.route('/api/v1/talents', talentRouter)
 app.route('/api/v1/talents', experienceRouter)
 app.route('/api/v1/talents', certificationRouter)
@@ -155,7 +194,6 @@ app.route('/api/v1/webhooks', webhookRouter)
 app.route('/api/v1/tools/comms', commsRouter)
 app.route('/api/v1/system', systemToolsRouter)
 app.route('/api/v1/tools', miscToolsRouter)
-app.route('/api/v1', miscToolsRouter)
 app.route('/api/v1/public/talents', publicTalentRouter)
 app.route('/api/v1/admin', adminCrudRouter)
 app.route('/api/v1/admin', adminChatRouter)
@@ -168,9 +206,10 @@ app.route('/api/v1/agencies', whitelabelRouter)
 app.route('/api/v1/whitelabel', whitelabelRouter)
 app.route('/api/v1/talents', availabilityRouter)
 app.route('/api/v1/public', availabilityRouter)
-app.route('/api/v1/admin', availabilityRouter)
 
-// PUBLIC R2 MEDIA SERVER
+/**
+ * 4. PUBLIC R2 MEDIA ACCESS
+ */
 app.get("/api/v1/public/media/:key", async (c) => {
   const key = c.req.param("key");
   const object = await c.env.R2_MEDIA.get(key);

@@ -16,11 +16,11 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [initialData, setInitialData] = useState<any>({});
   const [hookReady, setHookReady] = useState(false);
+  
   // Initialize the SaaS-standard form state hook after fetching draft
   const formState = useProfileFormState<any>(initialData);
 
-  // Mengambil profile draft sebelumnya (jika ada yang terputus)
-// Mengambil profile draft sebelumnya dan menentukan langkah terakhir
+  // Mengambil profile draft sebelumnya dan menentukan langkah terakhir
   useEffect(() => {
     const fetchDraft = async () => {
       try {
@@ -67,6 +67,18 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
     }
   };
 
+  // ✅ SOLUSI: Wrapper kebal peluru untuk mengatasi Error TS2322
+  // Mendukung 1 argumen objek ({ field: value }) atau 2 argumen string ('field', value)
+  const handleUpdate = (fieldOrData: any, value?: any) => {
+    if (typeof fieldOrData === 'string') {
+      formState.updateField(fieldOrData, value);
+    } else if (typeof fieldOrData === 'object' && fieldOrData !== null) {
+      Object.entries(fieldOrData).forEach(([k, v]) => {
+        formState.updateField(k, v);
+      });
+    }
+  };
+
   if (loadingInitial || !hookReady) {
     return (
       <div className="fixed inset-0 z-[100] bg-[#0a192f]/95 backdrop-blur flex items-center justify-center p-4">
@@ -82,7 +94,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
     <div className="fixed inset-0 z-[100] bg-[#0a192f]/95 backdrop-blur flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-3xl shadow-2xl flex flex-col h-[90vh] md:h-[85vh] relative overflow-hidden">
         
-        {/* Tombol X Tutup Darurat (Bisa dihilangkan jika wajib isi) */}
+        {/* Tombol X Tutup Darurat */}
         {onClose && (
             <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 text-slate-400 hover:text-red-500 bg-slate-100 dark:bg-slate-800 rounded-full transition-colors">
             <X size={20} />
@@ -109,7 +121,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
             <Step1_BasicInfo
               data={formState.values}
               fieldStatus={formState.fieldStatus}
-              onUpdate={formState.updateField}
+              onUpdate={handleUpdate} 
               onNext={goNext}
               undo={formState.undo}
               redo={formState.redo}
@@ -120,8 +132,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
           {currentStep === 2 && (
             <Step2_Media
               data={formState.values}
-              fieldStatus={formState.fieldStatus}
-              onUpdate={formState.updateField}
+              onUpdate={handleUpdate} 
               onNext={goNext}
               onBack={goBack}
             />
@@ -129,8 +140,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
           {currentStep === 3 && (
             <Step3_Social
               data={formState.values}
-              fieldStatus={formState.fieldStatus}
-              onUpdate={formState.updateField}
+              onUpdate={handleUpdate} 
               onNext={goNext}
               onBack={goBack}
             />
@@ -138,8 +148,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
           {currentStep === 4 && (
             <Step4_Assets
               data={formState.values}
-              fieldStatus={formState.fieldStatus}
-              onUpdate={formState.updateField}
+              onUpdate={handleUpdate} 
               onNext={goNext}
               onBack={goBack}
             />
@@ -147,14 +156,17 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
           {currentStep === 5 && (
             <Step5_Experience
               data={formState.values}
-              fieldStatus={formState.fieldStatus}
-              onUpdate={formState.updateField}
+              onUpdate={handleUpdate} 
               onNext={goNext}
               onBack={goBack}
             />
           )}
           {currentStep === 6 && (
-            <Step6_Review data={formState.values} onBack={goBack} onFinish={finishWizard} />
+            <Step6_Review 
+              data={formState.values} 
+              onBack={goBack} 
+              onFinish={finishWizard} 
+            />
           )}
         </div>
 

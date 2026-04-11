@@ -1,23 +1,36 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import authEnhancedRoutes from './routes/auth-enhanced' // Load sistem baru
-import authRoutes from './routes/auth'                   // Load sistem lama untuk OTP/PIN
+import authEnhancedRoutes from './routes/auth-enhanced'
 
 type Bindings = { DB_SSO: D1Database; JWT_SECRET: string; }
 const app = new Hono<{ Bindings: Bindings }>()
 
+// 1. Buat daftar semua domain frontend yang diizinkan mengakses SSO
+const allowedOrigins = [
+  'https://talent.orlandmanagement.com',
+  'https://client.orlandmanagement.com',
+  'https://admin.orlandmanagement.com',
+  'https://agency.orlandmanagement.com',
+  'https://sso.orlandmanagement.com',
+  'http://localhost:5173' // Sangat berguna saat kamu sedang coding/testing di komputer lokal
+];
+
+// 2. Terapkan konfigurasi CORS Dinamis
 app.use('*', cors({
-  origin: (origin) => origin || 'https://talent.orlandmanagement.com',
+  origin: (origin) => {
+    // Jika origin (sumber request) ada di dalam daftar kita, izinkan.
+    // Jika tidak ada (atau request dari server/Postman), gunakan fallback default.
+    if (origin && allowedOrigins.includes(origin)) {
+      return origin;
+    }
+    return allowedOrigins[0]; // Fallback aman
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowHeaders: ['Content-Type', 'Authorization', 'Cookie', 'Accept'],
-  credentials: true,
-  maxAge: 86400,
+  credentials: true, // Wajib true agar Cookie (sid) bisa dikirim & disimpan di browser
+  maxAge: 86400, // Cache izin CORS selama 24 jam agar lebih cepat
 }))
 
-// PENTING: Mount yang enhanced lebih dulu agar /login dan /register menggunakan sistem PBKDF2/Rate-limit
 app.route('/api/auth', authEnhancedRoutes)
-
-// Mount sistem lama untuk menangani /setup-pin, /request-otp, /reset-password, dll
-app.route('/api/auth', authRoutes)
 
 export default app

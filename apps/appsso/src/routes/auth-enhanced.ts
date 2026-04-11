@@ -1,22 +1,22 @@
-// Enhanced Auth Routes with PBKDF2, Rate Limiting & Brute-Force Protection
+// Enterprise Auth Routes with PBKDF2, Rate Limiting, Brute-Force Protection & Full Features
 // File: apps/appsso/src/routes/auth-enhanced.ts
 
 import { Hono, Context } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
+import { sign } from 'hono/jwt'
 
 import {
   hashPasswordPBKDF2,
   verifyPasswordPBKDF2,
   generateUUID,
   generateOTP,
-  generatePIN,
+  sha256
 } from '../utils/crypto'
 import {
   isAccountLocked,
   recordLoginAttempt,
   checkRateLimit,
   lockAccount,
-  unlockAccount,
   validateSessionContext,
 } from '../utils/security'
 import { verifyTurnstile, sendMail } from '../utils'
@@ -26,13 +26,9 @@ type Bindings = {
   TURNSTILE_SECRET: string
   HASH_PEPPER: string
   JWT_SECRET: string
-  PBKDF2_ITER?: number
-  SESSION_TTL?: number
-  RESEND_API_KEY?: string
   TALENT_URL?: string
   CLIENT_URL?: string
   ADMIN_URL?: string
-  REDIS_URL?: string
 }
 
 const COOKIE_OPTS = {
@@ -44,199 +40,138 @@ const COOKIE_OPTS = {
 }
 
 const SESSION_EXPIRY = 43200 // 12 hours
-const JWT_EXPIRY = 900 // 15 minutes
-
 const getNow = () => Math.floor(Date.now() / 1000)
 const getClientIp = (c: Context): string => c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
 
 const auth = new Hono<{ Bindings: Bindings }>()
 
 /**
- * Helper: Get current user from session
+ * ========================================
+ * HELPER FUNCTIONS
+ * ========================================
  */
-async function getCurrentUser(c: Context<{ Bindings: Bindings }>) {
-  const sid = getCookie(c, 'sid')
-  if (!sid) return null
 
-  const session = await c.env.DB_SSO.prepare(
-    'SELECT * FROM sessions WHERE session_id = ? AND expires_at > ? LIMIT 1'
-  )
-    .bind(sid, getNow())
-    .first<any>()
-
-  if (!session) return null
-
-  const user = await c.env.DB_SSO.prepare(
-    'SELECT id, email, first_name, last_name, user_type as role, is_active FROM users WHERE id = ?'
-  )
-    .bind(session.user_id)
-    .first<any>()
-
-  return { user, session }
+// Helper: Tentukan URL Redirect berdasarkan Tipe User
+async function getPortalUrl(env: Bindings, user: any, sid: string) {
+  const safeRole = (user.user_type || 'talent').toLowerCase();
+  let baseUrl: string;
+  
+  if (safeRole === 'super_admin' || safeRole === 'admin') {
+    baseUrl = env.ADMIN_URL || 'https://admin.orlandmanagement.com';
+  } else if (safeRole === 'client') {
+    baseUrl = env.CLIENT_URL || 'https://client.orlandmanagement.com';
+  } else {
+    baseUrl = env.TALENT_URL || 'https://talent.orlandmanagement.com';
+  }
+  
+  const now = getNow();
+  const payload = { sub: user.id, role: safeRole, sid: sid, exp: now + SESSION_EXPIRY, iat: now };
+  const token = await sign(payload, env.JWT_SECRET || 'orland-rahasia-utama-123');
+  
+  const params = new URLSearchParams({ 
+    token: token, 
+    role: safeRole, 
+    user_id: user.id, 
+    name: `${user.first_name} ${user.last_name || ''}`.trim(), 
+    email: user.email 
+  });
+  
+  return `${baseUrl}/auth/callback?${params.toString()}`;
 }
 
-/**
- * Helper: Create session and set cookies
- */
-async function createSession(
-  c: Context<{ Bindings: Bindings }>,
-  userId: string,
-  role: string,
-  ipAddress: string,
-  userAgent: string
-) {
+async function createSession(c: Context<{ Bindings: Bindings }>, user: any, ipAddress: string, userAgent: string) {
   const now = getNow()
   const sessionId = generateUUID()
   const expiresAt = now + SESSION_EXPIRY
 
-  // Insert session into database
   await c.env.DB_SSO.prepare(
-    `INSERT INTO sessions (session_id, user_id, role, ip_address, user_agent, created_at, expires_at, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1)`
-  )
-    .bind(sessionId, userId, role, ipAddress, userAgent, now, expiresAt)
-    .run()
+    `INSERT INTO sessions (session_id, user_id, ip_address, user_agent, expires_at, created_at, is_active)
+     VALUES (?, ?, ?, ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), 1)`
+  ).bind(sessionId, user.id, ipAddress, userAgent, expiresAt, now).run()
 
-  // Create JWT token
-  const payload = {
-    sub: userId,
-    role: role,
-    sid: sessionId,
-    exp: now + JWT_EXPIRY,
-    iat: now,
-  }
-
-  const jwt = await signJWT(payload, c.env.JWT_SECRET)
-
-  // Set cookies
   setCookie(c, 'sid', sessionId, { ...COOKIE_OPTS, maxAge: SESSION_EXPIRY })
-  setCookie(c, 'loginToken', jwt, { ...COOKIE_OPTS, maxAge: JWT_EXPIRY })
-
-  return { sessionId, jwt, expiresAt }
-}
-
-/**
- * Simple JWT signing (in production, use a proper JWT library)
- */
-async function signJWT(payload: Record<string, any>, secret: string): Promise<string> {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
-  const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
-
-  const encoder = new TextEncoder()
-  const signatureData = encoder.encode(`${header}.${body}${secret}`)
-  const sig = await crypto.subtle.digest('SHA-256', signatureData)
-  const signature = Buffer.from(sig).toString('base64url')
-
-  return `${header}.${body}.${signature}`
+  return { sessionId, expiresAt, redirectUrl: await getPortalUrl(c.env, user, sessionId) }
 }
 
 /**
  * ========================================
- * AUTHENTICATION ENDPOINTS
+ * REGISTRATION & ACTIVATION
  * ========================================
  */
 
-/**
- * POST /api/auth/register
- * Register new user account
- */
 auth.post('/register', async (c) => {
   try {
     const body = await c.req.json<any>()
     const ipAddress = getClientIp(c)
-    const userAgent = c.req.header('user-agent') || 'unknown'
-    const now = getNow()
-
-    // Validate Turnstile
+    
     const isHuman = await verifyTurnstile(body.turnstile_token, ipAddress, c.env.TURNSTILE_SECRET)
-    if (!isHuman) {
-      return c.json(
-        { status: 'error', message: 'CAPTCHA verification failed' },
-        { status: 403 }
-      )
-    }
+    if (!isHuman) return c.json({ status: 'error', message: 'CAPTCHA verification failed' }, 403)
 
-    // Validate input
-    if (!body.email || !body.password || !body.role) {
-      return c.json(
-        { status: 'error', message: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
-    if (body.password.length < 8) {
-      return c.json(
-        { status: 'error', message: 'Password must be at least 8 characters' },
-        { status: 400 }
-      )
-    }
+    if (!body.email || !body.password || !body.role) return c.json({ status: 'error', message: 'Missing required fields' }, 400)
+    if (body.password.length < 8) return c.json({ status: 'error', message: 'Password must be at least 8 characters' }, 400)
 
     const email = body.email.toLowerCase().trim()
+    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ? AND is_active = 1').bind(email).first<any>()
+    if (existing) return c.json({ status: 'error', message: 'Email already registered' }, 409)
 
-    // Check if user already exists
-    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?')
-      .bind(email)
-      .first<any>()
-
-    if (existing) {
-      return c.json(
-        { status: 'error', message: 'Email already registered' },
-        { status: 409 }
-      )
-    }
-
-    // Hash password with PBKDF2
     const { salt, hash } = await hashPasswordPBKDF2(body.password, c.env.HASH_PEPPER)
-
-    // Create user
     const userId = generateUUID()
-    const activationToken = generateOTP()
-
-    // Memisahkan full name menjadi first_name dan last_name secara sederhana
-    const nameParts = (body.fullName || 'User').split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    
+    const nameParts = (body.fullName || 'User').split(' ')
+    const firstName = nameParts[0]
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
 
     await c.env.DB_SSO.prepare(
       `INSERT INTO users (
         id, email, phone, first_name, last_name, user_type, is_active, email_verified,
         password_hash, password_salt
       ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`
-    )
-      .bind(userId, email, body.phone || null, firstName, lastName, body.role, hash, salt)
-      .run()
+    ).bind(userId, email, body.phone || null, firstName, lastName, body.role.toLowerCase(), hash, salt).run()
 
-    // Create activation token
-    const tokenId = generateUUID()
+    const activationToken = generateUUID().replace(/-/g, '')
+    const otpId = generateUUID()
+
+    // Simpan token aktivasi ke tabel otp_codes (berlaku 1 hari)
     await c.env.DB_SSO.prepare(
-      `INSERT INTO otp_requests (id, identifier, code, purpose, expires_at)
-       VALUES (?, ?, ?, 'activation', ?)`
-    )
-      .bind(tokenId, email, activationToken, now + 86400) // 24 hours
-      .run()
+      `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
+       VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
+    ).bind(otpId, userId, email, activationToken).run()
 
-    // Send activation email
-    await sendMail(c.env, email, activationToken, 'activation')
+    try { await sendMail(c.env, email, activationToken, 'activation') } catch(e) {}
 
-    return c.json({
-      status: 'ok',
-      message: 'Registration successful. Check your email for activation link.',
-      user_id: userId,
-    })
+    return c.json({ status: 'ok', message: 'Registration successful. Check your email.', user_id: userId })
   } catch (error) {
-    console.error('Register error:', error)
-    return c.json(
-      { status: 'error', message: 'Registration failed' },
-      { status: 500 }
-    )
+    return c.json({ status: 'error', message: 'Registration failed' }, 500)
   }
 })
 
+auth.post('/verify-activation', async (c) => {
+  const body = await c.req.json<any>()
+  const ipAddress = getClientIp(c)
+  const userAgent = c.req.header('user-agent') || 'unknown'
+
+  // Cari token di otp_codes
+  const tokenRow = await c.env.DB_SSO.prepare(
+    "SELECT * FROM otp_codes WHERE code = ? AND expires_at > datetime('now')"
+  ).bind(body.token).first<any>()
+
+  if (!tokenRow) return c.json({ status: "error", message: "Tautan Aktivasi tidak valid/kadaluarsa." }, 400)
+  
+  await c.env.DB_SSO.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").bind(tokenRow.user_id).run()
+  await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id = ?").bind(tokenRow.otp_id).run()
+  
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE id = ?").bind(tokenRow.user_id).first<any>()
+  const session = await createSession(c, user, ipAddress, userAgent)
+  
+  return c.json({ status: "ok", role: user.user_type, redirect_url: session.redirectUrl })
+})
+
 /**
- * POST /api/auth/login-password
- * Login with email/phone + password
- * Implements: Rate limiting, Brute-force protection, PBKDF2 verification
+ * ========================================
+ * LOGIN (PASSWORD, OTP, PIN)
+ * ========================================
  */
+
 auth.post('/login-password', async (c) => {
   try {
     const body = await c.req.json<any>()
@@ -244,265 +179,192 @@ auth.post('/login-password', async (c) => {
     const userAgent = c.req.header('user-agent') || 'unknown'
     const now = getNow()
 
-    // Step 1: Validate Turnstile (prevents automated attacks)
     const isHuman = await verifyTurnstile(body.turnstile_token, ipAddress, c.env.TURNSTILE_SECRET)
-    if (!isHuman) {
-      return c.json(
-        { status: 'error', message: 'CAPTCHA verification failed. Please try again.' },
-        { status: 403 }
-      )
-    }
+    if (!isHuman) return c.json({ status: 'error', message: 'CAPTCHA verification failed.' }, 403)
 
-    // Step 2: Validate input
-    if (!body.identifier || !body.password) {
-      return c.json(
-        { status: 'error', message: 'Email/Phone and password required' },
-        { status: 400 }
-      )
-    }
-
-    const identifier = body.identifier.toLowerCase().trim()
-
-    // Step 3: Rate limit check (prevent brute force)
+    const identifier = (body.identifier || "").toLowerCase().trim()
+    
+    // Rate limit
     const rateLimit = await checkRateLimit(c.env.DB_SSO, identifier, ipAddress, now)
-    if (rateLimit.shouldBlock) {
-      const remainingTime = Math.ceil((rateLimit.resetAt! - now) / 60)
-      return c.json(
-        {
-          status: 'error',
-          message: `Too many login attempts. Try again in ${remainingTime} minutes.`,
-          retry_after: remainingTime * 60,
-        },
-        { status: 429 }
-      )
-    }
+    if (rateLimit.shouldBlock) return c.json({ status: 'error', message: `Terlalu banyak percobaan. Coba lagi nanti.` }, 429)
 
-    // Step 4: Fetch user
-    const user = await c.env.DB_SSO.prepare(
-      'SELECT *, user_type as role FROM users WHERE (email = ? OR phone = ?) AND is_active = 1'
-    )
-      .bind(identifier, identifier)
-      .first<any>()
-
+    const user = await c.env.DB_SSO.prepare('SELECT * FROM users WHERE (email = ? OR phone = ?) AND is_active = 1').bind(identifier, identifier).first<any>()
     if (!user) {
-      // Record failed attempt
       await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, false)
-
-      // Generic error message (don't reveal if user exists)
-      return c.json(
-        { status: 'error', message: 'Invalid credentials' },
-        { status: 401 }
-      )
+      return c.json({ status: 'error', message: 'Kredensial salah' }, 401)
     }
 
-    // Step 5: Check if account is locked
     const lockStatus = await isAccountLocked(c.env.DB_SSO, user.id, now)
-    if (lockStatus.locked) {
-      const remainingTime = Math.ceil((lockStatus.unlocksAt! - now) / 60)
-      return c.json(
-        {
-          status: 'error',
-          message: `Account locked due to multiple failed login attempts. Try again in ${remainingTime} minutes.`,
-          retry_after: remainingTime * 60,
-        },
-        { status: 423 }
-      )
-    }
+    if (lockStatus.locked) return c.json({ status: 'error', message: `Akun terkunci sementara.` }, 423)
 
-    // Step 6: Check if account is pending activation
-    if (user.email_verified === 0) {
-      return c.json(
-        { status: 'error', message: 'Account not activated. Check your email for activation link.' },
-        { status: 403 }
-      )
-    }
+    if (user.email_verified === 0) return c.json({ status: 'error', message: 'Akun belum aktif! Cek email Anda.' }, 403)
 
-    // Step 7: Verify password (PBKDF2)
-    const passwordValid = await verifyPasswordPBKDF2(
-      body.password,
-      user.password_hash,
-      user.password_salt,
-      c.env.HASH_PEPPER
-    )
-
+    const passwordValid = await verifyPasswordPBKDF2(body.password, user.password_hash, user.password_salt, c.env.HASH_PEPPER)
     if (!passwordValid) {
-      // Record failed attempt
       await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, false, user.id)
-
-      // Check if should lock account now
-      const updatedRateLimit = await checkRateLimit(c.env.DB_SSO, identifier, ipAddress, now)
-      if (updatedRateLimit.shouldBlock) {
-        // Lock account
-        await lockAccount(c.env.DB_SSO, user.id, now, 'Brute-force protection: too many failed login attempts')
-      }
-
-      return c.json(
-        { status: 'error', message: 'Invalid credentials' },
-        { status: 401 }
-      )
+      return c.json({ status: 'error', message: 'Kredensial salah' }, 401)
     }
 
-    // Step 8: Password valid - create session
     await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, true, user.id)
+    await c.env.DB_SSO.prepare("UPDATE users SET last_login = datetime('now'), last_login_ip = ? WHERE id = ?").bind(ipAddress, user.id).run()
 
-    // Reset failed attempts counter
-    await c.env.DB_SSO.prepare(
-      'UPDATE users SET last_login = ?, last_login_ip = ? WHERE id = ?'
-    )
-      .bind(now, ipAddress, user.id)
-      .run()
-
-    const { sessionId, jwt } = await createSession(c, user.id, user.role, ipAddress, userAgent)
-
-    // Determine redirect URL based on role
-    const roleUrl = {
-      talent: c.env.TALENT_URL,
-      client: c.env.CLIENT_URL,
-      admin: c.env.ADMIN_URL,
-      super_admin: c.env.ADMIN_URL,
-    }[user.role] || c.env.TALENT_URL
-
-    return c.json({
-      status: 'ok',
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.full_name,
-        role: user.role,
-      },
-      session_id: sessionId,
-      token: jwt,
-      redirect_url: roleUrl,
-    })
+    const session = await createSession(c, user, ipAddress, userAgent)
+    return c.json({ status: 'ok', redirect_url: session.redirectUrl })
   } catch (error) {
-    console.error('Login error:', error)
-    return c.json(
-      { status: 'error', message: 'Login failed' },
-      { status: 500 }
-    )
+    return c.json({ status: 'error', message: 'Login failed' }, 500)
   }
 })
 
+auth.post('/request-otp', async (c) => {
+  const body = await c.req.json<any>()
+  const id = (body.identifier || "").trim().toLowerCase()
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND is_active=1").bind(id, id).first<any>()
+  
+  if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
+  
+  const otp = generateOTP()
+  const otpId = generateUUID()
+  
+  await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id=?").bind(user.id).run()
+  await c.env.DB_SSO.prepare(
+    "INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at) VALUES (?,?,?,?,'email', datetime('now', '+3 minutes'))"
+  ).bind(otpId, user.id, user.email, otp).run()
+  
+  try { await sendMail(c.env, user.email, otp, body.purpose || 'login'); } catch (e) {}
+  return c.json({ status: "ok", message: "OTP Terkirim." })
+})
+
+auth.post('/login-otp', async (c) => handleOtpVerify(c))
+auth.post('/setup-pin', async (c) => handleOtpVerify(c, true))
+
+async function handleOtpVerify(c: Context<{ Bindings: Bindings }>, isSetupPin = false) {
+  const body = await c.req.json<any>()
+  const ipAddress = getClientIp(c)
+  const userAgent = c.req.header('user-agent') || 'unknown'
+  const id = (body.identifier || "").trim().toLowerCase()
+
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND is_active=1").bind(id, id).first<any>()
+  if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
+  
+  const otpRow = await c.env.DB_SSO.prepare("SELECT * FROM otp_codes WHERE user_id=? AND code=? AND expires_at > datetime('now')").bind(user.id, body.otp).first<any>()
+  if (!otpRow) return c.json({ status: "error", message: "OTP salah/expired." }, 400)
+  
+  await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id=?").bind(otpRow.otp_id).run()
+  
+  if (isSetupPin && body.new_pin) {
+    const { salt, hash } = await hashPasswordPBKDF2(body.new_pin, c.env.HASH_PEPPER)
+    await c.env.DB_SSO.prepare("UPDATE users SET pin_hash=?, pin_salt=? WHERE id=?").bind(hash, salt, user.id).run()
+  }
+  
+  const session = await createSession(c, user, ipAddress, userAgent)
+  return c.json({ status: "ok", redirect_url: session.redirectUrl })
+}
+
+auth.post('/check-pin', async (c) => {
+  const body = await c.req.json<any>()
+  const id = (body.identifier || "").trim().toLowerCase()
+  const user = await c.env.DB_SSO.prepare("SELECT id, email, pin_hash FROM users WHERE (email=? OR phone=?) AND is_active=1").bind(id, id).first<any>()
+  if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
+  return c.json({ status: "ok", has_pin: !!user.pin_hash, email: user.email })
+})
+
+auth.post('/login-pin', async (c) => {
+  const body = await c.req.json<any>()
+  const ipAddress = getClientIp(c)
+  const userAgent = c.req.header('user-agent') || 'unknown'
+  const id = (body.identifier || "").trim().toLowerCase()
+  
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND is_active=1").bind(id, id).first<any>()
+  if (!user || !user.pin_hash) return c.json({ status: "error", message: "Akun/PIN tidak valid." }, 404)
+  
+  const pinValid = await verifyPasswordPBKDF2(body.pin, user.pin_hash, user.pin_salt, c.env.HASH_PEPPER)
+  if (!pinValid) return c.json({ status: "error", message: "PIN salah." }, 401)
+  
+  const session = await createSession(c, user, ipAddress, userAgent)
+  return c.json({ status: "ok", redirect_url: session.redirectUrl })
+})
+
 /**
- * GET /api/auth/me
- * Get current logged-in user (with session validation)
+ * ========================================
+ * LUPA PASSWORD / RESET
+ * ========================================
  */
+
+auth.post('/request-reset', async (c) => {
+  const body = await c.req.json<any>()
+  const id = (body.identifier || "").trim().toLowerCase()
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND is_active=1").bind(id, id).first<any>()
+  if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
+  
+  const rawToken = generateUUID().replace(/-/g, '')
+  const tokenHash = await sha256(rawToken) // Simpan hashnya di DB
+  const tokenId = generateUUID()
+  
+  await c.env.DB_SSO.prepare("DELETE FROM password_reset_tokens WHERE user_id=?").bind(user.id).run()
+  await c.env.DB_SSO.prepare(
+    "INSERT INTO password_reset_tokens (token_id, user_id, email, token_hash, expires_at) VALUES (?,?,?,?, datetime('now', '+30 minutes'))"
+  ).bind(tokenId, user.id, user.email, tokenHash).run()
+  
+  try { await sendMail(c.env, user.email, rawToken, 'reset'); } catch (e) {}
+  return c.json({ status: "ok", message: "Link reset terkirim." })
+})
+
+auth.post('/reset-password', async (c) => {
+  const body = await c.req.json<any>()
+  const tokenHash = await sha256(body.token)
+  
+  const tokenRow = await c.env.DB_SSO.prepare(
+    "SELECT * FROM password_reset_tokens WHERE token_hash=? AND used=0 AND expires_at > datetime('now')"
+  ).bind(tokenHash).first<any>()
+  
+  if (!tokenRow) return c.json({ status: "error", message: "Token tidak valid/kadaluarsa." }, 400)
+  
+  const { salt, hash } = await hashPasswordPBKDF2(body.new_password, c.env.HASH_PEPPER)
+  await c.env.DB_SSO.prepare("UPDATE users SET password_hash=?, password_salt=? WHERE id=?").bind(hash, salt, tokenRow.user_id).run()
+  await c.env.DB_SSO.prepare("UPDATE password_reset_tokens SET used=1, used_at=datetime('now') WHERE token_id=?").bind(tokenRow.token_id).run()
+  await c.env.DB_SSO.prepare("DELETE FROM sessions WHERE user_id=?").bind(tokenRow.user_id).run()
+  
+  return c.json({ status: "ok", message: "Password berhasil diubah." })
+})
+
+/**
+ * ========================================
+ * SESSION MANAGEMENT (ME / LOGOUT)
+ * ========================================
+ */
+
 auth.get('/me', async (c) => {
-  try {
-    const currentUser = await getCurrentUser(c)
-    if (!currentUser) {
-      return c.json(
-        { status: 'error', message: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
+  const sid = getCookie(c, 'sid')
+  if (!sid) return c.json({ status: 'error', message: 'Not authenticated' }, 401)
 
-    const ipAddress = getClientIp(c)
-    const userAgent = c.req.header('user-agent') || 'unknown'
+  const session = await c.env.DB_SSO.prepare("SELECT * FROM sessions WHERE session_id = ? AND expires_at > datetime('now')").bind(sid).first<any>()
+  if (!session) return c.json({ status: 'error', message: 'Session expired' }, 401)
 
-    // Validate session context (IP + User-Agent)
-    const validation = await validateSessionContext(
-      c.env.DB_SSO,
-      currentUser.session.session_id,
-      ipAddress,
-      userAgent,
-      'moderate' // Use moderate tolerance for UX
-    )
+  const user = await c.env.DB_SSO.prepare("SELECT id, email, first_name, last_name, user_type as role, is_active FROM users WHERE id = ?").bind(session.user_id).first<any>()
+  if (!user || user.is_active === 0) return c.json({ status: 'error', message: 'Account inactive' }, 401)
 
-    if (!validation.valid) {
-      // Invalidate session
-      deleteCookie(c, 'sid', COOKIE_OPTS)
-      deleteCookie(c, 'loginToken', COOKIE_OPTS)
-
-      return c.json(
-        { status: 'error', message: validation.reason || 'Session invalid' },
-        { status: 401 }
-      )
-    }
-
-    return c.json({
-      status: 'ok',
-      user: currentUser.user,
-    })
-  } catch (error) {
-    console.error('Get me error:', error)
-    return c.json(
-      { status: 'error', message: 'Failed to fetch user' },
-      { status: 500 }
-    )
-  }
+  return c.json({ status: 'ok', user })
 })
 
-/**
- * POST /api/auth/logout
- * Logout and invalidate session
- */
 auth.post('/logout', async (c) => {
   const sid = getCookie(c, 'sid')
-
-  if (sid) {
-    // Delete session from DB
-    await c.env.DB_SSO.prepare('DELETE FROM sessions WHERE session_id = ?')
-      .bind(sid)
-      .run()
-  }
-
-  // Clear cookies
+  if (sid) await c.env.DB_SSO.prepare('DELETE FROM sessions WHERE session_id = ?').bind(sid).run()
   deleteCookie(c, 'sid', COOKIE_OPTS)
-  deleteCookie(c, 'loginToken', COOKIE_OPTS)
-
-  return c.json({
-    status: 'ok',
-    message: 'Logout successful',
-  })
+  return c.json({ status: 'ok', message: 'Logout successful' })
 })
 
-/**
- * POST /api/auth/validate-session
- * Validate session without requiring authentication
- * Used by Business API middleware to check tokens
- */
 auth.post('/validate-session', async (c) => {
-  try {
-    const body = await c.req.json<any>()
-    const token = body.token || getCookie(c, 'sid')
+  const body = await c.req.json<any>()
+  const token = body.token || getCookie(c, 'sid')
+  if (!token) return c.json({ valid: false, message: 'No token provided' })
 
-    if (!token) {
-      return c.json({ valid: false, message: 'No token provided' })
-    }
+  const session = await c.env.DB_SSO.prepare("SELECT * FROM sessions WHERE session_id = ? AND expires_at > datetime('now')").bind(token).first<any>()
+  if (!session) return c.json({ valid: false, message: 'Session expired' })
 
-    const session = await c.env.DB_SSO.prepare(
-      'SELECT * FROM sessions WHERE session_id = ? AND expires_at > ?'
-    )
-      .bind(token, getNow())
-      .first<any>()
+  const user = await c.env.DB_SSO.prepare("SELECT id, email, user_type as role, is_active FROM users WHERE id = ?").bind(session.user_id).first<any>()
+  if (!user || user.is_active === 0) return c.json({ valid: false, message: 'User invalid' })
 
-    if (!session) {
-      return c.json({ valid: false, message: 'Session expired or invalid' })
-    }
-
-    const user = await c.env.DB_SSO.prepare(
-      'SELECT id, email, user_type as role, is_active FROM users WHERE id = ?'
-    )
-      .bind(session.user_id)
-      .first<any>()
-
-    if (!user || user.is_active === 0) {
-      return c.json({ valid: false, message: 'User not found or inactive' })
-    }
-
-    return c.json({
-      valid: true,
-      user: user,
-      session: {
-        id: session.session_id,
-        expires_at: session.expires_at,
-      },
-    })
-  } catch (error) {
-    return c.json({ valid: false, message: 'Validation error' })
-  }
+  return c.json({ valid: true, user, session: { id: session.session_id, expires_at: session.expires_at } })
 })
 
 export default auth

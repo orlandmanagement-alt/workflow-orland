@@ -1,407 +1,467 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '@/store/useAppStore';
-import { apiRequest } from '@/lib/api';
-import { 
-  Download, Phone, Mail, Instagram,
-  Camera, Save, Loader2, Share2, Link as LinkIcon, Trash2
-} from 'lucide-react';
+// File: apps/apptalent/src/pages/profile/index.tsx
+// Purpose: Complete talent profile form with comprehensive data capture for AI matching
 
-// Components
-import { ProfileSkeleton } from '@/components/ui/ProfileSkeleton';
-import { Toast } from '@/components/ui/Toast';
-import { ProgressModal } from './components/ProgressModal';
-import { TabInfo } from './components/TabInfo';
-import { TabPhotos } from './components/TabPhotos';
-import { TabAssets } from './components/TabAssets';
-import { TabCredits } from './components/TabCredits';
-import { useProfileProgress } from '@/hooks/useProfileProgress';
+import { useState, useEffect } from 'react';
+import { Upload, Save, AlertCircle, CheckCircle, Loader2, Link as LinkIcon, Share2 } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
-const DRAFT_KEY = 'orland_profile_draft';
+// Type Definitions (Sesuai Skema Database Baru)
+interface TalentProfile {
+  id?: string;
+  talent_id?: string;
+  full_name?: string;
+  age: number;
+  gender: 'male' | 'female' | 'non-binary' | 'other';
+  domicile: string;
+  phone?: string;
+  email?: string;
+  bio?: string;
+  height_cm: number;
+  weight_kg: number;
+  skin_tone: string;
+  hair_color: string;
+  eye_color?: string;
+  face_type: string;
+  chest_cm?: number;
+  waist_cm?: number;
+  hip_cm?: number;
+  shoe_size?: string;
+  shirt_size?: string;
+  skills_json: string[];
+  languages_json: string[];
+  comp_card_url?: string;
+  headshot_url?: string;
+  full_body_url?: string;
+  showreel_url?: string;
+  portfolio_photos?: string[];
+  rate_daily_min?: number;
+  rate_daily_max?: number;
+  is_available: boolean;
+  preferred_project_types?: string[];
+  location_willing_to_travel: boolean;
+  max_travel_hours?: number;
+  profile_completion_percent?: number;
+}
 
-// Centralised Tab Configurations
-const TABS = [
-    { id: 'info', label: 'Info' },
-    { id: 'photos', label: 'Photos' },
-    { id: 'assets', label: 'Videos & Audio' },
-    { id: 'credits', label: 'Experience' },
+const SKILL_OPTIONS = [
+  { id: 'actor', label: 'Aktor/Aktris', icon: '🎬' },
+  { id: 'model_catwalk', label: 'Model (Catwalk)', icon: '👗' },
+  { id: 'model_commercial', label: 'Model (Commercial)', icon: '📸' },
+  { id: 'mc', label: 'Master of Ceremony', icon: '🎤' },
+  { id: 'dancer', label: 'Penari', icon: '💃' },
+  { id: 'singer', label: 'Penyanyi', icon: '🎵' },
+  { id: 'presenter', label: 'Presenter', icon: '📺' },
 ];
 
-export default function ProfileDashboard() {
-  const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('info');
-  
-  // Data States
-  const [data, setData] = useState<any>(null); // Initial Server Data
-  const [editData, setEditData] = useState<any>(null); // Working Data (Draft)
-  
-  // UI States
-  const [loading, setLoading] = useState(true);
+const LANGUAGE_OPTIONS = [
+  { id: 'indonesian', label: 'Bahasa Indonesia' },
+  { id: 'english', label: 'English' },
+  { id: 'mandarin', label: '普通话 (Mandarin)' },
+  { id: 'japanese', label: '日本語 (Japanese)' },
+  { id: 'korean', label: '한국어 (Korean)' },
+  { id: 'spanish', label: 'Español' },
+];
+
+const PROJECT_TYPE_OPTIONS = [
+  { id: 'film', label: 'Film' },
+  { id: 'commercial', label: 'TVC/Commercial' },
+  { id: 'music_video', label: 'Music Video' },
+  { id: 'photography', label: 'Photography' },
+  { id: 'fashion_show', label: 'Fashion Show' },
+  { id: 'event', label: 'Event/Activation' },
+];
+
+export default function ProfilePage() {
+  const [tab, setTab] = useState<'basic' | 'physical' | 'skills' | 'media' | 'rates' | 'availability'>('basic');
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
-  const [isDirty, setIsDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
   
-  // Modals & Feedback
-  const [showMissingModal, setShowMissingModal] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [profile, setProfile] = useState<TalentProfile>({
+    age: 0,
+    gender: 'male',
+    domicile: '',
+    height_cm: 0,
+    weight_kg: 0,
+    skin_tone: 'medium',
+    hair_color: 'black',
+    face_type: 'oval',
+    skills_json: [],
+    languages_json: ['indonesian'],
+    is_available: true,
+    location_willing_to_travel: false,
+    max_travel_hours: 8,
+    profile_completion_percent: 20
+  });
 
-  const profileProgressData = useProfileProgress();
-  const progressValue = typeof profileProgressData === 'number' ? profileProgressData : (profileProgressData as any)?.percentage || 0;
-
-  // Initialize Data (Fetch API or Resume Draft)
-  useEffect(() => {
-    apiRequest('/talents/me')
-      .then((res: any) => {
-          setData(res.data);
-          let initialData = { ...res.data };
-          
-          if (!initialData.phone) initialData.phone = user?.phone || '';
-          if (!initialData.email) initialData.email = user?.email || '';
-          if (!initialData.showreels) initialData.showreels = [];
-          if (!initialData.audios) initialData.audios = [];
-          if (!initialData.additional_photos) initialData.additional_photos = [];
-          if (!initialData.interests) initialData.interests = [];
-          
-          // Check Local Storage Draft Overrides
-          const draftStr = localStorage.getItem(DRAFT_KEY);
-          if (draftStr) {
-             const draftData = JSON.parse(draftStr);
-             // Merge API over draft if needed, or strictly apply draft:
-             initialData = { ...initialData, ...draftData };
-             setIsDirty(true);
-          }
-          
-          setEditData(initialData);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, [user]);
-
-  // Handle Input Changes -> Auto LocalStorage Save
-  const handleFieldChange = useCallback((field: string, value: any) => {
-      setEditData((prev: any) => {
-          const newData = { ...prev, [field]: value };
-          localStorage.setItem(DRAFT_KEY, JSON.stringify(newData));
-          setIsDirty(true);
-          return newData;
+  // Mengambil data profil dari API
+  const { data: existingProfile, isLoading } = useQuery({
+    queryKey: ['talent-profile'],
+    queryFn: async () => {
+      const response = await fetch('/api/profile/me', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
       });
-  }, []);
+      if (!response.ok) throw new Error('Gagal mengambil data profil');
+      return response.json();
+    },
+  });
 
-  // Handle Photo Upload directly to R2 (auto-saves to API so imagery is not lost)
-  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>, photoType: string, index?: number) => {
-      const { processImage } = await import('@/utils/imageCompressor');
-      const rawFile = e.target.files?.[0];
-      if (!rawFile) return;
+  useEffect(() => {
+    if (existingProfile?.data) {
+      setProfile(existingProfile.data);
+    }
+  }, [existingProfile]);
 
-      try {
-          const uploadKey = index !== undefined ? `${photoType}-${index}` : photoType;
-          setUploading(prev => ({ ...prev, [uploadKey]: true }));
-          const ratio = (photoType === 'headshot' || photoType === 'additional_photos') ? 4/5 : 3/4;
-          const file = await processImage(rawFile, ratio);
+  // Mutasi untuk Menyimpan Profil
+  const saveProfileMutation = useMutation({
+    mutationFn: async (data: TalentProfile) => {
+      const response = await fetch('/api/profile/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify(data),
+      });
 
-          const presignedRes: any = await apiRequest('/media/upload-url', {
-             method: 'POST', body: JSON.stringify({ fileName: file.name, contentType: file.type, folder: `talents/${data?.talent_id || 'unassigned'}` })
-          });
-
-          if (!presignedRes || !presignedRes.uploadUrl) throw new Error("Gagal mendapatkan link upload");
-
-          const r2Res = await fetch(presignedRes.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file, cache: 'no-store' });
-          if (!r2Res.ok) throw new Error("File gagal di-upload ke server utama");
-
-          const publicUrl = presignedRes.publicUrl;
-          let updatePayload = { ...editData };
-          
-          if (photoType === 'additional_photos' && index !== undefined) {
-             const newAddPhotos = [...(updatePayload.additional_photos || [])];
-             newAddPhotos[index] = publicUrl;
-             updatePayload.additional_photos = newAddPhotos;
-          } else {
-             updatePayload[photoType] = publicUrl;
-          }
-
-          // Force API push for images so valid links are secured immediately
-          const updateRes: any = await apiRequest('/talents/me', { method: 'PUT', body: JSON.stringify(updatePayload) });
-          if (updateRes.status === 'ok') {
-              const updated = updateRes.data;
-              setData(updated);
-              // Merge back into local draft to prevent collision
-              handleFieldChange(photoType, publicUrl);
-              if (index !== undefined) handleFieldChange('additional_photos', updatePayload.additional_photos);
-          }
-      } catch (err: any) {
-          alert('Upload Error: ' + (err.message || 'Terjadi kesalahan sistem'));
-      } finally {
-          const uploadKey = index !== undefined ? `${photoType}-${index}` : photoType;
-          setUploading(prev => ({ ...prev, [uploadKey]: false }));
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Gagal menyimpan profil');
       }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast.success('✓ Profil berhasil disimpan!');
+      if(data.data) setProfile(data.data);
+    },
+    onError: (error: any) => {
+      toast.error(`✗ ${error.message}`);
+    },
+  });
+
+  const handleSave = () => {
+    if (!profile.age || profile.age < 16) { toast.error('Usia minimal 16 tahun'); return; }
+    if (!profile.domicile) { toast.error('Domisili wajib diisi'); return; }
+    if (!profile.height_cm) { toast.error('Tinggi badan wajib diisi'); return; }
+    saveProfileMutation.mutate(profile);
   };
 
-  const handleDeletePhoto = async (photoType: string, index?: number) => {
-      if (!confirm("Hapus foto ini?")) return;
-      let updatePayload = { ...editData };
-      
-      if (photoType === 'additional_photos' && index !== undefined) {
-          const newAddPhotos = [...(updatePayload.additional_photos || [])];
-          newAddPhotos[index] = "";
-          updatePayload.additional_photos = newAddPhotos.filter(Boolean);
-      } else {
-          updatePayload[photoType] = "";
-      }
-      
-      try {
-          const updateRes: any = await apiRequest('/talents/me', { method: 'PUT', body: JSON.stringify(updatePayload) });
-          if (updateRes.status === 'ok') {
-              setData(updateRes.data);
-              handleFieldChange(photoType, updatePayload[photoType]);
-              if(index !== undefined) handleFieldChange('additional_photos', updatePayload.additional_photos);
-              setToastMessage('Foto berhasil dihapus');
-          }
-      } catch (err) {
-          alert('Gagal menghapus foto.');
-      }
-  };
-
-  const handleSaveChanges = async () => {
-      setSaving(true);
-      try {
-          const res: any = await apiRequest('/talents/me', { method: 'PUT', body: JSON.stringify(editData) });
-          if (res.status === 'ok') {
-              setData(res.data);
-              localStorage.removeItem(DRAFT_KEY);
-              setIsDirty(false);
-              setToastMessage('Profile changes saved successfully');
-          }
-      } catch (err) {
-          alert('Gagal menyimpan profil. Coba lagi.');
-      } finally {
-          setSaving(false);
-      }
+  const toggleArrayItem = (field: 'skills_json' | 'languages_json' | 'preferred_project_types', id: string) => {
+    setProfile(prev => {
+      const currentArray = prev[field] || [];
+      return {
+        ...prev,
+        [field]: currentArray.includes(id) ? currentArray.filter(i => i !== id) : [...currentArray, id]
+      };
+    });
   };
 
   const copyPublicLink = () => {
-      const url = `${window.location.origin}/p/${data?.talent_id}`;
-      navigator.clipboard.writeText(url);
-      setToastMessage('Public link copied to clipboard!');
+    const url = `${window.location.origin}/p/${profile.talent_id || 'preview'}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Tautan profil publik disalin!');
   };
 
-  if (loading) return <ProfileSkeleton />;
-
-  const isHidden = !data?.headshot;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="animate-spin text-brand-600 mb-4" size={48} />
+        <p className="text-slate-500 font-bold animate-pulse text-lg">Memuat Profil Anda...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-[1100px] mx-auto pb-28 pt-4 md:pt-8 bg-slate-50/50 dark:bg-[#0B1120] min-h-screen">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 max-w-5xl mx-auto">
       
-      {/* Toast Notification Mount */}
-      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage('')} />}
+      {/* Profil Header & Action */}
+      <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Profil Talent</h1>
+          <div className="flex items-center gap-3">
+             <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-md">ID: #{profile.talent_id || 'NEW'}</span>
+             <button onClick={copyPublicLink} className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center transition-colors">
+                 Lihat Profil Publik <Share2 size={12} className="ml-1.5" />
+             </button>
+          </div>
+        </div>
 
-      {/* Hidden Profile Alert */}
-      {isHidden && (
-        <div className="flex items-center gap-3 bg-red-50 text-red-700 border border-red-200/50 p-3 px-4 rounded-2xl text-sm font-medium mb-6 shadow-sm mx-4 xl:mx-0">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_0_4px_rgba(220,38,38,0.15)] flex-shrink-0 animate-pulse" />
-          <span className="flex-1"><strong>Your profile is hidden:</strong> Please complete your main photo to be discovered by Casting Directors.</span>
+        <div className="mt-6 md:mt-0 text-left md:text-right w-full md:w-auto">
+          <div className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2">Kelengkapan Profil</div>
+          <div className="w-full md:w-48 h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-brand-500 to-purple-500 transition-all"
+              style={{ width: `${profile.profile_completion_percent || 0}%` }}
+            />
+          </div>
+          <p className="text-xs font-bold text-brand-600 mt-1.5">{Math.round(profile.profile_completion_percent || 0)}% Selesai</p>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {profile.profile_completion_percent && profile.profile_completion_percent < 70 && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 rounded-2xl flex gap-3 shadow-sm">
+          <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            Profil Anda belum mencapai 70%. Lengkapi lebih banyak data untuk mendapatkan rekomendasi proyek terbaik dari AI.
+          </div>
         </div>
       )}
 
-      {/* HEADER HERO AREA */}
-      <div className="mb-6 px-4 md:px-8 py-6 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-[14px] flex flex-col md:flex-row justify-between items-start md:items-center shadow-[0_10px_30px_rgba(17,24,39,0.03)] mx-4 xl:mx-0">
-          <div>
-              <div className="flex items-center gap-3 mb-1">
-                 <input 
-                   type="text" 
-                   value={editData?.full_name || ''} 
-                   onChange={(e) => handleFieldChange('full_name', e.target.value)}
-                   className="text-2xl md:text-[32px] font-black tracking-tight text-slate-900 dark:text-white bg-transparent outline-none w-full max-w-sm md:max-w-md border-b-[2px] border-transparent hover:border-slate-300 focus:border-brand-500 transition-colors"
-                   placeholder="Your Name"
-                 />
-              </div>
-              <div className="flex items-center gap-3 pl-1">
-                 <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-md">ID: #{data?.talent_id || '----'}</span>
-                 <a href={`/p/${data?.talent_id}`} target="_blank" rel="noreferrer" className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center transition-colors">
-                     View Public Profile <Share2 size={12} className="ml-1" />
-                 </a>
-              </div>
-          </div>
-          
-          <div className="flex gap-3 mt-4 md:mt-0">
-              <button onClick={copyPublicLink} className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-xl transition-colors tooltip-target" title="Copy Public Link">
-                 <LinkIcon size={18} />
-              </button>
-              <button className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white font-bold rounded-xl hover:border-brand-500 transition-colors text-sm">
-                 <Download size={16} className="text-slate-400" /> Comp Card
-              </button>
-          </div>
+      {/* Tabs Menu */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        {[
+          { id: 'basic', label: '📋 Data Dasar' },
+          { id: 'physical', label: '📐 Atribut Fisik' },
+          { id: 'skills', label: '⭐ Keahlian' },
+          { id: 'media', label: '📸 Media & Comp Card' },
+          { id: 'rates', label: '💰 Rate Card' },
+          { id: 'availability', label: '📅 Availability' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id as any)}
+            className={`px-5 py-3 font-bold text-sm rounded-xl transition-all whitespace-nowrap ${
+              tab === t.id
+                ? 'bg-brand-600 text-white shadow-md'
+                : 'bg-white dark:bg-dark-card text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-brand-300'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start mx-4 xl:mx-0">
+      {/* Tab Content Box */}
+      <div className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm min-h-[400px]">
         
-        {/* SIDEBAR (Sticky on Desktop) */}
-        <aside className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-[14px] p-5 shadow-[0_10px_30px_rgba(17,24,39,0.03)] sticky top-6 max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar lg:order-1 order-2">
-           
-           <div className="mb-8 flex flex-col gap-3">
-               {/* MAIN HEADSHOT */}
-               <div className="relative group overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-[14px] aspect-[4/5] flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
-                  <input type="file" id="upload-headshot-sb" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'headshot')} disabled={uploading['headshot']} />
-                  <label htmlFor="upload-headshot-sb" className="w-full h-full cursor-pointer absolute inset-0 z-10 flex flex-col justify-center items-center">
-                      {uploading['headshot'] && <Loader2 className="animate-spin text-white z-20" size={32} />}
+        {/* TAB 1: DATA DASAR */}
+        {tab === 'basic' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-2">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Informasi Pribadi</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Usia</label>
+                <input type="number" placeholder="Contoh: 24" value={profile.age || ''} onChange={(e) => setProfile({ ...profile, age: parseInt(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Gender</label>
+                <select value={profile.gender} onChange={(e) => setProfile({ ...profile, gender: e.target.value as any })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-bold">
+                  <option value="male">Laki-laki</option>
+                  <option value="female">Perempuan</option>
+                  <option value="non-binary">Non-binary</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Domisili</label>
+              <input type="text" placeholder="Contoh: Jakarta Selatan, Indonesia" value={profile.domicile} onChange={(e) => setProfile({ ...profile, domicile: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-bold" />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Bio Singkat (Tentang Anda)</label>
+              <textarea placeholder="Ceritakan pengalaman dan passion Anda..." value={profile.bio || ''} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} rows={4} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-medium resize-none" />
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: ATRIBUT FISIK */}
+        {tab === 'physical' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-2">
+             <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Dimensi & Karakteristik</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Tinggi (cm)</label>
+                <input type="number" value={profile.height_cm || ''} onChange={(e) => setProfile({ ...profile, height_cm: parseInt(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Berat (kg)</label>
+                <input type="number" step="0.1" value={profile.weight_kg || ''} onChange={(e) => setProfile({ ...profile, weight_kg: parseFloat(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Warna Kulit</label>
+                <select value={profile.skin_tone} onChange={(e) => setProfile({ ...profile, skin_tone: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold">
+                  <option value="fair">Fair</option><option value="light">Light</option><option value="medium">Medium</option><option value="olive">Olive</option><option value="tan">Tan</option><option value="deep">Deep</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Tipe Wajah</label>
+                <select value={profile.face_type} onChange={(e) => setProfile({ ...profile, face_type: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold">
+                  <option value="oval">Oval</option><option value="round">Bulat</option><option value="square">Kotak</option><option value="pan-asian">Pan-Asian</option><option value="caucasian">Caucasian</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Dada/Bust (cm)</label>
+                <input type="number" value={profile.chest_cm || ''} onChange={(e) => setProfile({ ...profile, chest_cm: parseInt(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Pinggang (cm)</label>
+                <input type="number" value={profile.waist_cm || ''} onChange={(e) => setProfile({ ...profile, waist_cm: parseInt(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Pinggul (cm)</label>
+                <input type="number" value={profile.hip_cm || ''} onChange={(e) => setProfile({ ...profile, hip_cm: parseInt(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Ukuran Baju</label>
+                <select value={profile.shirt_size || ''} onChange={(e) => setProfile({ ...profile, shirt_size: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold">
+                  <option value="">Pilih</option><option value="XS">XS</option><option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: KEAHLIAN */}
+        {tab === 'skills' && (
+          <div className="space-y-8 animate-in slide-in-from-bottom-2">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-wider text-sm">Keahlian Utama</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {SKILL_OPTIONS.map((skill) => (
+                  <button
+                    key={skill.id}
+                    onClick={() => toggleArrayItem('skills_json', skill.id)}
+                    className={`p-4 rounded-xl border-2 transition-all text-center flex flex-col items-center justify-center gap-2 ${
+                      profile.skills_json.includes(skill.id)
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    <span className="text-2xl">{skill.icon}</span>
+                    <span className="font-bold text-xs">{skill.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-wider text-sm">Bahasa yang Dikuasai</h3>
+              <div className="flex flex-wrap gap-3">
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <button
+                    key={lang.id}
+                    onClick={() => toggleArrayItem('languages_json', lang.id)}
+                    className={`px-4 py-2 rounded-full border-2 transition-all text-sm font-bold ${
+                      profile.languages_json.includes(lang.id)
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400'
+                        : 'border-slate-200 dark:border-slate-700 bg-white text-slate-600'
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: MEDIA (COMP CARD) */}
+        {tab === 'media' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-2">
+            <div className="bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-800 p-5 rounded-2xl">
+                <h3 className="font-black text-brand-800 dark:text-brand-300 mb-1">Unggah Comp Card Resmi</h3>
+                <p className="text-sm text-brand-600/80 dark:text-brand-400/80 mb-4">Format PDF atau Image (Maks 5MB). Comp Card ini akan langsung dikirim ke klien saat Anda melamar proyek.</p>
+                <div className="border-2 border-dashed border-brand-300 dark:border-brand-700/50 bg-white dark:bg-slate-900 rounded-xl p-8 text-center cursor-pointer hover:bg-brand-50 transition-colors">
+                  <Upload size={32} className="mx-auto text-brand-400 mb-3" />
+                  <span className="font-bold text-brand-600">Klik untuk mengunggah file</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+              {['headshot_url', 'full_body_url', 'showreel_url'].map((type) => (
+                <div key={type}>
+                  <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
+                    {type.split('_')[0]} Image
                   </label>
-                  {data?.headshot ? (
-                      <>
-                        <img src={data.headshot} alt="Headshot" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <span className="text-white text-[10px] font-black tracking-widest uppercase mb-1 drop-shadow-md">Headshot</span>
-                            <span className="text-white text-xs font-bold bg-white/20 px-3 py-1.5 rounded-lg border border-white/30">Ganti Foto</span>
-                        </div>
-                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePhoto('headshot'); }} className="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-20 scale-95 hover:scale-105" title="Delete Photo">
-                           <Trash2 size={16} />
-                        </button>
-                      </>
-                  ) : (
-                      <div className="text-slate-400 flex flex-col items-center">
-                          <Camera size={32} className="mb-2 opacity-50" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Headshot</span>
-                      </div>
-                  )}
-               </div>
-
-               {/* COMPANION SHOTS */}
-               <div className="grid grid-cols-2 gap-3">
-                   {/* Side View */}
-                   <div className="relative group overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-[14px] aspect-[3/4] flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
-                       <input type="file" id="upload-side-sb" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'side_view')} disabled={uploading['side_view']} />
-                       <label htmlFor="upload-side-sb" className="w-full h-full cursor-pointer absolute inset-0 z-10 flex flex-col justify-center items-center">
-                           {uploading['side_view'] && <Loader2 className="animate-spin text-white z-20" size={24} />}
-                       </label>
-                       {data?.side_view ? (
-                           <>
-                             <img src={data.side_view} alt="Side View" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                 <span className="text-white text-[9px] font-black tracking-widest uppercase mb-1">Side View</span>
-                                 <span className="text-white text-[10px] font-bold bg-white/20 px-2 py-1 rounded border border-white/30">Ganti</span>
-                             </div>
-                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePhoto('side_view'); }} className="absolute top-1.5 right-1.5 bg-rose-500 hover:bg-rose-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-20 scale-95 hover:scale-105">
-                               <Trash2 size={12} />
-                             </button>
-                           </>
-                       ) : (
-                           <div className="text-slate-400 flex flex-col items-center text-center">
-                               <Camera size={20} className="mb-1 opacity-50" />
-                               <span className="text-[9px] font-black uppercase tracking-widest">Side</span>
-                           </div>
-                       )}
-                   </div>
-                   
-                   {/* Full Height */}
-                   <div className="relative group overflow-hidden bg-slate-100 dark:bg-slate-800 rounded-[14px] aspect-[3/4] flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
-                       <input type="file" id="upload-full-sb" className="hidden" accept="image/*" onChange={(e) => handleUploadPhoto(e, 'full_height')} disabled={uploading['full_height']} />
-                       <label htmlFor="upload-full-sb" className="w-full h-full cursor-pointer absolute inset-0 z-10 flex flex-col justify-center items-center">
-                           {uploading['full_height'] && <Loader2 className="animate-spin text-white z-20" size={24} />}
-                       </label>
-                       {data?.full_height ? (
-                           <>
-                             <img src={data.full_height} alt="Full Height" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                 <span className="text-white text-[9px] font-black tracking-widest uppercase mb-1">Full Ht.</span>
-                                 <span className="text-white text-[10px] font-bold bg-white/20 px-2 py-1 rounded border border-white/30">Ganti</span>
-                             </div>
-                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeletePhoto('full_height'); }} className="absolute top-1.5 right-1.5 bg-rose-500 hover:bg-rose-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg z-20 scale-95 hover:scale-105">
-                               <Trash2 size={12} />
-                             </button>
-                           </>
-                       ) : (
-                           <div className="text-slate-400 flex flex-col items-center text-center">
-                               <Camera size={20} className="mb-1 opacity-50" />
-                               <span className="text-[9px] font-black uppercase tracking-widest">Full Ht.</span>
-                           </div>
-                       )}
-                   </div>
-               </div>
-           </div>
-
-           <div className="border-t border-slate-100 dark:border-slate-800 pt-5 text-[13px] font-medium text-slate-700 dark:text-slate-300 space-y-3">
-               <div className="flex items-center gap-3 group">
-                   <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-brand-500 transition-colors shrink-0"><Phone size={14}/></div>
-                   <input type="text" value={editData?.phone || ''} onChange={(e) => handleFieldChange('phone', e.target.value)} className="bg-transparent outline-none w-full placeholder:text-slate-300" placeholder="+62 812..." />
-               </div>
-               <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0"><Mail size={14}/></div>
-                   <span className="truncate w-full text-slate-500">{data?.email || editData?.email || 'N/A'}</span>
-               </div>
-               <div className="flex items-center gap-3 group">
-                   <div className="w-8 h-8 rounded-full bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center text-pink-500 group-hover:text-pink-600 transition-colors shrink-0"><Instagram size={14}/></div>
-                   <input type="text" value={editData?.instagram || ''} onChange={(e) => handleFieldChange('instagram', e.target.value)} className="bg-transparent outline-none w-full placeholder:text-slate-300" placeholder="@username" />
-               </div>
-           </div>
-        </aside>
-
-        {/* MAIN CONTENT AREA */}
-        <main className="lg:order-2 order-1 min-w-0">
-           
-           {/* Gamification Embedded Banner */}
-           <div className="mb-6 bg-amber-500 rounded-[14px] p-5 shadow-lg relative overflow-hidden flex flex-col sm:flex-row items-center justify-between text-white border border-amber-400" onClick={() => setShowMissingModal(true)}>
-               <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-               <div className="relative z-10 flex items-center gap-4 mb-3 sm:mb-0">
-                  {/* Circle Progress */}
-                  <div className="w-12 h-12 rounded-full border-4 border-amber-300/50 flex items-center justify-center relative bg-white/10 shrink-0">
-                      <span className="text-xs font-black">{progressValue}%</span>
+                  <div className="aspect-[4/5] bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-brand-300 hover:text-brand-500 cursor-pointer transition-colors">
+                     <Camera size={32} className="mb-2 opacity-50" />
+                     <span className="text-xs font-bold">Upload Foto</span>
                   </div>
-                  <div>
-                      <h4 className="font-black text-lg tracking-tight">Complete your profile</h4>
-                      <p className="text-sm font-medium text-amber-100">Unlock opportunities by adding missing details.</p>
-                  </div>
-               </div>
-               <button className="bg-white text-amber-600 hover:bg-amber-50 font-black text-sm px-6 py-2.5 rounded-xl transition-colors relative z-10 w-full sm:w-auto shadow-sm">
-                   View Checklist
-               </button>
-           </div>
-           
-           {/* DYNAMIC TABS HEADER */}
-           <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800 rounded-[14px] shadow-[0_10px_30px_rgba(17,24,39,0.03)] overflow-hidden">
-               <div className="flex overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-slate-800">
-                  {TABS.map(tab => (
-                      <button 
-                          key={tab.id} 
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`flex-1 py-4 text-sm font-bold capitalize transition-colors relative whitespace-nowrap px-4 select-none ${activeTab === tab.id ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
-                      >
-                          {tab.label}
-                          {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-600 dark:bg-brand-500 transition-all shadow-[0_-2px_10px_rgba(79,70,229,0.3)]" style={{ layoutId: "tab-indicator" } as any} />}
-                      </button>
-                  ))}
-               </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-               {/* TAB CONTENT RENDERING */}
-               <div className="p-4 md:p-6 min-h-[400px]">
-                   {activeTab === 'info' && <TabInfo editData={editData} onChange={handleFieldChange} />}
-                   {activeTab === 'photos' && <TabPhotos data={data} uploading={uploading} handleUpload={handleUploadPhoto} handleDelete={handleDeletePhoto} />}
-                   {activeTab === 'assets' && <TabAssets editData={editData} onChange={handleFieldChange} />}
-                   {activeTab === 'credits' && <TabCredits data={data} />}
-               </div>
-           </div>
-        </main>
+        {/* TAB 5: RATE CARD */}
+        {tab === 'rates' && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-2">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Ekspektasi Bayaran (IDR)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Harian Minimum</label>
+                <input type="number" placeholder="Contoh: 1500000" value={profile.rate_daily_min || ''} onChange={(e) => setProfile({ ...profile, rate_daily_min: parseFloat(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold focus:border-brand-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Harian Maksimum</label>
+                <input type="number" placeholder="Contoh: 5000000" value={profile.rate_daily_max || ''} onChange={(e) => setProfile({ ...profile, rate_daily_max: parseFloat(e.target.value) })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm font-bold focus:border-brand-500" />
+              </div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl text-xs font-medium text-slate-500">
+              💡 Rate Card Anda akan dijaga kerahasiaannya dan hanya digunakan oleh AI untuk mencocokkan Anda dengan budget proyek.
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: AVAILABILITY */}
+        {tab === 'availability' && (
+          <div className="space-y-5 animate-in slide-in-from-bottom-2">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Status & Kesiapan</h3>
+            
+            <label className="flex items-center gap-4 p-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl cursor-pointer hover:border-brand-300 transition-colors">
+              <input type="checkbox" checked={profile.is_available} onChange={(e) => setProfile({ ...profile, is_available: e.target.checked })} className="w-6 h-6 rounded accent-brand-600" />
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white block">Siap Menerima Tawaran Pekerjaan</span>
+                <span className="text-xs text-slate-500 font-medium">Klien akan melihat status Anda sebagai "Available".</span>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-4 p-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl cursor-pointer hover:border-brand-300 transition-colors">
+              <input type="checkbox" checked={profile.location_willing_to_travel} onChange={(e) => setProfile({ ...profile, location_willing_to_travel: e.target.checked })} className="w-6 h-6 rounded accent-brand-600" />
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white block">Bersedia Travel Luar Kota</span>
+                <span className="text-xs text-slate-500 font-medium">Buka kesempatan untuk proyek di lokasi yang jauh.</span>
+              </div>
+            </label>
+
+            <div className="pt-4">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">Jenis Proyek yang Diminati</label>
+              <div className="flex flex-wrap gap-2">
+                {PROJECT_TYPE_OPTIONS.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => toggleArrayItem('preferred_project_types', type.id)}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                      (profile.preferred_project_types || []).includes(type.id)
+                        ? 'bg-brand-600 text-white shadow-md'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ================= STICKY SAVE BUTTON ================= */}
-      {isDirty && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
-           <div className="bg-slate-900 border border-slate-700 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-2xl p-2 px-3 flex items-center gap-4 backdrop-blur-md">
-              <div className="hidden sm:block pl-3 text-white/90 text-sm font-semibold tracking-wide">
-                 Unsaved changes
-              </div>
-              <button 
-                 onClick={handleSaveChanges}
-                 disabled={saving}
-                 className="flex items-center justify-center bg-brand-600 hover:bg-brand-500 text-white font-black text-sm px-8 py-2.5 rounded-xl transition-colors disabled:opacity-50 min-w-[140px]"
-              >
-                 {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : <Save size={16} className="mr-2" />}
-                 {saving ? 'Saving...' : 'Save Draft'}
-              </button>
-           </div>
-        </div>
-      )}
-      
-      {/* ================= POPUP WHAT'S MISSING ================= */}
-      {showMissingModal && (
-          <ProgressModal profileProgressData={profileProgressData} onClose={() => setShowMissingModal(false)} />
-      )}
+      {/* Floating Save Button */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <button
+          onClick={handleSave}
+          disabled={saveProfileMutation.isPending}
+          className="flex items-center gap-2 px-8 py-3.5 bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white font-black rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.3)] transition-all disabled:opacity-50"
+        >
+          {saveProfileMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+          {saveProfileMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+        </button>
+      </div>
+
     </div>
   );
 }

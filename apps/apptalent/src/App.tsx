@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import Login from '@/pages/auth/login';
 import AuthCallback from '@/pages/auth/callback';
 
-// Pages
+// Pages (Semua akan otomatis memanggil index.tsx dari foldernya masing-masing)
 import Dashboard from '@/pages/dashboard';
 import Projects from '@/pages/projects';
 import ProjectDetail from '@/pages/projects/[id]';
@@ -15,15 +15,15 @@ import Payouts from '@/pages/payouts';
 import MediaPortfolio from '@/pages/media';
 import Contracts from '@/pages/contracts';
 import Messages from '@/pages/messages';
-import AIMatch from "@/pages/jobs/match/index";
+import AIMatch from "@/pages/jobs/match"; // Sudah bersih, memanggil index.tsx baru
 import JobInvites from '@/pages/jobs/invites';
-import JobBoard from '@/pages/jobs/board/index';
+import JobBoard from '@/pages/jobs/board';
 import JobDetail from '@/pages/jobs/board/[id]';
 import KYCVerification from '@/pages/kyc';
 import Audition from "@/pages/audition";
 import Helpdesk from '@/pages/help';
 import Settings from '@/pages/settings';
-import ProfileEditor from '@/pages/profile';
+import ProfileEditor from '@/pages/profile'; // Sudah bersih, memanggil index.tsx baru
 import LiveBoardJoin from '@/pages/live-boards/[id]';
 import PublicProfile from '@/pages/p/[username]';
 
@@ -44,14 +44,19 @@ export default function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            
+            {/* Fitur Utama */}
+            <Route path="/jobs/match" element={<AIMatch />} />
+            <Route path="/profile" element={<ProfileEditor />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
+            
+            {/* Fitur Tambahan */}
             <Route path="/schedules" element={<Schedules />} />
             <Route path="/payouts" element={<Payouts />} />
             <Route path="/media" element={<MediaPortfolio />} />
             <Route path="/contracts" element={<Contracts />} />
             <Route path="/messages" element={<Messages />} />
-            <Route path="/jobs/match" element={<AIMatch />} />
             <Route path="/jobs/board" element={<JobBoard />} />
             <Route path="/jobs/board/:id" element={<JobDetail />} />
             <Route path="/jobs/invites" element={<JobInvites />} />
@@ -59,7 +64,6 @@ export default function App() {
             <Route path="/audition" element={<Audition />} />
             <Route path="/help" element={<Helpdesk />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<ProfileEditor />} />
 
           </Route>
 
@@ -68,7 +72,9 @@ export default function App() {
             <div className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white">
               <h1 className="text-6xl font-extrabold text-brand-600 mb-4">404</h1>
               <p className="text-xl font-bold mb-6">Halaman tidak ditemukan</p>
-              <button onClick={() => window.location.href = '/dashboard'} className="px-6 py-2 bg-brand-600 text-white rounded-xl">Kembali ke Dashboard</button>
+              <button onClick={() => window.location.href = '/dashboard'} className="px-6 py-2 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-colors">
+                Kembali ke Beranda
+              </button>
             </div>
           } />
         </Routes>

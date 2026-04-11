@@ -35,24 +35,39 @@ export default function DashboardLayout() {
   const isAuthorized = useAuthStore(state => state.isAuthenticated);
   const userData = useAuthStore(state => state.user);
 
-  // --- STRICT GATEKEEPER & DATA FETCHER ---
+// --- STRICT GATEKEEPER & DATA FETCHER ---
   useEffect(() => {
     if (!isAuthorized) {
       performCleanLogout();
     } else {
-      // 2. Cek Apakah Profil Baru Saja Dibuat (Butuh Onboarding)
-      apiRequest('/talents/me')
-        .then((res: any) => {
-            if (res.is_new || !res.data.category || !res.data.headshot) {
-                const isAbandoned = sessionStorage.getItem('hide_wizard') === 'true';
-                if (isAbandoned) {
-                    setShowAbandonBanner(true);
-                } else {
-                    setShowWizard(true);
-                }
-            }
-        })
-        .catch(() => console.log("Gagal verifikasi status profil talent"));
+      // 1. SINKRONISASI SESI: Tanya langsung ke Server SSO (Source of Truth)
+      fetch('https://sso.orlandmanagement.com/api/auth/me', { 
+          method: 'GET', 
+          credentials: 'include' 
+      })
+      .then(async (res) => {
+          if (!res.ok) throw new Error("Sesi SSO tidak ditemukan / Cookie kadaluarsa");
+          const data = await res.json();
+          if (data.status !== 'ok') throw new Error("Sesi SSO tidak valid");
+          
+          // 2. Jika SSO merespons 'ok', baru kita cek profil (Onboarding)
+          return apiRequest('/talents/me');
+      })
+      .then((res: any) => {
+          if (res.is_new || !res.data.category || !res.data.headshot) {
+              const isAbandoned = sessionStorage.getItem('hide_wizard') === 'true';
+              if (isAbandoned) {
+                  setShowAbandonBanner(true);
+              } else {
+                  setShowWizard(true);
+              }
+          }
+      })
+      .catch((err) => {
+          // 3. Jika API SSO menolak (karena sudah logout di tab lain), paksa bersihkan lokal!
+          console.warn("Sistem mendeteksi Anda sudah logout. Membersihkan dashboard...", err);
+          performCleanLogout();
+      });
     }
   }, [isAuthorized]);
 

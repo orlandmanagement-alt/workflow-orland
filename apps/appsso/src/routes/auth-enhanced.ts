@@ -245,8 +245,9 @@ auth.post('/login-password', async (c) => {
 
     const session = await createSession(c, user, ipAddress, userAgent)
     return c.json({ status: 'ok', redirect_url: session.redirectUrl })
-  } catch (error) {
-    return c.json({ status: 'error', message: 'Login failed' }, 500)
+  } catch (error: any) {
+    console.error("LOGIN CRASH REPORT:", error);
+    return c.json({ status: 'error', message: `Sistem Error: ${error.message}` }, 500)
   }
 })
 

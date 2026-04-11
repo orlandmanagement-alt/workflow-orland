@@ -1,51 +1,32 @@
 // Rate Limiting & Account Lockout Service
 // File: apps/appsso/src/utils/security.ts
 
-import { sha256 } from './crypto'
+import { D1Database } from '@cloudflare/workers-types'
 
 const MAX_ATTEMPTS = 5
-const LOCKOUT_DURATION = 1800 // 30 minutes in seconds
-const ATTEMPT_WINDOW = 900 // 15 minutes in seconds
-
-interface LoginAttempt {
-  attempt_id: string
-  email?: string
-  phone?: string
-  ip_address: string
-  attempted_at: number
-  success: boolean
-}
-
-interface AccountLockout {
-  lockout_id: string
-  user_id: string
-  reason: string
-  locked_at: number
-  unlocks_at: number
-}
+const LOCKOUT_DURATION_MINUTES = 30
+const ATTEMPT_WINDOW_MINUTES = 15
 
 /**
  * Check if user is locked out
- * @param db D1Database instance
- * @param userId User ID
- * @param now Current timestamp
  */
 export async function isAccountLocked(
   db: D1Database,
   userId: string,
-  now: number
+  now: number // Parameter now tetap diterima agar kompatibel dengan pemanggilan lama
 ): Promise<{ locked: boolean; unlocksAt?: number }> {
+  // Gunakan fungsi waktu bawaan SQLite untuk pencocokan skema baru
   const lockout = await db
     .prepare(
-      `SELECT lockout_id, unlocks_at FROM account_lockouts 
-       WHERE user_id = ? AND unlocks_at > ? 
+      `SELECT lockout_id, strftime('%s', unlocks_at) as unlocks_ts FROM account_lockouts 
+       WHERE user_id = ? AND unlocks_at > datetime('now') AND is_active = 1 
        ORDER BY unlocks_at DESC LIMIT 1`
     )
-    .bind(userId, now)
+    .bind(userId)
     .first<any>()
 
   if (lockout) {
-    return { locked: true, unlocksAt: lockout.unlocks_at }
+    return { locked: true, unlocksAt: Number(lockout.unlocks_ts) }
   }
 
   return { locked: false }
@@ -53,35 +34,29 @@ export async function isAccountLocked(
 
 /**
  * Record login attempt (success or failure)
- * @param db D1Database instance
- * @param email User email or phone
- * @param ipAddress IP address
- * @param success Whether login was successful
- * @param userId User ID (if successful)
  */
 export async function recordLoginAttempt(
   db: D1Database,
-  identifier: string, // email or phone
+  identifier: string, // Email atau Phone
   ipAddress: string,
   success: boolean,
   userId?: string
 ): Promise<void> {
   const attemptId = `attempt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  const now = Math.floor(Date.now() / 1000)
 
+  // Skema baru menggunakan kolom 'email' untuk identitas dan 'created_at' untuk waktu
   await db
     .prepare(
       `INSERT INTO login_attempts 
-       (attempt_id, identifier, ip_address, attempted_at, success, user_id) 
-       VALUES (?, ?, ?, ?, ?, ?)`
+       (attempt_id, email, ip_address, success, user_id, method, created_at) 
+       VALUES (?, ?, ?, ?, ?, 'password', datetime('now'))`
     )
-    .bind(attemptId, identifier, ipAddress, now, success ? 1 : 0, userId || null)
+    .bind(attemptId, identifier, ipAddress, success ? 1 : 0, userId || null)
     .run()
 }
 
 /**
  * Check if identifier (email/phone) should be rate limited
- * Returns: { shouldBlock: boolean, remainingAttempts: number, resetAt?: number }
  */
 export async function checkRateLimit(
   db: D1Database,
@@ -93,36 +68,33 @@ export async function checkRateLimit(
   remainingAttempts: number
   resetAt?: number
 }> {
-  const windowStart = now - ATTEMPT_WINDOW
-
-  // Get failed attempts in the last 15 minutes for this identifier
+  // Hitung jumlah kegagalan 15 menit terakhir menggunakan fitur waktu SQLite
   const failedAttempts = await db
     .prepare(
       `SELECT COUNT(*) as count FROM login_attempts 
-       WHERE (identifier = ? OR ip_address = ?) 
-       AND attempted_at > ? 
+       WHERE (email = ? OR ip_address = ?) 
+       AND created_at > datetime('now', '-${ATTEMPT_WINDOW_MINUTES} minutes') 
        AND success = 0`
     )
-    .bind(identifier, ipAddress, windowStart)
+    .bind(identifier, ipAddress)
     .first<{ count: number }>()
 
   const failCount = failedAttempts?.count || 0
   const remaining = Math.max(0, MAX_ATTEMPTS - failCount)
 
   if (failCount >= MAX_ATTEMPTS) {
-    // Get the oldest attempt timestamp to calculate reset time
     const oldestAttempt = await db
       .prepare(
-        `SELECT attempted_at FROM login_attempts 
-         WHERE (identifier = ? OR ip_address = ?) 
-         AND attempted_at > ? 
+        `SELECT strftime('%s', created_at) as created_ts FROM login_attempts 
+         WHERE (email = ? OR ip_address = ?) 
+         AND created_at > datetime('now', '-${ATTEMPT_WINDOW_MINUTES} minutes') 
          AND success = 0 
-         ORDER BY attempted_at ASC LIMIT 1`
+         ORDER BY created_at ASC LIMIT 1`
       )
-      .bind(identifier, ipAddress, windowStart)
-      .first<{ attempted_at: number }>()
+      .bind(identifier, ipAddress)
+      .first<{ created_ts: number }>()
 
-    const resetAt = oldestAttempt ? oldestAttempt.attempted_at + ATTEMPT_WINDOW : now + ATTEMPT_WINDOW
+    const resetAt = oldestAttempt ? Number(oldestAttempt.created_ts) + (ATTEMPT_WINDOW_MINUTES * 60) : now + (ATTEMPT_WINDOW_MINUTES * 60)
 
     return {
       shouldBlock: true,
@@ -147,42 +119,19 @@ export async function lockAccount(
   reason: string = 'Too many failed login attempts'
 ): Promise<void> {
   const lockoutId = `lockout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  const unlocksAt = now + LOCKOUT_DURATION
 
+  // Menggunakan datetime SQLite agar sesuai dengan kolom DATETIME di skema baru
   await db
     .prepare(
-      `INSERT INTO account_lockouts (lockout_id, user_id, reason, locked_at, unlocks_at) 
-       VALUES (?, ?, ?, ?, ?)`
+      `INSERT INTO account_lockouts (lockout_id, user_id, reason, locked_at, unlocks_at, is_active) 
+       VALUES (?, ?, ?, datetime('now'), datetime('now', '+${LOCKOUT_DURATION_MINUTES} minutes'), 1)`
     )
-    .bind(lockoutId, userId, reason, now, unlocksAt)
+    .bind(lockoutId, userId, reason)
     .run()
-}
-
-/**
- * Unlock account (reset lockout)
- */
-export async function unlockAccount(db: D1Database, userId: string): Promise<void> {
-  await db
-    .prepare(`DELETE FROM account_lockouts WHERE user_id = ?`)
-    .bind(userId)
-    .run()
-}
-
-/**
- * Reset failed attempts for a user (after successful login)
- */
-export async function resetFailedAttempts(
-  db: D1Database,
-  identifier: string,
-  ipAddress: string
-): Promise<void> {
-  // This is typically handled by the login endpoint after successful auth
-  // But you could implement a cleanup here if needed
 }
 
 /**
  * Validate IP & User-Agent for session hijacking detection
- * Returns: { valid: boolean, reason?: string }
  */
 export async function validateSessionContext(
   db: D1Database,
@@ -196,68 +145,28 @@ export async function validateSessionContext(
     .bind(sessionId)
     .first<any>()
 
-  if (!session) {
-    return { valid: false, reason: 'Session not found' }
-  }
+  if (!session) return { valid: false, reason: 'Session not found' }
 
-  // IP validation (strict: exact match, moderate: same ISP block, lenient: ignore)
   if (toleranceLevel !== 'lenient' && session.ip_address && session.ip_address !== currentIp) {
     if (toleranceLevel === 'strict') {
       return { valid: false, reason: 'IP address mismatch - possible session hijacking' }
     }
-    // For moderate: check if IPs are in same /24 block
     const isSameBlock = isIpInSameBlock(session.ip_address, currentIp, 24)
     if (!isSameBlock) {
       return { valid: false, reason: 'IP address changed significantly' }
     }
   }
 
-  // User-Agent validation (browser/device fingerprint)
-  if (session.user_agent && session.user_agent !== currentUserAgent) {
-    if (toleranceLevel === 'strict') {
-      return { valid: false, reason: 'User-Agent mismatch - possible session hijacking' }
-    }
-    // For moderate/lenient: log but allow (UX improvement for device changes)
-  }
-
   return { valid: true }
 }
 
-/**
- * Check if two IPs are in the same /24 CIDR block
- */
 function isIpInSameBlock(ip1: string, ip2: string, cidr: number = 24): boolean {
   try {
     const parts1 = ip1.split('.').map(Number)
     const parts2 = ip2.split('.').map(Number)
-
-    if (cidr === 24) {
-      return parts1[0] === parts2[0] && parts1[1] === parts2[1] && parts1[2] === parts2[2]
-    }
-
-    // Implement for other CIDR values if needed
+    if (cidr === 24) return parts1[0] === parts2[0] && parts1[1] === parts2[1] && parts1[2] === parts2[2]
     return ip1 === ip2
   } catch {
     return false
   }
-}
-
-/**
- * Clean up expired login attempts and lockouts
- * Call this periodically (e.g., via cron or cleanup job)
- */
-export async function cleanupExpiredRecords(db: D1Database, now: number): Promise<void> {
-  // Delete login attempts older than 30 days
-  const thirtyDaysAgo = now - 30 * 24 * 60 * 60
-
-  await db
-    .prepare(`DELETE FROM login_attempts WHERE attempted_at < ?`)
-    .bind(thirtyDaysAgo)
-    .run()
-
-  // Delete expired lockouts
-  await db
-    .prepare(`DELETE FROM account_lockouts WHERE unlocks_at < ?`)
-    .bind(now)
-    .run()
 }

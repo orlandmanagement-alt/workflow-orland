@@ -46,83 +46,82 @@ import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
 
 export type Bindings = { DB_CORE: D1Database; DB_LOGS: D1Database; DB_SSO: D1Database; ORLAND_CACHE: KVNamespace; R2_MEDIA: R2Bucket; R2_BUCKET?: R2Bucket; R2_PUBLIC_URL?: string; JWT_SECRET: string; TALENT_URL: string; CLIENT_URL: string; CF_ACCOUNT_ID: string; R2_ACCESS_KEY_ID: string; R2_SECRET_ACCESS_KEY: string; CF_AI_GATEWAY?: Fetcher }
-export type Variables = { userId: string; userRole: string }
+export type Variables = { userId: string; userRole: string; userTier: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// 1. UPDATE CORS: Dinamis dan mengizinkan Credentials (Cookie)
+// 1. KONFIGURASI CORS: Mendukung Credentials untuk Cookie antar-domain
 app.use('*', cors({ 
   origin: (origin) => {
-    // Daftar domain Orland Management yang diizinkan mengakses API
     const allowedDomains = [
       'https://www.orlandmanagement.com',
       'https://sso.orlandmanagement.com',
       'https://admin.orlandmanagement.com',
       'https://talent.orlandmanagement.com',
       'https://client.orlandmanagement.com',
-      'http://localhost:8787', // Opsional: untuk testing lokal
-      'http://localhost:3000'
+      'http://localhost:8787',
+      'http://localhost:3000',
+      'http://localhost:5173'
     ];
     return allowedDomains.includes(origin) ? origin : null;
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
   allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true // <-- SANGAT PENTING UNTUK CROSS-DOMAIN COOKIE
+  credentials: true 
 }))
 
-// 2. UPDATE MIDDLEWARE: Membaca HttpOnly Cookie 'sid' dan memvalidasi ke Database
-// Cari bagian middleware app.use('/api/v1/*', ...) dan ganti dengan ini:
-
+// 2. MIDDLEWARE GATEKEEPER GLOBAL (SYNC DENGAN SKEMA 027)
 app.use('/api/v1/*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return await next()
   if (c.req.path.startsWith('/api/v1/public/')) return await next()
   
   let userId = null;
-  let userRole = null;
 
-  // JALUR 1: Cek Bearer Token (Authorization Header)
+  // JALUR A: Cek Bearer Token dari Header Authorization
   const authHeader = c.req.header('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    // Jika token adalah sessionId (sid), validasi ke database
+    // PERBAIKAN: Gunakan session_id sesuai skema baru
     const session = await c.env.DB_SSO.prepare(
-      "SELECT user_id FROM sessions WHERE id = ? AND expires_at > datetime('now')"
+      "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
     ).bind(token).first<any>();
-    
     if (session) userId = session.user_id;
   }
 
-  // JALUR 2: Cek Cookie 'sid' (Jika Jalur 1 Gagal)
+  // JALUR B: Cek Cookie 'sid' jika Bearer Token tidak ada
   if (!userId) {
     const sid = getCookie(c, 'sid');
     if (sid) {
       const session = await c.env.DB_SSO.prepare(
-        "SELECT user_id FROM sessions WHERE id = ? AND expires_at > datetime('now')"
+        "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
       ).bind(sid).first<any>();
       if (session) userId = session.user_id;
     }
   }
 
   if (!userId) {
-    return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid" }, 401);
+    return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid atau telah berakhir" }, 401);
   }
 
-  // Validasi User ke DB_SSO
-  const user = await c.env.DB_SSO.prepare("SELECT id, role, status, account_tier FROM users WHERE id=?").bind(userId).first<any>();
+  // VALIDASI USER (SYNC DENGAN SKEMA 027)
+  // Perbaikan: Gunakan user_type, is_active, dan id
+  const user = await c.env.DB_SSO.prepare(
+    "SELECT id, user_type, is_active FROM users WHERE id = ?"
+  ).bind(userId).first<any>();
   
-  if (!user || user.status === 'deleted' || user.status === 'suspended') {
-    return c.json({ status: "error", message: "Unauthorized: Akun tidak aktif" }, 401);
+  if (!user || user.is_active === 0) {
+    return c.json({ status: "error", message: "Unauthorized: Akun tidak ditemukan atau dinonaktifkan" }, 401);
   }
 
-  // Inject ke Context agar bisa dipakai Router & Middleware lain
-c.set('userId', user.id);
-c.set('userRole', user.role);
-c.set('userTier', user.account_tier || 'free'); // Tambahkan baris ini
+  // Inject data ke context agar bisa dibaca router/middleware lain
+  c.set('userId', user.id);
+  c.set('userRole', user.user_type);
   
   await next();
 });
 
-app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 38 }))
+// ROUTES DEFINITION
+app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 42 }))
 app.get('/api/v1/auth/verify-session', (c) => c.json({ status: 'ok', userId: c.get('userId'), userRole: c.get('userRole') }))
 
 app.route('/api/v1/talents', talentRouter)
@@ -171,7 +170,7 @@ app.route('/api/v1/talents', availabilityRouter)
 app.route('/api/v1/public', availabilityRouter)
 app.route('/api/v1/admin', availabilityRouter)
 
-// PUBLIC R2 MEDIA SERVER (Tanpa JWT)
+// PUBLIC R2 MEDIA SERVER
 app.get("/api/v1/public/media/:key", async (c) => {
   const key = c.req.param("key");
   const object = await c.env.R2_MEDIA.get(key);

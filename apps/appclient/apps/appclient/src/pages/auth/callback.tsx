@@ -28,8 +28,8 @@ export default function AuthCallback() {
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-[#071122] text-white">
-      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sinkronisasi Portal CLIENT...</p>
+      <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="font-black uppercase tracking-widest text-[10px] animate-pulse">Syncing Client Portal...</p>
     </div>
   );
 }

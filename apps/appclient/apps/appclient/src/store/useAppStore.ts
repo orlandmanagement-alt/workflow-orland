@@ -7,7 +7,7 @@ export const useAuthStore = create()(persist((set) => ({
   user: null,
   role: 'client',
   login: (token, userData = null) => {
-    const fullName = userData?.full_name || (userData?.first_name + ' ' + (userData?.last_name || '')).trim() || 'Enterprise User';
+    const fullName = userData?.full_name || (userData?.first_name + ' ' + (userData?.last_name || '')).trim() || 'Partner';
     return set({ 
       token, 
       isAuthenticated: true, 

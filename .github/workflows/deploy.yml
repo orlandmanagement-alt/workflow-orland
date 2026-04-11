@@ -1,9 +1,9 @@
-name: Deploy Orland Services to Cloudflare
+name: Deploy Orland Enterprise Services
 
 on:
   push:
     branches:
-      - main # Deploy otomatis setiap ada perubahan di branch main
+      - main # Trigger otomatis saat push ke main
 
 jobs:
   deploy:
@@ -16,39 +16,52 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          # Kami hapus 'cache: npm' sementara jika lock-file Anda sering bermasalah di CI
+          # atau pastikan package-lock.json sudah di-push.
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install # Menggunakan install agar lebih fleksibel dibanding ci pada tahap dev
 
-      # Deploy SSO
-      - name: Deploy SSO
+      # --- STEP 1: DEPLOY BACKEND (WORKERS) ---
+      
+      - name: Deploy SSO (Auth IdP)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy
           workingDirectory: apps/appsso
 
-      # Deploy API Core
-      - name: Deploy API Core
+      - name: Deploy API Core (Business Logic)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy
           workingDirectory: apps/appapi
-          
-      # Deploy Client UI
-      - name: Deploy Client Dashboard
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy
-          workingDirectory: apps/appclient
 
-      # Deploy Talent UI
+      # --- STEP 2: BUILD FRONTEND PORTALS (TURBO) ---
+      
+      - name: Build All Dashboards
+        run: npx turbo run build --filter=apptalent --filter=appclient --filter=appagency
+        env:
+          NODE_ENV: production
+
+      # --- STEP 3: DEPLOY FRONTEND (PAGES) ---
+      # Menggunakan Wrangler Action untuk deploy folder 'dist' ke Cloudflare Pages
+
       - name: Deploy Talent Dashboard
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy
-          workingDirectory: apps/apptalent
+          command: pages deploy apps/apptalent/dist --project-name=orland-talent
+
+      - name: Deploy Client Dashboard
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy apps/appclient/dist --project-name=orland-client
+
+      - name: Deploy Agency Dashboard
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy apps/appagency/dist --project-name=orland-agency

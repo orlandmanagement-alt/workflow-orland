@@ -22,7 +22,6 @@ import {
 } from '../utils/security'
 import { verifyTurnstile, sendMail } from '../utils'
 
-// 1. Daftarkan semua variabel yang ada di Cloudflare Dashboard agar dikenali oleh TypeScript
 type Bindings = {
   DB_SSO: D1Database
   TURNSTILE_SECRET: string
@@ -41,7 +40,7 @@ const auth = new Hono<{ Bindings: Bindings }>()
 const getNow = () => Math.floor(Date.now() / 1000)
 const getClientIp = (c: Context): string => c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
 
-// Helper Dinamis untuk Opsi Cookie (Mengambil dari env)
+// Helper Dinamis untuk Opsi Cookie
 const getCookieOpts = (env: Bindings) => ({
   domain: env.COOKIE_DOMAIN || '.orlandmanagement.com',
   path: '/',
@@ -50,8 +49,14 @@ const getCookieOpts = (env: Bindings) => ({
   sameSite: 'Lax' as const,
 })
 
-// Helper Dinamis untuk Umur Sesi (Mengambil dari env, default 720 menit / 12 jam)
+// Helper Dinamis untuk Umur Sesi (default 720 menit / 12 jam)
 const getSessionExpiry = (env: Bindings) => Number(env.SESSION_TTL_MIN || 720) * 60
+
+// 🔥 PERBAIKAN: Helper Konfigurasi Crypto agar Pepper & Iterasi selalu SAMA di semua rute
+const getCryptoConfig = (env: Bindings) => ({
+  pepper: env.HASH_PEPPER || 'orland_fallback_pepper_999',
+  iter: Number(env.PBKDF2_ITER) || 100000
+})
 
 /**
  * ========================================
@@ -102,7 +107,6 @@ async function createSession(c: Context<{ Bindings: Bindings }>, user: any, ipAd
   return { sessionId, expiresAt, redirectUrl: await getPortalUrl(c.env, user, sessionId) }
 }
 
-
 /**
  * ========================================
  * REGISTRATION & ACTIVATION
@@ -114,36 +118,26 @@ auth.post('/register', async (c) => {
     const body = await c.req.json<any>()
     const ipAddress = getClientIp(c)
     
-    // 1. Verifikasi Captcha
     const isHuman = await verifyTurnstile(body.turnstile_token, ipAddress, c.env.TURNSTILE_SECRET)
     if (!isHuman) return c.json({ status: 'error', message: 'CAPTCHA verification failed' }, 403)
 
-    // 2. Validasi Input Dasar
     if (!body.email || !body.password || !body.role) return c.json({ status: 'error', message: 'Missing required fields' }, 400)
     if (body.password.length < 8) return c.json({ status: 'error', message: 'Password must be at least 8 characters' }, 400)
 
     const email = body.email.toLowerCase().trim()
-    
-    // 3. Cek User Eksisting
     const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<any>()
     if (existing) return c.json({ status: 'error', message: 'Email already registered' }, 409)
 
-    // 4. Hashing Password (Kebal Peluru: Gunakan fallback jika env pepper lupa diset)
-    const pepper = c.env.HASH_PEPPER || 'orland_fallback_pepper_999';
-    const { salt, hash } = await hashPasswordPBKDF2(body.password, pepper)
+    // 🔥 PERBAIKAN: Gunakan Helper Crypto
+    const cryptoCfg = getCryptoConfig(c.env);
+    const { salt, hash } = await hashPasswordPBKDF2(body.password, cryptoCfg.pepper, cryptoCfg.iter)
     
-    // 5. Gunakan Native Crypto Cloudflare (Jangan gunakan generateUUID buatan manual)
     const userId = crypto.randomUUID()
-    
-    // 6. Pecah Nama
     const nameParts = (body.fullName || 'User').split(' ')
     const firstName = nameParts[0]
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
-
-    // 7. Cegah Undefined Crash di D1
     const phoneVal = body.phone ? body.phone : null;
 
-    // 8. Insert ke Database
     await c.env.DB_SSO.prepare(
       `INSERT INTO users (
         id, email, phone, first_name, last_name, user_type, is_active, email_verified,
@@ -151,7 +145,6 @@ auth.post('/register', async (c) => {
       ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`
     ).bind(userId, email, phoneVal, firstName, lastName, body.role.toLowerCase(), hash, salt).run()
 
-    // 9. Buat Token Aktivasi
     const activationToken = crypto.randomUUID().replace(/-/g, '')
     const otpId = crypto.randomUUID()
 
@@ -165,7 +158,6 @@ auth.post('/register', async (c) => {
     return c.json({ status: 'ok', message: 'Registration successful. Check your email.', user_id: userId })
     
   } catch (error: any) {
-    // 🔥 PERUBAHAN KRUSIAL: Tangkap error asli dan tampilkan ke Frontend!
     console.error("CRASH REPORT:", error);
     return c.json({ status: 'error', message: `Sistem Error: ${error.message}` }, 500)
   }
@@ -176,7 +168,6 @@ auth.post('/verify-activation', async (c) => {
   const ipAddress = getClientIp(c)
   const userAgent = c.req.header('user-agent') || 'unknown'
 
-  // Cari token di otp_codes
   const tokenRow = await c.env.DB_SSO.prepare(
     "SELECT * FROM otp_codes WHERE code = ? AND expires_at > datetime('now')"
   ).bind(body.token).first<any>()
@@ -210,7 +201,6 @@ auth.post('/login-password', async (c) => {
 
     const identifier = (body.identifier || "").toLowerCase().trim()
     
-    // Rate limit
     const rateLimit = await checkRateLimit(c.env.DB_SSO, identifier, ipAddress, now)
     if (rateLimit.shouldBlock) return c.json({ status: 'error', message: `Terlalu banyak percobaan. Coba lagi nanti.` }, 429)
 
@@ -224,32 +214,27 @@ auth.post('/login-password', async (c) => {
     if (lockStatus.locked) return c.json({ status: 'error', message: `Akun terkunci sementara.` }, 423)
 
     if (user.email_verified === 0) {
-      // 1. Buat token aktivasi baru
       const activationToken = crypto.randomUUID().replace(/-/g, '')
       const otpId = crypto.randomUUID()
 
-      // 2. Bersihkan token aktivasi yang lama/kadaluarsa dari database
-      await c.env.DB_SSO.prepare(
-        "DELETE FROM otp_codes WHERE user_id = ? AND method = 'email'"
-      ).bind(user.id).run()
-
-      // 3. Masukkan token baru yang berlaku 24 jam lagi
+      await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id = ? AND method = 'email'").bind(user.id).run()
       await c.env.DB_SSO.prepare(
         `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
          VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
       ).bind(otpId, user.id, user.email, activationToken).run()
 
-      // 4. Kirim ulang email secara diam-diam (background)
       try { await sendMail(c.env, user.email, activationToken, 'activation') } catch(e) {}
 
-      // 5. Beri tahu user di layar
       return c.json({ 
         status: 'error', 
         message: 'Akun belum aktif! Kami telah MENGIRIM ULANG link aktivasi ke email Anda. Silakan cek sekarang.' 
       }, 403)
     }
-	
-    const passwordValid = await verifyPasswordPBKDF2(body.password, user.password_hash, user.password_salt, c.env.HASH_PEPPER)
+
+    // 🔥 PERBAIKAN: Gunakan Helper Crypto
+    const cryptoCfg = getCryptoConfig(c.env);
+    const passwordValid = await verifyPasswordPBKDF2(body.password, user.password_hash, user.password_salt, cryptoCfg.pepper, cryptoCfg.iter)
+    
     if (!passwordValid) {
       await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, false, user.id)
       return c.json({ status: 'error', message: 'Kredensial salah' }, 401)
@@ -273,7 +258,7 @@ auth.post('/request-otp', async (c) => {
   if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
   
   const otp = generateOTP()
-  const otpId = generateUUID()
+  const otpId = crypto.randomUUID()
   
   await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id=?").bind(user.id).run()
   await c.env.DB_SSO.prepare(
@@ -302,7 +287,8 @@ async function handleOtpVerify(c: Context<{ Bindings: Bindings }>, isSetupPin = 
   await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id=?").bind(otpRow.otp_id).run()
   
   if (isSetupPin && body.new_pin) {
-    const { salt, hash } = await hashPasswordPBKDF2(body.new_pin, c.env.HASH_PEPPER)
+    const cryptoCfg = getCryptoConfig(c.env);
+    const { salt, hash } = await hashPasswordPBKDF2(body.new_pin, cryptoCfg.pepper, cryptoCfg.iter)
     await c.env.DB_SSO.prepare("UPDATE users SET pin_hash=?, pin_salt=? WHERE id=?").bind(hash, salt, user.id).run()
   }
   
@@ -327,7 +313,8 @@ auth.post('/login-pin', async (c) => {
   const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND is_active=1").bind(id, id).first<any>()
   if (!user || !user.pin_hash) return c.json({ status: "error", message: "Akun/PIN tidak valid." }, 404)
   
-  const pinValid = await verifyPasswordPBKDF2(body.pin, user.pin_hash, user.pin_salt, c.env.HASH_PEPPER)
+  const cryptoCfg = getCryptoConfig(c.env);
+  const pinValid = await verifyPasswordPBKDF2(body.pin, user.pin_hash, user.pin_salt, cryptoCfg.pepper, cryptoCfg.iter)
   if (!pinValid) return c.json({ status: "error", message: "PIN salah." }, 401)
   
   const session = await createSession(c, user, ipAddress, userAgent)
@@ -346,9 +333,9 @@ auth.post('/request-reset', async (c) => {
   const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE (email=? OR phone=?) AND is_active=1").bind(id, id).first<any>()
   if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
   
-  const rawToken = generateUUID().replace(/-/g, '')
-  const tokenHash = await sha256(rawToken) // Simpan hashnya di DB
-  const tokenId = generateUUID()
+  const rawToken = crypto.randomUUID().replace(/-/g, '')
+  const tokenHash = await sha256(rawToken)
+  const tokenId = crypto.randomUUID()
   
   await c.env.DB_SSO.prepare("DELETE FROM password_reset_tokens WHERE user_id=?").bind(user.id).run()
   await c.env.DB_SSO.prepare(
@@ -369,7 +356,9 @@ auth.post('/reset-password', async (c) => {
   
   if (!tokenRow) return c.json({ status: "error", message: "Token tidak valid/kadaluarsa." }, 400)
   
-  const { salt, hash } = await hashPasswordPBKDF2(body.new_password, c.env.HASH_PEPPER)
+  const cryptoCfg = getCryptoConfig(c.env);
+  const { salt, hash } = await hashPasswordPBKDF2(body.new_password, cryptoCfg.pepper, cryptoCfg.iter)
+  
   await c.env.DB_SSO.prepare("UPDATE users SET password_hash=?, password_salt=? WHERE id=?").bind(hash, salt, tokenRow.user_id).run()
   await c.env.DB_SSO.prepare("UPDATE password_reset_tokens SET used=1, used_at=datetime('now') WHERE token_id=?").bind(tokenRow.token_id).run()
   await c.env.DB_SSO.prepare("DELETE FROM sessions WHERE user_id=?").bind(tokenRow.user_id).run()
@@ -399,7 +388,9 @@ auth.get('/me', async (c) => {
 auth.post('/logout', async (c) => {
   const sid = getCookie(c, 'sid')
   if (sid) await c.env.DB_SSO.prepare('DELETE FROM sessions WHERE session_id = ?').bind(sid).run()
-  deleteCookie(c, 'sid', COOKIE_OPTS)
+  
+  // 🔥 PERBAIKAN: Menggunakan getCookieOpts() agar tidak Error 500
+  deleteCookie(c, 'sid', getCookieOpts(c.env))
   return c.json({ status: 'ok', message: 'Logout successful' })
 })
 

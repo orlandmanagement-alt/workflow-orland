@@ -1,4 +1,4 @@
-const TURNSTILE_SITE_KEY = "0x4AAAAAACs8dTjOU5UcntgtIKPw4lJznNg";
+const TURNSTILE_SITE_KEY = "0x4AAAAAACs8dTzAqMf1YwNJ";
 const allViews = ['view-success-redirect', 'view-login', 'view-register', 'view-msg-email', 'view-reset-password', 'view-pin-check', 'view-pin-input', 'view-pin-setup', 'view-otp-verify', 'view-input-id-only', 'view-social-role'];
 let otpInterval;
 

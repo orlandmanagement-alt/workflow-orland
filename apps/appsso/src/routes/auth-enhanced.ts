@@ -4,6 +4,7 @@
 import { Hono, Context } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { sign } from 'hono/jwt'
+import { Buffer } from 'node:buffer' // 👈 TAMBAHKAN BARIS INI
 
 import {
   hashPasswordPBKDF2,

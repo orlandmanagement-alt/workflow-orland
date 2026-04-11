@@ -1,7 +1,9 @@
 // Enhanced Auth Service with PBKDF2, Rate Limiting & Brute-Force Protection
 // File: apps/appsso/src/utils/crypto.ts
 
-//import { crypto } from 'crypto'
+import { webcrypto } from 'crypto'
+import { Buffer } from 'node:buffer' // 👈 TAMBAHKAN BARIS INI
+
 
 const PBKDF2_ITERATIONS = 100_000
 const SALT_LENGTH = 32

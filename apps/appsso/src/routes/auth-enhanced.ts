@@ -223,8 +223,32 @@ auth.post('/login-password', async (c) => {
     const lockStatus = await isAccountLocked(c.env.DB_SSO, user.id, now)
     if (lockStatus.locked) return c.json({ status: 'error', message: `Akun terkunci sementara.` }, 423)
 
-    if (user.email_verified === 0) return c.json({ status: 'error', message: 'Akun belum aktif! Cek email Anda.' }, 403)
+    if (user.email_verified === 0) {
+      // 1. Buat token aktivasi baru
+      const activationToken = crypto.randomUUID().replace(/-/g, '')
+      const otpId = crypto.randomUUID()
 
+      // 2. Bersihkan token aktivasi yang lama/kadaluarsa dari database
+      await c.env.DB_SSO.prepare(
+        "DELETE FROM otp_codes WHERE user_id = ? AND method = 'email'"
+      ).bind(user.id).run()
+
+      // 3. Masukkan token baru yang berlaku 24 jam lagi
+      await c.env.DB_SSO.prepare(
+        `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
+         VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
+      ).bind(otpId, user.id, user.email, activationToken).run()
+
+      // 4. Kirim ulang email secara diam-diam (background)
+      try { await sendMail(c.env, user.email, activationToken, 'activation') } catch(e) {}
+
+      // 5. Beri tahu user di layar
+      return c.json({ 
+        status: 'error', 
+        message: 'Akun belum aktif! Kami telah MENGIRIM ULANG link aktivasi ke email Anda. Silakan cek sekarang.' 
+      }, 403)
+    }
+	
     const passwordValid = await verifyPasswordPBKDF2(body.password, user.password_hash, user.password_salt, c.env.HASH_PEPPER)
     if (!passwordValid) {
       await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, false, user.id)

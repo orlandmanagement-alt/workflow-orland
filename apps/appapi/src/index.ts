@@ -71,40 +71,56 @@ app.use('*', cors({
 }))
 
 // 2. UPDATE MIDDLEWARE: Membaca HttpOnly Cookie 'sid' dan memvalidasi ke Database
+// Cari bagian middleware app.use('/api/v1/*', ...) dan ganti dengan ini:
+
 app.use('/api/v1/*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return await next()
-  if (c.req.path.startsWith('/api/v1/verify/') || c.req.path.startsWith('/api/v1/public/')) return await next()
+  if (c.req.path.startsWith('/api/v1/public/')) return await next()
   
-  // Ambil cookie 'sid' yang dikirim otomatis oleh browser
-  const sid = getCookie(c, 'sid')
-  if (!sid) {
-      return c.json({ status: "error", message: "Unauthorized: Sesi tidak ditemukan" }, 401)
+  let userId = null;
+  let userRole = null;
+
+  // JALUR 1: Cek Bearer Token (Authorization Header)
+  const authHeader = c.req.header('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    // Jika token adalah sessionId (sid), validasi ke database
+    const session = await c.env.DB_SSO.prepare(
+      "SELECT user_id FROM sessions WHERE id = ? AND expires_at > datetime('now')"
+    ).bind(token).first<any>();
+    
+    if (session) userId = session.user_id;
   }
+
+  // JALUR 2: Cek Cookie 'sid' (Jika Jalur 1 Gagal)
+  if (!userId) {
+    const sid = getCookie(c, 'sid');
+    if (sid) {
+      const session = await c.env.DB_SSO.prepare(
+        "SELECT user_id FROM sessions WHERE id = ? AND expires_at > datetime('now')"
+      ).bind(sid).first<any>();
+      if (session) userId = session.user_id;
+    }
+  }
+
+  if (!userId) {
+    return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid" }, 401);
+  }
+
+  // Validasi User ke DB_SSO
+  const user = await c.env.DB_SSO.prepare("SELECT id, role, status, account_tier FROM users WHERE id=?").bind(userId).first<any>();
   
-  try {
-    const now = Math.floor(Date.now() / 1000)
-    
-    // Cek apakah sesi valid di database
-    const session = await c.env.DB_SSO.prepare("SELECT user_id FROM sessions WHERE id=? AND expires_at > ?").bind(sid, now).first<any>()
-    if (!session) {
-        return c.json({ status: "error", message: "Unauthorized: Sesi telah kadaluarsa" }, 401)
-    }
-
-    // Cek status user (Blokir akses jika akun dihapus/di-suspend secara real-time)
-    const user = await c.env.DB_SSO.prepare("SELECT id, role, status FROM users WHERE id=?").bind(session.user_id).first<any>()
-    if (!user || user.status === 'deleted' || user.status === 'pending') {
-        return c.json({ status: "error", message: "Unauthorized: Akun ditangguhkan atau tidak ditemukan" }, 401)
-    }
-
-    // Set variable agar bisa dibaca oleh authRole.ts dan router lainnya
-    c.set('userId', user.id)
-    c.set('userRole', user.role)
-    
-    await next()
-  } catch (err) { 
-    return c.json({ status: "error", message: "Internal Server Error saat validasi sesi" }, 500) 
+  if (!user || user.status === 'deleted' || user.status === 'suspended') {
+    return c.json({ status: "error", message: "Unauthorized: Akun tidak aktif" }, 401);
   }
-})
+
+  // Inject ke Context agar bisa dipakai Router & Middleware lain
+c.set('userId', user.id);
+c.set('userRole', user.role);
+c.set('userTier', user.account_tier || 'free'); // Tambahkan baris ini
+  
+  await next();
+});
 
 app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 38 }))
 app.get('/api/v1/auth/verify-session', (c) => c.json({ status: 'ok', userId: c.get('userId'), userRole: c.get('userRole') }))

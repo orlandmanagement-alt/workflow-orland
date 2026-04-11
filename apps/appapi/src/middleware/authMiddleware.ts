@@ -1,102 +1,107 @@
 /**
  * Authentication and Authorization Middleware for Hono.js
+ * Optimized for Orland Management Enterprise SaaS
  */
 
 import { Context, Next } from 'hono';
 
 /**
- * Middleware to check if user is authenticated
+ * Middleware dasar untuk memastikan user sudah login.
+ * Mengambil data dari context yang disiapkan oleh middleware global di index.ts
  */
 export async function requireAuth(c: Context, next: Next) {
-  const userId = c.req.header('x-user-id');
-  const userRole = c.req.header('x-user-role');
-  const userTier = c.req.header('x-user-tier') || 'free';
+  const userId = c.get('userId');
   
   if (!userId) {
-    return c.json({ error: 'Unauthorized: User ID not found' }, 401);
+    return c.json({ 
+      status: 'error', 
+      message: 'Unauthorized: Sesi tidak ditemukan atau telah berakhir' 
+    }, 401);
   }
-  
-  // Attach to context
-  c.set('userId', userId);
-  c.set('userRole', userRole || 'talent');
-  c.set('userTier', userTier);
   
   await next();
 }
 
 /**
- * Middleware to check if user is Premium tier
+ * Middleware khusus untuk fitur Premium
  */
 export async function requirePremium(c: Context, next: Next) {
-  const userTier = c.req.header('x-user-tier') || 'free';
+  const userTier = c.get('userTier') || 'free';
   
   if (userTier !== 'premium') {
-    return c.json({ error: 'Forbidden: Premium access required' }, 403);
+    return c.json({ 
+      status: 'error', 
+      message: 'Forbidden: Fitur ini hanya tersedia untuk akun Premium' 
+    }, 403);
   }
   
   await next();
 }
 
 /**
- * Middleware to check if user is Admin
+ * Middleware khusus Admin
  */
 export async function requireAdmin(c: Context, next: Next) {
-  const userRole = c.req.header('x-user-role');
+  const userRole = c.get('userRole');
   
   if (userRole !== 'admin') {
-    return c.json({ error: 'Forbidden: Admin access required' }, 403);
+    return c.json({ 
+      status: 'error', 
+      message: 'Forbidden: Akses ditolak. Hanya untuk Administrator' 
+    }, 403);
   }
   
-  c.set('userRole', userRole);
   await next();
 }
 
 /**
- * Middleware to check if user is Agency or Admin
+ * Middleware untuk Agency atau Admin
  */
 export async function requireAgencyOrAdmin(c: Context, next: Next) {
-  const userRole = c.req.header('x-user-role');
+  const userRole = c.get('userRole');
   
   if (userRole !== 'agency' && userRole !== 'admin') {
-    return c.json({ error: 'Forbidden: Agency or Admin access required' }, 403);
+    return c.json({ 
+      status: 'error', 
+      message: 'Forbidden: Akses ditolak. Diperlukan peran Agency atau Admin' 
+    }, 403);
   }
   
-  c.set('userRole', userRole);
   await next();
 }
 
 /**
- * Middleware to check if user is Talent
+ * Middleware khusus Talent
  */
 export async function requireTalent(c: Context, next: Next) {
-  const userRole = c.req.header('x-user-role');
-  const userId = c.req.header('x-user-id');
+  const userRole = c.get('userRole');
   
   if (userRole !== 'talent') {
-    return c.json({ error: 'Forbidden: Talent access required' }, 403);
+    return c.json({ 
+      status: 'error', 
+      message: 'Forbidden: Akses khusus untuk Talent' 
+    }, 403);
   }
   
-  c.set('userId', userId);
-  c.set('userRole', userRole);
   await next();
 }
 
 /**
- * Middleware to extract and validate JWT token (if using JWT)
+ * Middleware JWT Legacy / Placeholder
+ * Tetap dipertahankan jika Anda ingin melakukan ekstraksi token manual
  */
 export async function authWithJWT(c: Context, next: Next) {
   const authHeader = c.req.header('Authorization');
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Unauthorized: Invalid token' }, 401);
+    return c.json({ 
+      status: 'error', 
+      message: 'Unauthorized: Token tidak valid' 
+    }, 401);
   }
   
   const token = authHeader.substring(7);
-  
-  // TODO: Validate JWT token and extract claims
-  // const decoded = await verifyJWT(token);
-  
-  // For now, treat the token as user ID (placeholder)
+  // Simpan token ke context jika diperlukan oleh service lain
   c.set('token', token);
   
   await next();

@@ -104,34 +104,47 @@ auth.post('/register', async (c) => {
     const body = await c.req.json<any>()
     const ipAddress = getClientIp(c)
     
+    // 1. Verifikasi Captcha
     const isHuman = await verifyTurnstile(body.turnstile_token, ipAddress, c.env.TURNSTILE_SECRET)
     if (!isHuman) return c.json({ status: 'error', message: 'CAPTCHA verification failed' }, 403)
 
+    // 2. Validasi Input Dasar
     if (!body.email || !body.password || !body.role) return c.json({ status: 'error', message: 'Missing required fields' }, 400)
     if (body.password.length < 8) return c.json({ status: 'error', message: 'Password must be at least 8 characters' }, 400)
 
     const email = body.email.toLowerCase().trim()
-    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ? AND is_active = 1').bind(email).first<any>()
+    
+    // 3. Cek User Eksisting
+    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<any>()
     if (existing) return c.json({ status: 'error', message: 'Email already registered' }, 409)
 
-    const { salt, hash } = await hashPasswordPBKDF2(body.password, c.env.HASH_PEPPER)
-    const userId = generateUUID()
+    // 4. Hashing Password (Kebal Peluru: Gunakan fallback jika env pepper lupa diset)
+    const pepper = c.env.HASH_PEPPER || 'orland_fallback_pepper_999';
+    const { salt, hash } = await hashPasswordPBKDF2(body.password, pepper)
     
+    // 5. Gunakan Native Crypto Cloudflare (Jangan gunakan generateUUID buatan manual)
+    const userId = crypto.randomUUID()
+    
+    // 6. Pecah Nama
     const nameParts = (body.fullName || 'User').split(' ')
     const firstName = nameParts[0]
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
 
+    // 7. Cegah Undefined Crash di D1
+    const phoneVal = body.phone ? body.phone : null;
+
+    // 8. Insert ke Database
     await c.env.DB_SSO.prepare(
       `INSERT INTO users (
         id, email, phone, first_name, last_name, user_type, is_active, email_verified,
         password_hash, password_salt
       ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`
-    ).bind(userId, email, body.phone || null, firstName, lastName, body.role.toLowerCase(), hash, salt).run()
+    ).bind(userId, email, phoneVal, firstName, lastName, body.role.toLowerCase(), hash, salt).run()
 
-    const activationToken = generateUUID().replace(/-/g, '')
-    const otpId = generateUUID()
+    // 9. Buat Token Aktivasi
+    const activationToken = crypto.randomUUID().replace(/-/g, '')
+    const otpId = crypto.randomUUID()
 
-    // Simpan token aktivasi ke tabel otp_codes (berlaku 1 hari)
     await c.env.DB_SSO.prepare(
       `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
        VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
@@ -140,8 +153,11 @@ auth.post('/register', async (c) => {
     try { await sendMail(c.env, email, activationToken, 'activation') } catch(e) {}
 
     return c.json({ status: 'ok', message: 'Registration successful. Check your email.', user_id: userId })
-  } catch (error) {
-    return c.json({ status: 'error', message: 'Registration failed' }, 500)
+    
+  } catch (error: any) {
+    // 🔥 PERUBAHAN KRUSIAL: Tangkap error asli dan tampilkan ke Frontend!
+    console.error("CRASH REPORT:", error);
+    return c.json({ status: 'error', message: `Sistem Error: ${error.message}` }, 500)
   }
 })
 

@@ -2,7 +2,7 @@
 // Purpose: Complete talent profile form with comprehensive data capture for AI matching
 
 import { useState, useEffect } from 'react';
-import { Upload, Save, AlertCircle, CheckCircle, Loader2, Link as LinkIcon, Share2 } from 'lucide-react';
+import { Upload, Save, AlertCircle, CheckCircle, Loader2, Link as LinkIcon, Share2, Camera } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 

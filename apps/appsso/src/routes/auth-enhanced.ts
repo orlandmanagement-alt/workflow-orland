@@ -383,7 +383,10 @@ auth.get('/me', async (c) => {
   const user = await c.env.DB_SSO.prepare("SELECT id, email, first_name, last_name, user_type as role, is_active FROM users WHERE id = ?").bind(session.user_id).first<any>()
   if (!user || user.is_active === 0) return c.json({ status: 'error', message: 'Account inactive' }, 401)
 
-  return c.json({ status: 'ok', user })
+  // TAMBAHAN: Kita harus memanggil getPortalUrl agar URL Dashboard-nya ikut terkirim
+  const redirectUrl = await getPortalUrl(c.env, user, sid)
+
+  return c.json({ status: 'ok', user, redirect_url: redirectUrl })
 })
 
 auth.post('/logout', async (c) => {

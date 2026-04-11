@@ -109,16 +109,23 @@ function startOtpTimer() {
 function doRedirectCountdown(role, title = "Anda Sudah Login!", targetUrl) {
     document.getElementById('success-title').innerText = title;
     const roleEl = document.getElementById('logged-in-role');
-    if (roleEl) roleEl.innerText = role;
+    if (roleEl) roleEl.innerText = role || 'User';
     
     window.showView('view-success-redirect');
-    let count = 2;
+    
+    let count = 5; // Hitung mundur 5 detik
     const timerEl = document.getElementById('redirect-timer');
-    setInterval(() => { 
+    if (timerEl) timerEl.innerText = count;
+    
+    const intervalId = setInterval(() => { 
         count--; 
         if(timerEl) timerEl.innerText = count; 
+        
         if(count <= 0) {
-            window.location.href = targetUrl; 
+            clearInterval(intervalId);
+            // FALLBACK AMAN: Jika targetUrl kosong/undefined, otomatis arahkan ke Homepage
+            const finalUrl = targetUrl ? targetUrl : 'https://www.orlandmanagement.com';
+            window.location.href = finalUrl; 
         } 
     }, 1000);
 }

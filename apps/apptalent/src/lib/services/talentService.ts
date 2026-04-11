@@ -1,26 +1,58 @@
 import { api } from '../api';
 
+/**
+ * TALENT SERVICE - ENTERPRISE EDITION
+ * Menghubungkan UI Talent Dashboard ke Business API (appapi)
+ */
 export const talentService = {
-  // ───── Profile ─────
+  
+  // ───── PROFILE MANAGEMENT ─────
+  
+  /**
+   * Mengambil data profil talent yang sedang login
+   */
   getProfile: async () => {
-    const response = await api.get('/talents/me');
-    return response.data.data;
+    try {
+      const response = await api.get('/talents/me');
+      // Jalur: axios.data -> hono.data
+      return response.data?.data || null;
+    } catch (error) {
+      console.error('talentService.getProfile Error:', error);
+      throw error;
+    }
   },
 
-  updateProfile: async (data: any) => {
-    const response = await api.put('/talents/me', data);
-    return response.data.data;
+  /**
+   * Memperbarui data profil talent
+   */
+  updateProfile: async (payload: any) => {
+    try {
+      const response = await api.put('/talents/me', payload);
+      return response.data?.data;
+    } catch (error) {
+      console.error('talentService.updateProfile Error:', error);
+      throw error;
+    }
   },
 
-  // ───── Experience ─────
+  // ───── EXPERIENCE & PORTOFOLIO ─────
+
+  /**
+   * Mengambil daftar pengalaman kerja/project
+   */
   getExperiences: async () => {
-    const response = await api.get('/talents/me/experiences');
-    return response.data.data ?? [];
+    try {
+      const response = await api.get('/talents/me/experiences');
+      return response.data?.data ?? [];
+    } catch (error) {
+      console.error('talentService.getExperiences Error:', error);
+      return [];
+    }
   },
 
   addExperience: async (data: any) => {
     const response = await api.post('/talents/me/experiences', data);
-    return response.data.data;
+    return response.data?.data;
   },
 
   deleteExperience: async (id: string) => {
@@ -28,15 +60,21 @@ export const talentService = {
     return response.data;
   },
 
-  // ───── Certifications ─────
+  // ───── CERTIFICATIONS ─────
+
   getCertifications: async () => {
-    const response = await api.get('/talents/me/certifications');
-    return response.data.data ?? [];
+    try {
+      const response = await api.get('/talents/me/certifications');
+      return response.data?.data ?? [];
+    } catch (error) {
+      console.error('talentService.getCertifications Error:', error);
+      return [];
+    }
   },
 
   addCertification: async (data: any) => {
     const response = await api.post('/talents/me/certifications', data);
-    return response.data.data;
+    return response.data?.data;
   },
 
   deleteCertification: async (id: string) => {
@@ -44,31 +82,53 @@ export const talentService = {
     return response.data;
   },
 
-  // ───── Rate Cards ─────
+  // ───── PRICING & RATE CARDS ─────
+
   getRateCards: async () => {
-    const response = await api.get('/talents/me/rate-cards');
-    return response.data.data ?? [];
+    try {
+      const response = await api.get('/talents/me/rate-cards');
+      return response.data?.data ?? [];
+    } catch (error) {
+      console.error('talentService.getRateCards Error:', error);
+      return [];
+    }
   },
 
   upsertRateCard: async (data: any) => {
     const response = await api.put('/talents/me/rate-cards', data);
-    return response.data.data;
+    return response.data?.data;
   },
 
-  // ───── Bank Account ─────
+  // ───── FINANCIAL & BANKING ─────
+
   getBankAccount: async () => {
-    const response = await api.get('/talents/me/bank-account');
-    return response.data.data;
+    try {
+      const response = await api.get('/talents/me/bank-account');
+      return response.data?.data;
+    } catch (error) {
+      console.error('talentService.getBankAccount Error:', error);
+      return null;
+    }
   },
 
   upsertBankAccount: async (data: any) => {
     const response = await api.put('/talents/me/bank-account', data);
-    return response.data.data;
+    return response.data?.data;
   },
 
-  // ───── Dashboard Stats ─────
+  // ───── ANALYTICS & STATS ─────
+
+  /**
+   * Mengambil statistik untuk ditampilkan di Dashboard Utama
+   */
   getDashboardStats: async () => {
-    const response = await api.get('/stats/talent-dashboard');
-    return response.data.data;
+    try {
+      // Endpoint /stats sudah terdaftar di appapi/src/index.ts
+      const response = await api.get('/stats/talent-dashboard');
+      return response.data?.data;
+    } catch (error) {
+      console.error('talentService.getDashboardStats Error:', error);
+      return null;
+    }
   },
 };

@@ -42,7 +42,12 @@ export default function AuthCallback() {
       const name = params.get('name');
       const email = params.get('email');
 
-      login(token, { id: userId, name, email, role: 'talent' });
+      login(token, { 
+  id: userId, 
+  full_name: name, // Sinkronkan dengan dashboard/index.tsx
+  email, 
+  role: 'talent' 
+});
       
       // Bersihkan URL dari token agar rapi dan aman
       window.history.replaceState({}, document.title, '/auth/callback');

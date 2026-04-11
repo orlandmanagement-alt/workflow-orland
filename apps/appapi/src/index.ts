@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { getCookie } from 'hono/cookie'
 import { verify } from 'hono/jwt'
 
+
 // Cloudflare Workers type imports
 import type { D1Database, KVNamespace, R2Bucket, Fetcher } from '@cloudflare/workers-types'
 
@@ -91,65 +92,46 @@ app.use('*', cors({
 /**
  * 2. GLOBAL GATEKEEPER MIDDLEWARE (Sync dengan DB_SSO Schema)
  */
+// UPDATE MIDDLEWARE GATEKEEPER (SYNC DENGAN SKEMA 027)
 app.use('/api/v1/*', async (c, next) => {
-  // Lewati pengecekan untuk preflight dan endpoint publik
   if (c.req.method === 'OPTIONS') return await next()
   if (c.req.path.startsWith('/api/v1/public/')) return await next()
   
   let sid = null;
 
-  // JALUR A: Bearer Token (JWT dari Authorization Header)
+  // JALUR 1: Ekstrak SID dari JWT (Authorization Header)
   const authHeader = c.req.header('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      // Decode JWT untuk mendapatkan Session ID (sid)
+      // Decode JWT menggunakan Secret yang sama dengan SSO
       const payload = await verify(token, c.env.JWT_SECRET);
-      sid = payload.sid;
-    } catch (e) {
-      console.warn("JWT Verification Failed atau Token Expired");
-    }
+      sid = payload.sid; // Ini adalah session_id asli (UUID)
+    } catch (e) { console.error("JWT Expired/Invalid"); }
   }
 
-  // JALUR B: Cookie 'sid' (Gagal jalur A atau request langsung dari browser)
-  if (!sid) {
-    sid = getCookie(c, 'sid');
-  }
+  // JALUR 2: Cek Cookie 'sid' jika jalur 1 gagal
+  if (!sid) sid = getCookie(c, 'sid');
 
-  // Jika tidak ada Session ID sama sekali
-  if (!sid) {
-    return c.json({ status: "error", message: "Unauthorized: Sesi tidak ditemukan" }, 401);
-  }
+  if (!sid) return c.json({ status: "error", message: "Unauthorized" }, 401);
 
-  try {
-    // 3. VALIDASI SESI KE DATABASE SSO (Sesuai skema session_id)
-    const session = await c.env.DB_SSO.prepare(
-      "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
-    ).bind(sid).first<any>();
+  // QUERY: Gunakan session_id (Sync dengan SQL 027)
+  const session = await c.env.DB_SSO.prepare(
+    "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
+  ).bind(sid).first<any>();
 
-    if (!session) {
-      return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid atau telah berakhir" }, 401);
-    }
+  if (!session) return c.json({ status: "error", message: "Session Invalid" }, 401);
 
-    // 4. VALIDASI USER (Sesuai skema user_type & is_active)
-    const user = await c.env.DB_SSO.prepare(
-      "SELECT id, user_type, is_active FROM users WHERE id = ?"
-    ).bind(session.user_id).first<any>();
-    
-    if (!user || user.is_active === 0) {
-      return c.json({ status: "error", message: "Unauthorized: Akun ditangguhkan" }, 401);
-    }
+  // VALIDASI USER (Sync dengan SQL 027: id, user_type, is_active)
+  const user = await c.env.DB_SSO.prepare(
+    "SELECT id, user_type, is_active FROM users WHERE id = ?"
+  ).bind(session.user_id).first<any>();
+  
+  if (!user || user.is_active === 0) return c.json({ status: "error", message: "User Nonaktif" }, 401);
 
-    // Simpan ke context agar bisa digunakan oleh requireRole/Handler
-    c.set('userId', user.id);
-    c.set('userRole', user.user_type);
-    c.set('userTier', 'free'); // Default tier, bisa diupgrade dengan kolom tambahan di DB
-    
-    await next();
-  } catch (err) {
-    console.error("Auth Middleware Error:", err);
-    return c.json({ status: "error", message: "Internal Server Error saat validasi sesi" }, 500);
-  }
+  c.set('userId', user.id);
+  c.set('userRole', user.user_type);
+  await next();
 });
 
 /**

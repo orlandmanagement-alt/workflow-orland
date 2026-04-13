@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Sparkles, Check, X, Ticket, Loader2, MapPin, Calendar, DollarSign, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 
 // Tipe data berdasarkan Skema Database Baru
 interface JobInvite {
@@ -28,11 +29,8 @@ export default function JobInvites() {
   const { data: invitesResponse, isLoading, refetch } = useQuery({
     queryKey: ['job-invites'],
     queryFn: async () => {
-      const response = await fetch('/api/jobs/invites', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
-      });
-      if (!response.ok) throw new Error('Gagal mengambil data undangan');
-      return response.json();
+      const response = await api.get('/api/v1/recommendations/me');
+      return response.data;
     },
   });
 
@@ -42,20 +40,8 @@ export default function JobInvites() {
   // Mutasi untuk Merespons Undangan (Terima / Tolak)
   const respondMutation = useMutation({
     mutationFn: async ({ inviteId, status }: { inviteId: string; status: 'accepted' | 'rejected' }) => {
-      const response = await fetch(`/api/jobs/invites/${inviteId}/respond`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Gagal merespons undangan');
-      }
-      return response.json();
+      const response = await api.post(`/api/v1/recommendations/${inviteId}/respond`, { status });
+      return response.data;
     },
     onSuccess: (_, variables) => {
       if (variables.status === 'accepted') {

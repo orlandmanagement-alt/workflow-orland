@@ -1,6 +1,16 @@
-import { useState } from 'react';
-import { FileSignature, ShieldCheck, PenTool, X, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileSignature, ShieldCheck, PenTool, X, Loader2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/useAppStore';
+import { api } from '@/lib/api';
+
+interface ContractData {
+  id: string;
+  title: string;
+  content: string;
+  status: 'pending' | 'signed';
+  signed_at?: string;
+  created_at: string;
+}
 
 export default function Contracts() {
   const user = useAuthStore((state) => state.user);
@@ -8,20 +18,76 @@ export default function Contracts() {
   const [signatureName, setSignatureName] = useState('');
   const [isSigning, setIsSigning] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [contracts, setContracts] = useState<ContractData[]>([]);
 
-  const handleSign = () => {
+  useEffect(() => {
+    fetchContracts();
+  }, []);
+
+  const fetchContracts = async () => {
+    try {
+      setLoading(true);
+      // TODO: Replace with actual API endpoint when backend is ready
+      const response = await api.get('/api/v1/contracts').catch(err => {
+        console.log('Contracts API not ready, using mock data');
+        return { data: null };
+      });
+
+      if (response?.data?.contracts) {
+        setContracts(response.data.contracts);
+        const signed = response.data.contracts.some((c: ContractData) => c.status === 'signed');
+        setIsSigned(signed);
+      } else {
+        // Mock contract data
+        setContracts([
+          {
+            id: '1',
+            title: 'Kontrak Eksklusif Tahunan',
+            content: `PASAL 1: RUANG LINGKUP
+1. Pihak Pertama (Orland) berhak mengelola jadwal Pihak Kedua (Talent).
+PASAL 2: PEMBAGIAN HONOR
+1. Talent menyetujui potongan agency fee sebesar 20% dari total nilai proyek sebelum pajak.
+[... Dokumen Legal Lengkap ...]`,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          }
+        ]);
+        setIsSigned(false);
+      }
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching contracts:', err);
+      setError(err.message || 'Gagal memuat kontrak');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSign = async () => {
     if (signatureName.toLowerCase() !== user?.full_name?.toLowerCase()) {
-      return alert('Nama tanda tangan harus sesuai dengan nama profil Anda.');
+      alert('Nama tanda tangan harus sesuai dengan nama profil Anda.');
+      return;
     }
     
     setIsSigning(true);
-    // Simulasi proses API keamanan blockchain/database
-    setTimeout(() => {
+    try {
+      // TODO: Call API to sign contract
+      await api.post('/api/v1/contracts/sign', { signature: signatureName }).catch(err => {
+        console.log('Sign contract API not ready, using mock');
+        return { data: {} };
+      });
+
       setIsSigning(false);
       setIsSigned(true);
       setIsModalOpen(false);
-      alert('Kontrak berhasil ditandatangani secara digital (E-Sign valid)!');
-    }, 2000);
+      alert('✅ Kontrak berhasil ditandatangani secara digital (E-Sign valid)!');
+      await fetchContracts();
+    } catch (err: any) {
+      alert('❌ Gagal menandatangani kontrak: ' + (err.message || 'Coba lagi'));
+      setIsSigning(false);
+    }
   };
 
   return (

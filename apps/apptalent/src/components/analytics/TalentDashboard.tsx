@@ -8,7 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, Star, Clock, CheckCircle, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/api';
+import { api } from '@/lib/api';
 // @ts-ignore
 import { MetricCard } from '../common/AnalyticsCommon';
 
@@ -19,7 +19,7 @@ export default function TalentDashboard() {
   const { data: analyticsData, isLoading, error, refetch } = useQuery({
     queryKey: ['talents-analytics'],
     queryFn: async () => {
-      const response = await apiRequest('/talents/me/analytics');
+      const response = await api('/talents/me/analytics');
       return response?.data || response;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

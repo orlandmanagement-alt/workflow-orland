@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Video, Calendar, Target, Briefcase, Loader2, CheckCircle2 } from 'lucide-react';
-import { useAuthStore, CompanyCategory } from '@/store/useAppStore';
+import { useAuthStore, useAppStore, CompanyCategory } from '@/store/useAppStore';
 
 const CATEGORIES = [
   { 
@@ -38,8 +38,9 @@ const CATEGORIES = [
 ];
 
 export const CategoryModal = () => {
-  const { companyCategory, setCategory, isAuthenticated } = useAuthStore();
-  const [selectedHover, setSelectedHover] = useState<CompanyCategory>(null);
+  const { isAuthenticated } = useAuthStore();
+  const { companyCategory, setCategory } = useAppStore();
+  const [selectedHover, setSelectedHover] = useState<CompanyCategory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Aturan Gatekeeper Ekstrem: Hanya tampil bagi Klien yang login namun Kategori-nya kosong (null/undefined)
@@ -47,7 +48,7 @@ export const CategoryModal = () => {
 
   const handleSelect = async (id: CompanyCategory) => {
     setIsLoading(true);
-    // TODO: Connect ke API aktual -> await apiRequest.put('/client/company-profile', { category: id })
+    // TODO: Connect ke API aktual -> await api.put('/client/company-profile', { category: id })
     // Simulasi delay Database D1 update
     setTimeout(() => {
       setCategory(id);

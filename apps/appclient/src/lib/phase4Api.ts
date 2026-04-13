@@ -17,7 +17,7 @@ import type {
   ApiErrorResponse,
 } from '@/types/phase4'
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.orlandmanagement.com/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.orlandmanagement.com/api/v1'
 
 class Phase4ApiClient {
   private client: AxiosInstance
@@ -117,6 +117,22 @@ class Phase4ApiClient {
    */
   async getInvoices(): Promise<ApiResponse<any>> {
     const response = await this.client.get('/invoices')
+    return response.data
+  }
+
+  /**
+   * Upload invoice proof (payment confirmation)
+   */
+  async uploadInvoiceProof(invoiceId: string, file: File): Promise<ApiResponse<any>> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('invoice_id', invoiceId)
+
+    const response = await this.client.post(`/invoices/${invoiceId}/proof`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
     return response.data
   }
 

@@ -41,6 +41,7 @@ import commsRouter from './functions/comms/commsHandler'
 import systemToolsRouter from './functions/system/systemToolsHandler'
 import miscToolsRouter from './functions/tools/miscToolsHandler'
 import publicTalentRouter from './functions/public/publicTalentHandler'
+import agencyRouter from './functions/agency/agencyHandler'
 import adminCrudRouter from './functions/admin/adminCrudHandler'
 import adminChatRouter from './functions/admin/adminChatHandler'
 import fintechRouter from './functions/fintech/fintechHandler'
@@ -48,6 +49,8 @@ import aiMatchRouter from './functions/ai/aiMatchHandler'
 import analyticsRouter from './functions/analytics/analyticsHandler'
 import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
+import recommendationsRouter from './functions/casting/recommendationsHandler'
+import leaderboardRouter from './functions/stats/leaderboardHandler'
 
 /**
  * TYPE DEFINITIONS
@@ -56,12 +59,16 @@ export type Bindings = {
   DB_CORE: D1Database; 
   DB_LOGS: D1Database; 
   DB_SSO: D1Database; 
+  DB_ARCHIVES: D1Database;
   ORLAND_CACHE: KVNamespace; 
   R2_MEDIA: R2Bucket; 
   JWT_SECRET: string; 
   TALENT_URL: string; 
   CLIENT_URL: string; 
   ADMIN_URL: string;
+  AGENCY_URL: string;
+  EMAIL_SERVICE_URL?: string;
+  EMAIL_SERVICE_API_KEY?: string;
 }
 
 export type Variables = { 
@@ -82,6 +89,7 @@ app.use('*', cors({
       'https://www.orlandmanagement.com',
       'https://sso.orlandmanagement.com',
       'https://admin.orlandmanagement.com',
+      'https://agency.orlandmanagement.com',
       'https://talent.orlandmanagement.com',
       'https://client.orlandmanagement.com',
       'http://localhost:8787',
@@ -111,7 +119,7 @@ app.use('/api/v1/*', async (c, next) => {
     const token = authHeader.substring(7);
     try {
       // Decode JWT menggunakan Secret terpusat
-      const payload = await verify(token, c.env.JWT_SECRET);
+      const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
       sid = payload.sid; // Mendapatkan session_id (UUID) asli
     } catch (e) { 
       console.warn("JWT Verification Failed atau Kadaluarsa"); 
@@ -161,6 +169,24 @@ app.get('/api/v1/auth/verify-session', (c) => c.json({
   userId: c.get('userId'), 
   userRole: c.get('userRole') 
 }))
+app.get('/api/v1/auth/me', async (c) => {
+  const userId = c.get('userId')
+  if (!userId) return c.json({ status: 'error', message: 'Unauthorized' }, 401)
+
+  const user = await c.env.DB_SSO.prepare(
+    `SELECT id, email, phone, first_name, last_name, user_type, is_active,
+            email_verified, email_verified_at, phone_verified, phone_verified_at,
+            pin_required, profile_completed, last_login, last_login_ip,
+            two_factor_enabled, two_factor_method
+     FROM users WHERE id = ?`
+  ).bind(userId).first<any>()
+
+  if (!user || user.is_active === 0) {
+    return c.json({ status: 'error', message: 'Unauthorized' }, 401)
+  }
+
+  return c.json({ status: 'ok', user, role: user.user_type })
+})
 
 // MOUNTING SEMUA ROUTER BISNIS
 app.route('/api/v1/talents', talentRouter)
@@ -195,9 +221,10 @@ app.route('/api/v1/tools/comms', commsRouter)
 app.route('/api/v1/system', systemToolsRouter)
 app.route('/api/v1/tools', miscToolsRouter)
 app.route('/api/v1/public/talents', publicTalentRouter)
+app.route('/api/v1/agency', agencyRouter)
 app.route('/api/v1/admin', adminCrudRouter)
 app.route('/api/v1/admin', adminChatRouter)
-app.route('/api/v1/contracts', fintechRouter)
+app.route('/api/v1', fintechRouter)
 app.route('/api/v1/ai', aiMatchRouter)
 app.route('/api/v1/talents', analyticsRouter)
 app.route('/api/v1/rankings', analyticsRouter)
@@ -206,6 +233,10 @@ app.route('/api/v1/agencies', whitelabelRouter)
 app.route('/api/v1/whitelabel', whitelabelRouter)
 app.route('/api/v1/talents', availabilityRouter)
 app.route('/api/v1/public', availabilityRouter)
+app.route('/api/v1/ai', recommendationsRouter)
+app.route('/api/v1/recommendations', recommendationsRouter)
+app.route('/api/v1/leaderboard', leaderboardRouter)
+app.route('/api/v1/public', recommendationsRouter)
 
 /**
  * 4. PUBLIC R2 MEDIA ACCESS
@@ -217,11 +248,11 @@ app.get("/api/v1/public/media/:key", async (c) => {
   if (!object) return c.text("Gambar Tidak Ditemukan", 404);
   
   const headers = new Headers();
-  object.writeHttpMetadata(headers);
+  object.writeHttpMetadata(headers as any);
   headers.set("etag", object.httpEtag);
   headers.set("Cache-Control", "public, max-age=31536000"); // Cache 1 tahun
   
-  return new Response(object.body, { headers });
+  return new Response(object.body as any, { headers: headers as any });
 });
 
 export { ChatRoom } from './functions/messages/ChatRoom';

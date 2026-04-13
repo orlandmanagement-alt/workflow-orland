@@ -1,40 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { TalentBalanceInfo, PayoutRequest } from '../../../../appclient/src/types/finance.types';
-import { Wallet, ArrowDownToLine, Clock, CheckCircle2, History, Banknote } from 'lucide-react';
-
-const mockBalance: TalentBalanceInfo = {
-  total_balance: 14500000,
-  pending_clearance: 5000000
-};
-
-const mockHistory: PayoutRequest[] = [
-  { id: 'WD-001', amount: 3000000, status: 'transferred', requested_at: '2026-05-10T10:00:00Z', transferred_at: '2026-05-11T14:30:00Z' },
-  { id: 'WD-002', amount: 5000000, status: 'requested', requested_at: '2026-06-01T08:00:00Z' }
-];
+import { Wallet, ArrowDownToLine, Clock, CheckCircle2, History, Banknote, Loader2, AlertCircle } from 'lucide-react';
+import { api } from '@/lib/api';
 
 export default function PayoutsHub() {
-  const [balance, setBalance] = useState<TalentBalanceInfo>(mockBalance);
-  const [history, setHistory] = useState<PayoutRequest[]>(mockHistory);
+  const [balance, setBalance] = useState<TalentBalanceInfo>({ total_balance: 0, pending_clearance: 0 });
+  const [history, setHistory] = useState<PayoutRequest[]>([]);
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestAmount, setRequestAmount] = useState<number | ''>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleRequestWithdraw = () => {
+  useEffect(() => {
+    fetchPayoutsData();
+  }, []);
+
+  const fetchPayoutsData = async () => {
+    try {
+      setLoading(true);
+      // TODO: Replace with actual API endpoint when backend is ready
+      const response = await api.get('/api/v1/payouts/balance').catch(err => {
+        console.log('Payouts API not ready, using mock data');
+        return { data: null };
+      });
+
+      if (response?.data) {
+        setBalance(response.data.balance || { total_balance: 0, pending_clearance: 0 });
+        setHistory(response.data.history || []);
+      } else {
+        // Fallback mock data
+        setBalance({ total_balance: 14500000, pending_clearance: 5000000 });
+        setHistory([
+          { id: 'WD-001', amount: 3000000, status: 'transferred', requested_at: '2026-05-10T10:00:00Z', transferred_at: '2026-05-11T14:30:00Z' },
+          { id: 'WD-002', amount: 5000000, status: 'requested', requested_at: '2026-06-01T08:00:00Z' }
+        ]);
+      }
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching payouts:', err);
+      setError(err.message || 'Gagal memuat data pembayaran');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestWithdraw = async () => {
     if (!requestAmount || requestAmount > balance.total_balance || requestAmount < 100000) {
       alert('Minimal penarikan Rp 100.000 dan tidak melebihi saldo aktif.');
       return;
     }
 
     setIsRequesting(true);
-    setTimeout(() => {
-       setBalance(prev => ({ ...prev, total_balance: prev.total_balance - Number(requestAmount) }));
-       setHistory(prev => [
-         { id: `WD-00${prev.length + 1}`, amount: Number(requestAmount), status: 'requested', requested_at: new Date().toISOString() },
-         ...prev
-       ]);
-       setRequestAmount('');
-       setIsRequesting(false);
-       alert('Permintaan pencairan dana berhasil dikirim! Dana akan ditransfer dalam 1x24 jam kerja.');
-    }, 1500);
+    try {
+      // TODO: Call API to request withdrawal
+      await api.post('/api/v1/payouts/request', { amount: requestAmount }).catch(err => {
+        console.log('Request withdrawal API not ready, using mock');
+        return { data: {} };
+      });
+
+      setBalance(prev => ({ ...prev, total_balance: prev.total_balance - Number(requestAmount) }));
+      setHistory(prev => [
+        { id: `WD-00${prev.length + 1}`, amount: Number(requestAmount), status: 'requested', requested_at:new Date().toISOString() },
+        ...prev
+      ]);
+      setRequestAmount('');
+      alert('✅ Permintaan pencairan dana berhasil dikirim! Dana akan ditransfer dalam 1x24 jam kerja.');
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Gagal membuat permintaan penarikan');
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
   return (

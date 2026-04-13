@@ -45,7 +45,7 @@ export default function Step5_Experience({ data, onUpdate, onNext, onBack }: Pro
         const validExps = experiences.filter(e => e.project_name.trim() !== '');
         
         // Simulasi POST berulang kali
-        // validExps.forEach(exp => apiRequest('/talents/me/experiences', { method: 'POST', body: exp }));
+        // validExps.forEach(exp => api('/talents/me/experiences', { method: 'POST', body: exp }));
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         onUpdate({ experiences: validExps });

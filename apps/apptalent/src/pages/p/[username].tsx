@@ -5,7 +5,7 @@ import {
   ChevronLeft, MapPin, CheckCircle2, Play, Fingerprint, Camera, 
   Film, Award, Music, Briefcase, ChevronRight, Share2, Heart, ArrowLeft, Ghost, VideoOff, MicOff, ShieldAlert, X
 } from 'lucide-react';
-import { apiRequest } from '@/lib/api';
+import { api } from '@/lib/api';
 
 export default function PublicProfile() {
   const { username } = useParams();
@@ -22,7 +22,7 @@ export default function PublicProfile() {
      const fetchTalentInfo = async () => {
          setLoading(true);
          try {
-             const res: any = await apiRequest(`/public/talents/${username}`);
+             const res: any = await api(`/public/talents/${username}`);
              if (res.status === 'ok') {
                  setTalent(res.data);
              } else {

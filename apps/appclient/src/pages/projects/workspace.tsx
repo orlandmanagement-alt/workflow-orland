@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/store/useAppStore';
+import { useAuthStore, useAppStore } from '@/store/useAppStore';
 import { ProjectWorkspace } from '@/components/workspace/ProjectWorkspace';
 import { ArrowLeft } from 'lucide-react';
 
@@ -8,7 +8,7 @@ export default function WorkspaceHost() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   // Kategori ditarik dari AuthStore karena ini Single-Tenant per Client Login
-  const companyCategory = useAuthStore(state => state.companyCategory);
+  const companyCategory = useAppStore(state => state.companyCategory);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#071122] p-4 sm:p-8">

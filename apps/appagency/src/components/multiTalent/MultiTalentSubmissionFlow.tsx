@@ -11,13 +11,13 @@
  */
 
 import React, { useMemo, useState, useCallback } from 'react'
-import { formatCurrency } from '@/lib/helpers'
+import { formatCurrency } from '../../lib/helpers'
 import type {
   TalentCandidate,
   FilteredRoster,
   BulkSubmissionPayload,
   BulkSubmissionResponse,
-  FinancialSummary,
+  FinancialSummary as FinancialSummaryType,
   MultiTalentSubmissionState,
 } from '@/types/multiTalentSubmission'
 
@@ -51,7 +51,7 @@ export const MultiTalentSubmissionFlow: React.FC<MultiTalentSubmissionFlowProps>
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/agency/roster?project_id=${projectId}`, {
+      const response = await fetch(`/api/v1/agency/roster?project_id=${projectId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       })
       const { success, data, error: apiError } = await response.json()
@@ -135,7 +135,7 @@ export const MultiTalentSubmissionFlow: React.FC<MultiTalentSubmissionFlowProps>
         submissions,
       }
 
-      const response = await fetch('/api/agency/projects/apply-bulk', {
+      const response = await fetch('/api/v1/agency/projects/apply-bulk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -164,8 +164,8 @@ export const MultiTalentSubmissionFlow: React.FC<MultiTalentSubmissionFlowProps>
   const financialSummary = useMemo(() => {
     if (!rosterData) return null
 
-    const selectedCandidates = rosterData.candidates.filter((c) => selectedTalents.has(c.id))
-    const totalProposed = selectedCandidates.reduce((sum, c) => {
+    const selectedCandidates = rosterData.candidates.filter((c: TalentCandidate) => selectedTalents.has(c.id))
+    const totalProposed = selectedCandidates.reduce((sum: number, c: TalentCandidate) => {
       return sum + (pricingOverrides.get(c.id) || c.pricing.proposedAmount)
     }, 0)
 
@@ -291,8 +291,8 @@ export const TalentSelectionTable: React.FC<TalentSelectionTableProps> = ({
   const selectedCount = selectedTalents.size
   const selectedTotal = useMemo(() => {
     return candidates
-      .filter((c) => selectedTalents.has(c.id))
-      .reduce((sum, c) => sum + (c.pricing.proposedAmount || 0), 0)
+      .filter((c: TalentCandidate) => selectedTalents.has(c.id))
+      .reduce((sum: number, c: TalentCandidate) => sum + (c.pricing.proposedAmount || 0), 0)
   }, [candidates, selectedTalents])
 
   if (loading) {
@@ -466,7 +466,7 @@ export const TalentSelectionTable: React.FC<TalentSelectionTableProps> = ({
 // FINANCIAL SUMMARY COMPONENT
 // ============================================================================
 
-export const FinancialSummary: React.FC<FinancialSummary> = ({
+export const FinancialSummary: React.FC<FinancialSummaryType> = ({
   totalProposedRevenue,
   totalAgencyFee,
   totalTalentPayment,
@@ -569,7 +569,7 @@ export const SubmissionConfirmation: React.FC<SubmissionConfirmationProps> = ({ 
       <div className="rounded-xl bg-black/40 backdrop-blur-xl border border-gold/10 p-6 space-y-4">
         <h3 className="text-lg font-semibold text-white">Next Steps</h3>
         <ul className="space-y-2">
-          {response.nextSteps.map((step, idx) => (
+          {response.nextSteps.map((step: string, idx: number) => (
             <li key={idx} className="flex items-start gap-3 text-gray-300">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center text-gold text-sm font-semibold mt-0.5">
                 {idx + 1}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Loader2, UploadCloud, CheckCircle2 } from 'lucide-react';
-import { apiRequest } from '@/lib/api';
+import { api } from '@/lib/api';
 import { processImage } from '@/utils/imageCompressor';
 
 interface Props {
@@ -24,13 +24,10 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
       const compressedFile = await processImage(file, ratio);
 
       setLoadingText(`Konfigurasi Upload ${type}...`);
-      const presignedRes: any = await apiRequest('/media/upload-url', {
-          method: 'POST',
-          body: JSON.stringify({
-              fileName: compressedFile.name,
-              contentType: compressedFile.type,
-              folder: `talents/onboarding`
-          })
+      const presignedRes: any = await api.post('/media/upload-url', {
+          fileName: compressedFile.name,
+          contentType: compressedFile.type,
+          folder: `talents/onboarding`
       });
 
       if (!presignedRes || !presignedRes.uploadUrl) throw new Error("Gagal mengambil Presigned URL");
@@ -88,10 +85,7 @@ export default function Step2_Media({ data, onUpdate, onNext, onBack }: Props) {
            fullHeight: finalFullHeight 
         };
         
-        await apiRequest('/talents/me', {
-           method: 'PUT',
-           body: JSON.stringify(updateParams)
-        });
+        await api.put('/talents/me', updateParams);
         
         onUpdate(updateParams);
         onNext();

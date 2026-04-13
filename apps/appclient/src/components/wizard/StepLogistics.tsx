@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
 import { useProjectDraftStore } from '@/store/useProjectDraftStore';
-import { useAuthStore } from '@/store/useAppStore';
+import { useAppStore } from '@/store/useAppStore';
 import { ArrowLeft, ArrowRight, Calendar, MapPin, Hash, Target, Sparkles, Image } from 'lucide-react';
 
 export const StepLogistics = () => {
   const { category_specific_data, updateCategoryData, setStep } = useProjectDraftStore();
-  const companyCategory = useAuthStore(state => state.companyCategory);
+  const companyCategory = useAppStore(state => state.companyCategory);
 
   const renderDynamicFields = () => {
     switch (companyCategory) {

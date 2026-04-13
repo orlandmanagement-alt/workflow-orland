@@ -12,7 +12,7 @@ export const SignatureModal = ({ contractId, onClose, onSignSuccess }: Signature
   const [activeTab, setActiveTab] = useState<'draw' | 'type'>('draw');
   const [typedName, setTypedName] = useState('');
   const [isSigning, setIsSigning] = useState(false);
-  const user = useAuthStore(state => state.user);
+  const user = useAuthStore((state: any) => state.user);
   
   // HTML5 Canvas ref untuk menampung coretan (Finger/Mouse)
   const canvasRef = useRef<HTMLCanvasElement>(null);

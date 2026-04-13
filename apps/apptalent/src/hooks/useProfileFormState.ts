@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import { api } from '@/lib/api';
 
 /**
  * Field-level status tracking

@@ -15,15 +15,24 @@ router.get('/', async (c) => {
 
     // 2. Fallback to D1 (if cache misses or was invalidated)
     // Only fetch minimal lightweight columns necessary for the widget cards
-    const { results } = await c.env.DB_CORE.prepare(`
-      SELECT talent_id, full_name, category, gender, height, birth_date, location, headshot, interests, skills 
+    const { results: coreTalents } = await c.env.DB_CORE.prepare(`
+      SELECT talent_id, user_id, category, gender, height, birth_date, location, headshot, interests, skills 
       FROM talents 
       WHERE headshot IS NOT NULL
-      ORDER BY full_name ASC
     `).all<any>();
 
+    // Ambil real-names dari DB_SSO untuk talents yang ada
+    const userIds = (coreTalents || []).map(t => `'${t.user_id}'`).join(',');
+    let ssoUsersMap: Record<string, { full_name: string }> = {};
+    if (userIds.length > 0) {
+      const { results: users } = await c.env.DB_SSO.prepare(`
+        SELECT id, first_name || " " || last_name as full_name FROM users WHERE id IN (${userIds})
+      `).all<any>();
+      ssoUsersMap = (users || []).reduce((acc, user) => ({ ...acc, [user.id]: user }), {});
+    }
+
     // Clean up arrays specifically for the roster
-    const roster = (results || []).map(t => {
+    const roster = (coreTalents || []).map(t => {
       // Calculate age from birth_date
       let age = null;
       if (t.birth_date) {
@@ -33,7 +42,7 @@ router.get('/', async (c) => {
 
       return {
         id: t.talent_id,
-        name: t.full_name,
+        name: ssoUsersMap[t.user_id]?.full_name || 'Unknown',
         category: t.category,
         gender: t.gender,
         height: t.height,
@@ -44,6 +53,9 @@ router.get('/', async (c) => {
         skills: typeof t.skills === 'string' ? JSON.parse(t.skills) : t.skills
       };
     });
+
+    // Sort manual di javascript
+    roster.sort((a, b) => a.name.localeCompare(b.name));
 
     // Save to KV so next requests are instant
     await c.env.ORLAND_CACHE.put(CACHE_KEY, JSON.stringify(roster));

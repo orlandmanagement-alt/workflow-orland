@@ -1,80 +1,41 @@
 // Main App Component - Agency Dashboard
 // File: apps/appagency/src/App.tsx
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProviderExtended, ProtectedRouteExtended } from './middleware/authMiddlewareExtended'
+import DashboardLayout from './components/layout/DashboardLayout'
 
 // Pages
-import DashboardPage from './pages/Dashboard'
-import RosterPage from './pages/Roster'
-import TalentDetailPage from './pages/TalentDetail'
-import InboxPage from './pages/Inbox'
-import InquiryDetailPage from './pages/InquiryDetail'
-import AnalyticsPage from './pages/Analytics'
-import SettingsPage from './pages/Settings'
-import LoginPage from './pages/Login'
-import OnboardingPage from './pages/Onboarding'
+import Dashboard from './pages/Dashboard'
+import Roster from './pages/Roster'
+import TalentDetail from './pages/TalentDetail'
+import Inbox from './pages/Inbox'
+import Finance from './pages/Finance'
+import Settings from './pages/Settings'
+import Importer from './pages/Importer'
+import ProjectApply from './pages/ProjectApply'
+import PublicLinks from './pages/PublicLinks'
 
-// Layout
-import MainLayout from './layouts/MainLayout'
-
-function App() {
-  useEffect(() => {
-    // Check if user is authenticated
-    const cached = localStorage.getItem('cachedUser')
-    if (!cached) {
-      // Will be handled by AuthProvider redirect
-    }
-  }, [])
-
+export default function App() {
   return (
     <Router>
-      <AuthProviderExtended>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-
-          {/* Protected Routes */}
-          <Route
-            path="/*"
-            element={
-              <ProtectedRouteExtended requiredRole="agency">
-                <MainLayout>
-                  <Routes>
-                    <Route path="/" element={<DashboardPage />} />
-                    <Route path="/dashboard" element={<DashboardPage />} />
-
-                    {/* Roster Management */}
-                    <Route path="/roster" element={<RosterPage />} />
-                    <Route path="/talent/new" element={<TalentDetailPage mode="create" />} />
-                    <Route path="/talent/:talentId" element={<TalentDetailPage mode="edit" />} />
-
-                    {/* Communications */}
-                    <Route path="/inbox" element={<InboxPage />} />
-                    <Route path="/inbox/:inquiryId" element={<InquiryDetailPage />} />
-
-                    {/* Insights */}
-                    <Route path="/analytics" element={<AnalyticsPage />} />
-
-                    {/* Account */}
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/settings/account" element={<SettingsPage tab="account" />} />
-                    <Route path="/settings/billing" element={<SettingsPage tab="billing" />} />
-                    <Route path="/settings/kyc" element={<SettingsPage tab="kyc" />} />
-
-                    {/* Fallback */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </MainLayout>
-              </ProtectedRouteExtended>
-            }
-          />
-        </Routes>
-      </AuthProviderExtended>
+      <Routes>
+        {/* Dashboard Portal */}
+        <Route element={<DashboardLayout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/roster" element={<Roster />} />
+          <Route path="/roster/new" element={<TalentDetail />} />
+          <Route path="/roster/:id" element={<TalentDetail />} />
+          <Route path="/inbox" element={<Inbox />} />
+          <Route path="/projects/apply/:projectId" element={<ProjectApply />} />
+          <Route path="/links" element={<PublicLinks />} />
+          <Route path="/finance" element={<Finance />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/tools/importer" element={<Importer />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
     </Router>
   )
 }
-
-export default App

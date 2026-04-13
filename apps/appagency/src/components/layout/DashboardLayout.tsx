@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { useAuthStore } from '@/store/useAppStore';
-import { performCleanLogout } from '@/lib/auth/logout';
+import { useAuthStore } from '../../store/useAppStore';
+import { performCleanLogout } from '../../lib/auth/logout';
+import Sidebar from './Sidebar';
+import Header from './Header';
 
 export default function DashboardLayout() {
   const { login, isAuthenticated } = useAuthStore();
@@ -35,5 +37,15 @@ export default function DashboardLayout() {
     </div>
   );
   
-  return <Outlet />;
+  return (
+    <div className="min-h-screen bg-[#071122]">
+      <Sidebar />
+      <Header />
+      <main className="ml-64 pt-16">
+        <div className="p-6">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
 }

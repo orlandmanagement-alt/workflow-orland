@@ -1,274 +1,277 @@
-import React, { useState, useEffect } from 'react';
-import { Gavel, AlertOctagon, CheckCircle2, ChevronRight, MessageSquare, ShieldAlert, FileText, Loader2, RefreshCw, Activity, Ban } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Gavel, Loader2, RefreshCw, ShieldCheck, ShieldX, Wrench } from 'lucide-react';
 import { api } from '@/lib/api';
 
-interface ProjectOverwatch {
+type VerificationType = 'kyc_talent' | 'project_approval' | 'agency_verification' | 'invite_monitoring';
+
+interface QueueItem {
   id: string;
-  title: string;
-  client_id?: string;
-  clientName: string;
-  talentName: string;
-  total_budget: number;
-  status: 'draft' | 'active' | 'completed' | 'disputed' | 'cancelled';
-  disputeReason?: string;
+  type: VerificationType;
+  subject: string;
+  requester: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
+interface ToolControlItem {
+  key: 'PH' | 'EO' | 'KOL';
+  enabled: boolean;
+  pendingInvites: number;
+  pendingJobs: number;
 }
 
 export default function ProjectOverwatch() {
-  const [projects, setProjects] = useState<ProjectOverwatch[]>([]);
+  const [tab, setTab] = useState<'verification' | 'global'>('verification');
   const [loading, setLoading] = useState(true);
-  const [filterMode, setFilterMode] = useState<'all' | 'disputed'>('all');
-  const [activeDispute, setActiveDispute] = useState<ProjectOverwatch | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [tools, setTools] = useState<ToolControlItem[]>([]);
+  const [acting, setActing] = useState<string | null>(null);
 
-  const fetchProjects = async () => {
-      setLoading(true);
-      try {
-          const res = await api.get('/admin/projects', { withCredentials: true });
-          if (res.data?.status === 'ok') {
-              // Map standard logic if DB columns differ
-              const mapped = res.data.data.map((p: any) => ({
-                  id: p.id,
-                  title: p.title || 'Untitled Project',
-                  clientName: p.client_name || `Client ID ${p.client_id || 'Unknown'}`,
-                  talentName: p.talent_name || 'Multi/System Talent',
-                  total_budget: p.total_budget || p.grossFee || 0,
-                  status: p.status || 'active',
-                  disputeReason: p.internal_notes || (p.status === 'disputed' ? 'Fraud Report / Talent No-Show' : undefined)
-              }));
-              setProjects(mapped);
-          }
-      } catch (err: any) {
-          console.error("Failed fetching projects:", err.message);
-      } finally {
-          setLoading(false);
-      }
-  };
-
-  useEffect(() => {
-      fetchProjects();
-  }, []);
-
-  const filteredProjects = filterMode === 'all' ? projects : projects.filter(p => p.status === 'disputed');
-
-  const handleForceResolve = async (id: string, resolution: 'client_wins' | 'talent_wins') => {
-    if (!confirm(`ADMIN OVERRIDE: Apakah Anda yakin memaksakan putusan (${resolution}) secara instan?`)) return;
-    
-    setActionLoading(true);
+  const fetchControlData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-        const res = await api.patch(`/admin/projects/${id}/resolve`, { resolution }, { withCredentials: true });
-        if (res.data?.status === 'ok') {
-             setProjects(prev => prev.map(p => 
-                p.id === id ? { ...p, status: resolution === 'client_wins' ? 'cancelled' : 'completed', disputeReason: undefined } : p
-             ));
-             setActiveDispute(null);
-        }
-    } catch (err: any) {
-        alert('Gagal mengeksekusi putusan: ' + err.message);
+      const [queueRes, toolsRes] = await Promise.all([
+        api.get('/admin/verification/queue'),
+        api.get('/admin/global-control/tools'),
+      ]);
+
+      const queuePayload = queueRes.data?.data || queueRes.data || [];
+      const toolsPayload = toolsRes.data?.data || toolsRes.data || [];
+
+      setQueue(
+        (Array.isArray(queuePayload) ? queuePayload : []).map((item: Record<string, unknown>, idx: number) => ({
+          id: String(item.id || `q_${idx + 1}`),
+          type: (item.type as VerificationType) || 'project_approval',
+          subject: String(item.subject || item.project_name || item.entity_name || 'Untitled Request'),
+          requester: String(item.requester || item.owner || item.client_name || '-'),
+          status: (item.status as 'pending' | 'approved' | 'rejected') || 'pending',
+          created_at: String(item.created_at || new Date().toISOString()),
+        }))
+      );
+
+      setTools(
+        (Array.isArray(toolsPayload) ? toolsPayload : []).map((item: Record<string, unknown>) => ({
+          key: (item.key as ToolControlItem['key']) || 'PH',
+          enabled: Boolean(item.enabled ?? true),
+          pendingInvites: Number(item.pendingInvites || item.pending_invites || 0),
+          pendingJobs: Number(item.pendingJobs || item.pending_jobs || 0),
+        }))
+      );
+    } catch {
+      setQueue([]);
+      setTools([]);
+      setError('Gagal memuat Verification Center / Global Control dari API admin.');
     } finally {
-        setActionLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleCancelProject = async (id: string) => {
-      if (!confirm('Hapus keras/Banned proyek ini dari sistem Orland?')) return;
-      setActionLoading(true);
-      try {
-          const res = await api.delete(`/admin/projects/${id}`, { withCredentials: true });
-          if (res.data?.status === 'ok') {
-               setProjects(prev => prev.map(p => p.id === id ? { ...p, status: 'cancelled' } : p));
-               setActiveDispute(null);
-          }
-      } catch (err: any) {
-          alert('Gagal menghapus proyek: ' + err.message);
-      } finally {
-          setActionLoading(false);
-      }
+  useEffect(() => {
+    fetchControlData();
+  }, []);
+
+  const pendingCount = useMemo(() => queue.filter((q) => q.status === 'pending').length, [queue]);
+
+  const processQueue = async (id: string, decision: 'approved' | 'rejected') => {
+    setActing(id + decision);
+    try {
+      await api.patch(`/admin/verification/${id}`, { decision });
+      setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, status: decision } : item)));
+    } catch {
+      setError('Aksi verifikasi gagal diproses.');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const toggleTool = async (key: ToolControlItem['key'], enabled: boolean) => {
+    setActing(key);
+    try {
+      await api.patch(`/admin/global-control/tools/${key}`, { enabled: !enabled });
+      setTools((prev) => prev.map((item) => (item.key === key ? { ...item, enabled: !enabled } : item)));
+    } catch {
+      setError('Gagal mengubah status tool.');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const typeLabel: Record<VerificationType, string> = {
+    kyc_talent: 'KYC Talent',
+    project_approval: 'Approval Proyek',
+    agency_verification: 'Verifikasi Agensi',
+    invite_monitoring: 'Monitoring Invite',
   };
 
   return (
-    <div className="space-y-6 flex flex-col md:flex-row gap-6">
-      
-      {/* Kolom Kiri: Daftar Project */}
-      <div className="w-full md:w-1/2 lg:w-3/5 space-y-6 h-[calc(100vh-140px)] flex flex-col">
-         <div className="flex justify-between items-start">
-             <div>
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3 tracking-tight">
-                   <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-                      <Gavel size={20} />
-                   </div>
-                   Overwatch & Disputes
-                </h1>
-                <p className="text-sm text-slate-500 mt-2 dark:text-slate-400">Pusat pemantauan status seluruh proyek Klien dan intervensi konflik.</p>
-             </div>
-             
-             <button onClick={fetchProjects} disabled={loading} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm text-slate-700 dark:text-slate-200">
-                {loading ? <Loader2 size={16} className="animate-spin text-indigo-500"/> : <RefreshCw size={16} className="text-slate-400" />}
-                Sync 
-             </button>
-         </div>
-
-         <div className="flex gap-2 bg-white dark:bg-slate-900 p-1 w-max rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-             <button 
-               onClick={() => setFilterMode('all')}
-               className={`px-5 py-2 flex items-center gap-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${filterMode === 'all' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-50'}`}
-             >
-                <FileText size={16} /> All Active
-             </button>
-             <button 
-               onClick={() => setFilterMode('disputed')}
-               className={`px-5 py-2 flex items-center gap-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-sm ${filterMode === 'disputed' ? 'bg-rose-500 text-white shadow-rose-500/30' : 'text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-rose-50'}`}
-             >
-                <AlertOctagon size={16} /> Priority (Disputed)
-                {projects.filter(p => p.status === 'disputed').length > 0 && <span className="bg-rose-200 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200 px-2.5 py-0.5 rounded-md text-[10px] ml-1">{projects.filter(p => p.status === 'disputed').length}</span>}
-             </button>
-         </div>
-
-         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-[0_10px_30px_rgba(17,24,39,0.03)] flex-1 flex flex-col">
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 relative">
-               
-               {loading && projects.length === 0 && (
-                   <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                      <Loader2 size={32} className="animate-spin text-indigo-500 mb-4" />
-                      <p className="text-xs font-bold uppercase tracking-widest">Scanning Network...</p>
-                   </div>
-               )}
-
-               {!loading && filteredProjects.map(p => (
-                 <button 
-                   key={p.id}
-                   onClick={() => setActiveDispute(p)}
-                   className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex justify-between items-center group
-                     ${p.status === 'disputed' ? 'bg-rose-50/50 hover:bg-rose-50 border-rose-200 dark:bg-rose-900/10 dark:hover:bg-rose-900/30 dark:border-rose-900/50' : 'bg-white hover:bg-slate-50 border-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800/50 dark:border-slate-800'}
-                     ${activeDispute?.id === p.id ? (p.status === 'disputed' ? 'ring-2 ring-rose-500 shadow-lg' : 'ring-2 ring-indigo-500 shadow-lg') : 'hover:shadow-md'}
-                   `}
-                 >
-                    <div className="flex-1 min-w-0 pr-4">
-                       <div className="flex items-center gap-2 mb-2">
-                          <StatusBadge status={p.status} />
-                          <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 uppercase">{p.id}</span>
-                       </div>
-                       <h3 className="font-black text-slate-900 dark:text-white text-lg leading-tight mb-2 truncate group-hover:text-indigo-600 transition-colors">{p.title}</h3>
-                       <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5 font-medium">
-                          <span className="bg-slate-100 px-2 py-1 rounded-md border border-slate-200 dark:bg-slate-800 dark:border-slate-700">{p.clientName}</span> 
-                          <ChevronRight size={10} className="text-slate-300"/> 
-                          <span className="bg-slate-100 px-2 py-1 rounded-md border border-slate-200 dark:bg-slate-800 dark:border-slate-700">{p.talentName}</span>
-                       </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                       <p className="text-sm font-black text-slate-900 dark:text-white mb-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
-                          Rp {p.total_budget.toLocaleString('id-ID')}
-                       </p>
-                       {p.status === 'disputed' ? (
-                          <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center justify-end gap-1">
-                             <ShieldAlert size={12} /> Resolve <ChevronRight size={12} />
-                          </span>
-                       ) : <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             Manage <ChevronRight size={12} />
-                          </span>}
-                    </div>
-                 </button>
-               ))}
-
-               {!loading && filteredProjects.length === 0 && (
-                   <div className="flex flex-col bg-slate-50 dark:bg-slate-800/50 items-center justify-center h-full text-slate-400 text-sm font-bold absolute inset-0 rounded-2xl m-4 border-2 border-dashed border-slate-200 dark:border-slate-700">
-                     <AlertOctagon size={48} className="text-slate-300 mb-3 opacity-50" />
-                     Bagus! Tidak ada aktivitas yang memerlukan intervensi.
-                   </div>
-               )}
-            </div>
-         </div>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-700 bg-slate-900/40 p-6 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-black uppercase tracking-tight text-white">Verification Center & Global Control</h1>
+            <p className="mt-1 text-sm text-slate-300">
+              Pusat verifikasi KYC/proyek/agensi dan kontrol tools PH/EO/KOL beserta invite monitor.
+            </p>
+          </div>
+          <button
+            onClick={fetchControlData}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-[#071122] px-3 py-2 text-xs font-semibold text-slate-200"
+          >
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
       </div>
 
-      {/* Kolom Kanan: RESOLUTION PANEL */}
-      {activeDispute && (
-         <div className={`w-full md:w-1/2 lg:w-2/5 p-6 rounded-3xl animate-in fade-in slide-in-from-right relative overflow-hidden flex flex-col shadow-2xl border
-            ${activeDispute.status === 'disputed' ? 'bg-[#0b1220] shadow-rose-900/20 border-rose-500/50' : 'bg-white dark:bg-slate-900 shadow-indigo-900/5 border-slate-200 dark:border-slate-800'}
-         `}>
-            {activeDispute.status === 'disputed' && <div className="absolute top-0 right-0 w-80 h-80 bg-rose-600 rounded-full blur-[100px] opacity-15 pointer-events-none"></div>}
-            
-            <div className="relative z-10 flex flex-col h-[calc(100vh-160px)]">
-               
-               <div className={`flex items-center justify-between border-b pb-4 mb-6 ${activeDispute.status === 'disputed' ? 'border-rose-900/50' : 'border-slate-100 dark:border-slate-800'}`}>
-                  <h3 className={`text-lg font-black flex items-center gap-2 ${activeDispute.status === 'disputed' ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-                     {activeDispute.status === 'disputed' ? <Gavel className="text-rose-500" /> : <FileText className="text-indigo-500" />} 
-                     {activeDispute.status === 'disputed' ? 'Resolution Action Panel' : 'Project Management'}
-                  </h3>
-                  <button onClick={() => setActiveDispute(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold transition-colors">Close</button>
-               </div>
+      <div className="flex gap-2 rounded-2xl border border-slate-700 bg-slate-900/40 p-2 backdrop-blur-xl">
+        <button
+          onClick={() => setTab('verification')}
+          className={`rounded-lg px-4 py-2 text-xs font-black uppercase tracking-wide ${
+            tab === 'verification'
+              ? 'border border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+              : 'border border-transparent text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          Verification Queue
+        </button>
+        <button
+          onClick={() => setTab('global')}
+          className={`rounded-lg px-4 py-2 text-xs font-black uppercase tracking-wide ${
+            tab === 'global'
+              ? 'border border-rose-500/40 bg-rose-500/20 text-rose-300'
+              : 'border border-transparent text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          Global Control
+        </button>
+      </div>
 
-               <div className="space-y-5 mb-6 overflow-y-auto flex-1 pr-2 no-scrollbar">
-                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
-                   <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">Target Project</p>
-                   <p className={`text-base font-black ${activeDispute.status === 'disputed' ? 'text-white' : 'text-slate-900 dark:text-white'} leading-tight`}>{activeDispute.title}</p>
-                   <p className="font-mono text-slate-500 text-xs mt-1">ID: {activeDispute.id}</p>
-                 </div>
-                 
-                 {activeDispute.status === 'disputed' ? (
-                     <div className="p-5 bg-rose-950/40 border border-rose-900/50 rounded-2xl relative shadow-inner">
-                       <AlertOctagon className="absolute top-4 right-4 text-rose-500/20" size={60} />
-                       <p className="text-[10px] uppercase font-black tracking-widest text-rose-400 mb-3 flex items-center gap-1.5"><ShieldAlert size={14}/> Dilaporkan Oleh Pihak Klien</p>
-                       <p className="text-sm font-medium text-rose-100 leading-relaxed relative z-10 italic">"{activeDispute.disputeReason || 'Bypass Security Report / Anomali'}"</p>
-                     </div>
-                 ) : (
-                     <div className="p-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl">
-                         <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-3">Project Status</p>
-                         <StatusBadge status={activeDispute.status} />
-                         <p className="text-xs font-medium text-slate-500 mt-4 leading-relaxed">Proyek ini sedang berlangsung normal tanpa kendala hukum. Anda dapat melakukan intervensi jika diperlukan.</p>
-                     </div>
-                 )}
+      {error && <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>}
 
-                 {/* God Mode Chat Intercept */}
-                 <div className={`mt-2 border rounded-2xl flex flex-col justify-center items-center p-6 text-center shadow-inner relative overflow-hidden group
-                    ${activeDispute.status === 'disputed' ? 'bg-black/40 border-slate-800' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}
-                 `}>
-                    <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <MessageSquare size={32} className={`${activeDispute.status === 'disputed' ? 'text-slate-600' : 'text-slate-300'} mb-3`} />
-                    <h4 className={`text-xs font-black ${activeDispute.status === 'disputed' ? 'text-white' : 'text-slate-700 dark:text-white'} mb-2 uppercase tracking-widest`}>Log Sistem Chatting</h4>
-                    <p className={`text-[11px] ${activeDispute.status === 'disputed' ? 'text-slate-400' : 'text-slate-500'} leading-relaxed mx-auto mb-4 font-medium`}>Dalam "God Mode", Anda dilindungi otoritas hukum untuk menyadap riwayat chat Klien ↔ Talent untuk mengumpulkan bukti.</p>
-                    <button className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
-                       Intercept Chat Log 
-                    </button>
-                 </div>
-               </div>
+      {loading ? (
+        <div className="rounded-2xl border border-slate-700 bg-slate-900/40 p-10 text-center text-slate-200 backdrop-blur-xl">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+        </div>
+      ) : tab === 'verification' ? (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-700 bg-slate-900/40 p-4 text-sm text-slate-200 backdrop-blur-xl">
+            Pending critical approvals: <span className="font-bold text-emerald-300">{pendingCount}</span>
+          </div>
 
-               {/* Force Action Override */}
-               <div className={`mt-2 pt-5 border-t ${activeDispute.status === 'disputed' ? 'border-slate-800' : 'border-slate-100 dark:border-slate-800'}`}>
-                  <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 text-center">Intervensi Sistem & Hukum</h4>
-                  
-                  {activeDispute.status === 'disputed' ? (
-                      <div className="grid grid-cols-2 gap-3">
-                         <button disabled={actionLoading} onClick={() => handleForceResolve(activeDispute.id, 'client_wins')} className="flex flex-col items-center justify-center gap-1.5 py-4 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/30 rounded-2xl transition-all disabled:opacity-50">
-                            {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <span className="font-black text-sm">Batalkan Kontrak</span>}
-                            <span className="text-[9px] font-bold opacity-80 uppercase tracking-widest">(Bela Klien - Refund)</span>
-                         </button>
-                         <button disabled={actionLoading} onClick={() => handleForceResolve(activeDispute.id, 'talent_wins')} className="flex flex-col items-center justify-center gap-1.5 py-4 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/30 rounded-2xl transition-all disabled:opacity-50">
-                            {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <span className="font-black text-sm">Paksa Payout Tunai</span>}
-                            <span className="text-[9px] font-bold opacity-80 uppercase tracking-widest">(Bela Talent - Release)</span>
-                         </button>
-                      </div>
-                  ) : (
-                      <div className="flex justify-center">
-                         <button disabled={actionLoading} onClick={() => handleCancelProject(activeDispute.id)} className="w-full flex items-center justify-center gap-2 py-4 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 border border-rose-200 dark:border-rose-500/30 rounded-2xl transition-all font-black text-sm disabled:opacity-50">
-                            {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <AlertOctagon size={16} />} 
-                            Tutup Paksa Proyek 
-                         </button>
-                      </div>
-                  )}
-               </div>
+          <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/40 backdrop-blur-xl">
+            <table className="w-full text-sm">
+              <thead className="bg-[#0b1525] text-slate-300">
+                <tr>
+                  <th className="px-4 py-3 text-left font-black uppercase tracking-wide">Type</th>
+                  <th className="px-4 py-3 text-left font-black uppercase tracking-wide">Subject</th>
+                  <th className="px-4 py-3 text-left font-black uppercase tracking-wide">Requester</th>
+                  <th className="px-4 py-3 text-left font-black uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3 text-left font-black uppercase tracking-wide">Created</th>
+                  <th className="px-4 py-3 text-right font-black uppercase tracking-wide">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queue.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                      Tidak ada item verifikasi.
+                    </td>
+                  </tr>
+                ) : (
+                  queue.map((item) => (
+                    <tr key={item.id} className="border-t border-slate-800 text-slate-100 hover:bg-white/5">
+                      <td className="px-4 py-3 text-xs text-slate-300">{typeLabel[item.type]}</td>
+                      <td className="px-4 py-3 font-semibold text-white">{item.subject}</td>
+                      <td className="px-4 py-3 text-slate-300">{item.requester}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${
+                            item.status === 'approved'
+                              ? 'border-emerald-500/30 bg-emerald-500/20 text-emerald-300'
+                              : item.status === 'rejected'
+                                ? 'border-rose-500/30 bg-rose-500/20 text-rose-300'
+                                : 'border-amber-500/30 bg-amber-500/20 text-amber-300'
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-400">{new Date(item.created_at).toLocaleString('id-ID')}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex gap-1">
+                          <button
+                            onClick={() => processQueue(item.id, 'approved')}
+                            disabled={item.status !== 'pending' || acting !== null}
+                            className="rounded border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-xs font-semibold text-emerald-300 disabled:opacity-40"
+                          >
+                            {acting === item.id + 'approved' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => processQueue(item.id, 'rejected')}
+                            disabled={item.status !== 'pending' || acting !== null}
+                            className="rounded border border-rose-500/40 bg-rose-500/20 px-2 py-1 text-xs font-semibold text-rose-300 disabled:opacity-40"
+                          >
+                            {acting === item.id + 'rejected' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reject'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {tools.map((item) => (
+            <div key={item.key} className="rounded-2xl border border-slate-700 bg-slate-900/40 p-5 backdrop-blur-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-black text-white">{item.key} Tools</h3>
+                <Wrench className="h-5 w-5 text-slate-400" />
+              </div>
 
+              <div className="space-y-2 text-sm text-slate-300">
+                <p>Pending Job Invites: <span className="font-bold text-emerald-300">{item.pendingJobs}</span></p>
+                <p>Pending Talent Invites: <span className="font-bold text-rose-300">{item.pendingInvites}</span></p>
+              </div>
+
+              <button
+                onClick={() => toggleTool(item.key, item.enabled)}
+                disabled={acting === item.key}
+                className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-wide ${
+                  item.enabled
+                    ? 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+                    : 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+                }`}
+              >
+                {acting === item.key ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : item.enabled ? (
+                  <ShieldX className="h-4 w-4" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4" />
+                )}
+                {item.enabled ? 'Disable Tool' : 'Enable Tool'}
+              </button>
             </div>
-         </div>
+          ))}
+
+          {tools.length === 0 && (
+            <div className="lg:col-span-3 rounded-2xl border border-slate-700 bg-slate-900/40 p-8 text-center text-slate-400 backdrop-blur-xl">
+              Tidak ada konfigurasi Global Control dari API.
+            </div>
+          )}
+        </div>
       )}
+
+      <div className="rounded-2xl border border-slate-700 bg-slate-900/40 p-4 text-xs text-slate-400 backdrop-blur-xl">
+        <div className="mb-1 flex items-center gap-2 font-semibold text-emerald-300">
+          <Gavel className="h-4 w-4" /> Policy
+        </div>
+        Semua keputusan verifikasi dicatat sebagai aksi kritis admin. Gunakan tab Global Control hanya untuk intervensi lintas portal.
+      </div>
     </div>
   );
 }
-
-const StatusBadge = ({ status }: { status: string }) => {
-  switch (status) {
-    case 'active': return <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-indigo-200 text-[9px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/50 uppercase tracking-widest gap-1"><Activity size={10}/> In-Progress</span>;
-    case 'completed': return <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-emerald-200 text-[9px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/50 uppercase tracking-widest gap-1"><CheckCircle2 size={10}/> Completed</span>;
-    case 'cancelled': return <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-slate-300 text-[9px] font-black bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 uppercase tracking-widest gap-1"><Ban size={10}/> Cancelled</span>;
-    case 'disputed': return <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-rose-200 text-[9px] font-black bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/50 uppercase tracking-widest gap-1 animate-pulse"><AlertOctagon size={10}/> Disputed</span>;
-    default: return <span className="inline-flex items-center px-2 py-0.5 rounded-md border border-slate-200 text-[9px] font-black bg-slate-50 text-slate-500 uppercase tracking-widest">{status}</span>;
-  }
-};

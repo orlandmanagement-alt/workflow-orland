@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Video, Square, Play, RefreshCw, Upload, Type, AlertCircle, Loader2 } from 'lucide-react';
+import { mediaService } from '@/lib/services/mediaService';
 
 export default function Audition() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -7,7 +8,9 @@ export default function Audition() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [showPrompter, setShowPrompter] = useState(true);
   const [recordingTime, setRecordingTime] = useState(0);
   
@@ -60,6 +63,7 @@ export default function Audition() {
     
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+      setVideoBlob(blob);
       setVideoUrl(URL.createObjectURL(blob));
       stopCamera();
     };
@@ -82,14 +86,33 @@ export default function Audition() {
     setRecordingTime(0);
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
+    if (!videoBlob) {
+      setUploadError('Tidak ada video untuk diunggah');
+      return;
+    }
+
     setIsUploading(true);
-    // Simulasi pengiriman file video ke Cloudflare R2
-    setTimeout(() => {
-        setIsUploading(false);
-        alert("Video Self-Tape berhasil diamankan dan dikirim ke Klien! Status casting Anda sedang ditinjau.");
-        handleRetake();
-    }, 3000);
+    setUploadError(null);
+
+    try {
+      // Create a File from Blob
+      const filename = `audition_${Date.now()}.webm`;
+      const videoFile = new File([videoBlob], filename, { type: 'video/webm' });
+
+      // Upload menggunakan mediaService
+      await mediaService.uploadMedia(videoFile, 'talents');
+
+      // Success
+      alert('✅ Video Self-Tape berhasil diunggah ke Orland!\n\nStatus casting Anda sedang ditinjau tim kreatif kami.');
+      handleRetake();
+    } catch (err: any) {
+      const errorMsg = err.message || 'Gagal mengunggah video. Silakan coba lagi.';
+      setUploadError(errorMsg);
+      console.error('Upload error:', err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -109,6 +132,16 @@ export default function Audition() {
               <Type size={20} />
           </button>
       </div>
+
+      {uploadError && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-2xl flex items-start gap-3 max-w-2xl mx-auto">
+              <AlertCircle size={20} className="text-red-600 dark:text-red-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                  <p className="text-sm text-red-800 dark:text-red-400">{uploadError}</p>
+                  <button onClick={() => setUploadError(null)} className="text-xs text-red-600 dark:text-red-400 hover:underline mt-1">Tutup</button>
+              </div>
+          </div>
+      )}
 
       <div className="relative w-full max-w-2xl mx-auto aspect-[3/4] sm:aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-800">
           

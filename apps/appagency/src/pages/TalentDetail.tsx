@@ -1,379 +1,265 @@
-// Talent Detail Page - Create/Edit Talent
-// File: apps/appagency/src/pages/TalentDetail.tsx
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Save } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { apiRequest } from '../lib/api';
 
-import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-
-interface TalentDetailProps {
-  mode?: 'create' | 'edit'
+interface TalentFormData {
+  name: string;
+  email: string;
+  category: string;
+  location: string;
+  bio: string;
+  minimumRate: number;
+  maximumRate: number;
+  status: 'active' | 'pending' | 'archived';
 }
 
-const TalentDetail: React.FC<TalentDetailProps> = ({ mode = 'create' }) => {
-  const { talentId } = useParams()
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+const initialForm: TalentFormData = {
+  name: '',
+  email: '',
+  category: 'content_creator',
+  location: '',
+  bio: '',
+  minimumRate: 0,
+  maximumRate: 0,
+  status: 'pending',
+};
 
-  const isEdit = mode === 'edit' && talentId
+const categories = [
+  'content_creator',
+  'influencer',
+  'model',
+  'actor',
+  'musician',
+  'photographer',
+  'videographer',
+  'other',
+];
 
-  const [formData, setFormData] = useState({
-    name: 'Budi Santoso',
-    email: 'budi@example.com',
-    category: 'content_creator',
-    bio: 'Saya adalah content creator berpengalaman dengan 50K followers',
-    location: 'Jakarta, Indonesia',
-    canLoginIndependently: true,
-    portfolioEditLock: false,
-    priceNegotiationLock: false,
-    minimumRate: 10000000,
-    maximumRate: 50000000,
-    availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-  })
+export default function TalentDetail() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
 
-  const [activeTab, setActiveTab] = useState<'basic' | 'settings' | 'portfolio' | 'pricing'>('basic')
+  const isCreateMode = !id || id === 'new';
+  const [formData, setFormData] = useState<TalentFormData>(initialForm);
+  const [loading, setLoading] = useState(!isCreateMode);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-  }
+  useEffect(() => {
+    const fetchTalent = async () => {
+      if (isCreateMode || !id) return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await apiRequest(`/agency/roster/${id}`);
+        const payload = response?.data || response;
+
+        setFormData({
+          name: String(payload?.name || payload?.full_name || ''),
+          email: String(payload?.email || ''),
+          category: String(payload?.category || 'other'),
+          location: String(payload?.location || ''),
+          bio: String(payload?.bio || ''),
+          minimumRate: Number(payload?.minimumRate || payload?.minimum_rate || 0),
+          maximumRate: Number(payload?.maximumRate || payload?.maximum_rate || 0),
+          status: (payload?.status as 'active' | 'pending' | 'archived') || 'pending',
+        });
+      } catch {
+        setError('Gagal memuat detail talent dari API.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTalent();
+  }, [id, isCreateMode]);
+
+  const setField = <K extends keyof TalentFormData>(field: K, value: TalentFormData[K]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
 
     try {
-      // Simulated API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      if (isEdit) {
-        alert('Talent updated successfully!')
-        navigate(`/talent/${talentId}`)
-      } else {
-        alert('Talent created successfully! Invitation email sent.')
-        navigate('/roster')
+      if (isCreateMode) {
+        await apiRequest('/agency/roster', {
+          method: 'POST',
+          body: formData,
+        });
+        setSuccess('Talent baru berhasil dibuat.');
+      } else if (id) {
+        await apiRequest(`/agency/roster/${id}`, {
+          method: 'PATCH',
+          body: formData,
+        });
+        setSuccess('Perubahan talent berhasil disimpan.');
       }
-    } catch (err) {
-      setError('Gagal menyimpan data talent')
+      setTimeout(() => navigate('/roster'), 700);
+    } catch {
+      setError('Gagal menyimpan data talent.');
     } finally {
-      setLoading(false)
+      setSaving(false);
     }
-  }
-
-  const categories = [
-    { value: 'content_creator', label: 'Content Creator' },
-    { value: 'influencer', label: 'Influencer' },
-    { value: 'model', label: 'Model' },
-    { value: 'actor', label: 'Actor/Actress' },
-    { value: 'musician', label: 'Musician' },
-    { value: 'photographer', label: 'Photographer' },
-    { value: 'videographer', label: 'Videographer' },
-    { value: 'other', label: 'Other' },
-  ]
-
-  const daysOfWeek = [
-    { value: 'monday', label: 'Senin' },
-    { value: 'tuesday', label: 'Selasa' },
-    { value: 'wednesday', label: 'Rabu' },
-    { value: 'thursday', label: 'Kamis' },
-    { value: 'friday', label: 'Jumat' },
-    { value: 'saturday', label: 'Sabtu' },
-    { value: 'sunday', label: 'Minggu' },
-  ]
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            {isEdit ? 'Edit Talent' : 'Tambah Talent Baru'}
+          <h1 className="text-3xl font-black uppercase tracking-tight text-white">
+            {isCreateMode ? 'Tambah Talent Baru' : 'Detail Talent'}
           </h1>
-          <p className="text-slate-600 mt-1">
-            {isEdit ? 'Update informasi talent Anda' : 'Daftarkan talent baru ke roster agency Anda'}
+          <p className="mt-1 text-sm text-amber-500/80">
+            {isCreateMode
+              ? 'Buat data talent baru untuk roster agensi.'
+              : 'Edit informasi inti talent tanpa mengubah alur SSO.'}
           </p>
         </div>
         <button
           onClick={() => navigate('/roster')}
-          className="text-slate-600 hover:text-slate-900 text-lg"
+          className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-slate-900/70 px-3 py-2 text-sm font-semibold text-amber-200 hover:border-amber-400/60"
         >
-          ✕
+          <ArrowLeft className="h-4 w-4" />
+          Kembali
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
+      {loading ? (
+        <div className="rounded-2xl border border-amber-500/20 bg-white/5 p-8 text-center text-slate-200 backdrop-blur-xl">
+          Memuat detail talent...
         </div>
-      )}
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>
+          )}
+          {success && (
+            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+              {success}
+            </div>
+          )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Tabs */}
-        <div className="border-b border-slate-200">
-          <div className="flex gap-8 -mb-px">
-            {['basic', 'settings', 'portfolio', 'pricing'].map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab as any)}
-                className={`pb-4 px-2 font-medium border-b-2 transition ${
-                  activeTab === tab
-                    ? 'text-indigo-600 border-indigo-600'
-                    : 'text-slate-600 border-transparent hover:text-slate-900'
-                }`}
-              >
-                {tab === 'basic'
-                  ? '📋 Dasar'
-                  : tab === 'settings'
-                    ? '⚙️ Settings'
-                    : tab === 'portfolio'
-                      ? '🎨 Portfolio'
-                      : '💰 Pricing'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow p-6 space-y-6">
-          {/* Basic Tab */}
-          {activeTab === 'basic' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Nama</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-              </div>
-
+          <div className="rounded-2xl border border-amber-500/20 bg-white/5 p-6 backdrop-blur-xl">
+            <h2 className="mb-4 text-lg font-black uppercase tracking-wide text-amber-400">Informasi Dasar</h2>
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">Kategori</label>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Nama Talent</label>
+                <input
+                  value={formData.name}
+                  onChange={(e) => setField('name', e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setField('email', e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Kategori</label>
                 <select
                   value={formData.category}
-                  onChange={(e) => handleInputChange('category', e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  onChange={(e) => setField('category', e.target.value)}
+                  className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
                 >
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
                     </option>
                   ))}
                 </select>
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">Lokasi</label>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setField('status', e.target.value as 'active' | 'pending' | 'archived')}
+                  className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+                >
+                  <option value="active">active</option>
+                  <option value="pending">pending</option>
+                  <option value="archived">archived</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Lokasi</label>
                 <input
-                  type="text"
                   value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="Kota, Negara"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">Biografi</label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  placeholder="Deskripsikan keahlian dan pengalaman talent..."
-                  rows={4}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  onChange={(e) => setField('location', e.target.value)}
+                  placeholder="Jakarta, Indonesia"
+                  className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
                 />
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Settings Tab */}
-          {activeTab === 'settings' && (
-            <div className="space-y-6">
+          <div className="rounded-2xl border border-amber-500/20 bg-white/5 p-6 backdrop-blur-xl">
+            <h2 className="mb-4 text-lg font-black uppercase tracking-wide text-amber-400">Rate Card Ringkas</h2>
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="flex items-center gap-4 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                  <input
-                    type="checkbox"
-                    checked={formData.canLoginIndependently}
-                    onChange={(e) => handleInputChange('canLoginIndependently', e.target.checked)}
-                    className="w-5 h-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <div>
-                    <p className="font-semibold text-slate-900">Izinkan Login Independen</p>
-                    <p className="text-sm text-slate-600">
-                      Talent dapat login dan mengelola profil mereka sendiri
-                    </p>
-                  </div>
-                </label>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Minimum Rate (IDR)</label>
+                <input
+                  type="number"
+                  value={formData.minimumRate}
+                  onChange={(e) => setField('minimumRate', Number(e.target.value))}
+                  className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+                />
               </div>
-
               <div>
-                <label className="flex items-center gap-4 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                  <input
-                    type="checkbox"
-                    checked={formData.portfolioEditLock}
-                    onChange={(e) => handleInputChange('portfolioEditLock', e.target.checked)}
-                    className="w-5 h-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <div>
-                    <p className="font-semibold text-slate-900">Kunci Portfolio</p>
-                    <p className="text-sm text-slate-600">
-                      Talent tidak dapat mengedit portfolio mereka
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-4 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                  <input
-                    type="checkbox"
-                    checked={formData.priceNegotiationLock}
-                    onChange={(e) => handleInputChange('priceNegotiationLock', e.target.checked)}
-                    className="w-5 h-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <div>
-                    <p className="font-semibold text-slate-900">Kunci Harga</p>
-                    <p className="text-sm text-slate-600">
-                      Talent tidak dapat bernegosiasi harga dengan klien
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              {!formData.canLoginIndependently && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-900">
-                    💡 Talent ini akan dikelola sepenuhnya oleh Anda melalui fitur impersonation
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Portfolio Tab */}
-          {activeTab === 'portfolio' && (
-            <div className="space-y-6">
-              <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
-                <p className="text-slate-600">📸</p>
-                <p className="text-slate-900 font-semibold mt-2">Portfolio akan dimulai dengan buka impersonation</p>
-                <p className="text-sm text-slate-600 mt-1">Talent dapat menambah konten mereka setelah approval</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900 mb-2">Hari Disponibilitas</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {daysOfWeek.map((day) => (
-                    <label key={day.value} className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-slate-50">
-                      <input
-                        type="checkbox"
-                        checked={formData.availableDays.includes(day.value)}
-                        onChange={(e) => {
-                          const newDays = e.target.checked
-                            ? [...formData.availableDays, day.value]
-                            : formData.availableDays.filter((d) => d !== day.value)
-                          handleInputChange('availableDays', newDays)
-                        }}
-                        className="w-4 h-4 text-indigo-600 rounded"
-                      />
-                      <span className="text-sm font-medium text-slate-700">{day.label}</span>
-                    </label>
-                  ))}
-                </div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Maximum Rate (IDR)</label>
+                <input
+                  type="number"
+                  value={formData.maximumRate}
+                  onChange={(e) => setField('maximumRate', Number(e.target.value))}
+                  className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+                />
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Pricing Tab */}
-          {activeTab === 'pricing' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Harga Minimum</label>
-                  <div className="flex items-center">
-                    <span className="text-slate-600 mr-2">Rp</span>
-                    <input
-                      type="number"
-                      value={formData.minimumRate}
-                      onChange={(e) => handleInputChange('minimumRate', parseInt(e.target.value))}
-                      className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
+          <div className="rounded-2xl border border-amber-500/20 bg-white/5 p-6 backdrop-blur-xl">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-200">Bio</label>
+            <textarea
+              rows={5}
+              value={formData.bio}
+              onChange={(e) => setField('bio', e.target.value)}
+              placeholder="Tulis ringkasan profil talent"
+              className="w-full rounded-lg border border-amber-500/20 bg-[#071122] px-3 py-2.5 text-sm text-white focus:border-amber-400/70 focus:outline-none"
+            />
+          </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">Harga Maksimum</label>
-                  <div className="flex items-center">
-                    <span className="text-slate-600 mr-2">Rp</span>
-                    <input
-                      type="number"
-                      value={formData.maximumRate}
-                      onChange={(e) => handleInputChange('maximumRate', parseInt(e.target.value))}
-                      className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm text-amber-900">
-                  💡 Komisi agency 15% akan dihitung otomatis dari setiap booking
-                </p>
-              </div>
-
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                <p className="font-semibold text-indigo-900 mb-2">Contoh Perhitungan:</p>
-                <p className="text-sm text-indigo-800">
-                  Jika talent mendapat booking Rp 10 juta:
-                </p>
-                <p className="text-sm text-indigo-800 mt-1">
-                  • Komisi Agency: Rp 1.500.000 (15%)
-                </p>
-                <p className="text-sm text-indigo-800">
-                  • Penghasilan Talent: Rp 8.500.000 (85%)
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Form Actions */}
-        <div className="flex gap-4 justify-end">
-          <button
-            type="button"
-            onClick={() => navigate('/roster')}
-            className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition"
-          >
-            Batal
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50"
-          >
-            {loading ? 'Menyimpan...' : isEdit ? 'Update Talent' : 'Buat Talent'}
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/roster')}
+              className="rounded-lg border border-amber-500/30 bg-slate-900/70 px-4 py-2 text-sm font-semibold text-amber-200"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500 px-4 py-2 text-sm font-black text-[#071122] hover:bg-amber-400 disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'Menyimpan...' : isCreateMode ? 'Simpan Talent' : 'Update Talent'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
-  )
+  );
 }
-
-export default TalentDetail

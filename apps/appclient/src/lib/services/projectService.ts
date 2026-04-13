@@ -1,4 +1,4 @@
-import { api, apiRequest } from '../api';
+import { api } from '@/lib/api';
 import { ProjectDraftState } from '@/store/useProjectDraftStore';
 
 export const projectService = {
@@ -21,7 +21,7 @@ export const projectService = {
     };
 
     try {
-      const response = await apiRequest('/projects', {
+      const response = await api('/projects', {
         method: 'POST',
         data: payload
       });
@@ -86,6 +86,74 @@ export const projectService = {
     } catch (error: any) {
       console.error('Failed to search talent:', error);
       return [];
+    }
+  },
+
+  // Filter talents for a project
+  filterTalents: async (projectId: string, filters?: {
+    category?: string;
+    gender?: string;
+    location?: string;
+    min_rate?: number;
+    max_rate?: number;
+    limit?: number;
+  }) => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.category) params.append('category', filters.category);
+      if (filters?.gender) params.append('gender', filters.gender);
+      if (filters?.location) params.append('location', filters.location);
+      if (filters?.min_rate !== undefined) params.append('min_rate', String(filters.min_rate));
+      if (filters?.max_rate !== undefined) params.append('max_rate', String(filters.max_rate));
+      if (filters?.limit) params.append('limit', String(filters.limit));
+
+      const response = await api.get(`/projects/${projectId}/talents/filter?${params}`);
+      return response.data?.data ?? [];
+    } catch (error: any) {
+      console.error('Failed to filter talents:', error);
+      return [];
+    }
+  },
+
+  // Copy project roles from another project
+  copyRoles: async (projectId: string, sourceProjectId: string) => {
+    try {
+      const response = await api.post(`/projects/${projectId}/copy-roles`, {
+        source_project_id: sourceProjectId
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to copy roles');
+    }
+  },
+
+  // Copy project tools from another project
+  copyTools: async (projectId: string, sourceProjectId: string) => {
+    try {
+      const response = await api.post(`/projects/${projectId}/copy-tools`, {
+        source_project_id: sourceProjectId
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to copy tools');
+    }
+  },
+
+  // Duplicate a project
+  duplicateProject: async (projectId: string, options?: {
+    title_suffix?: string;
+    include_roles?: boolean;
+    include_tools?: boolean;
+  }) => {
+    try {
+      const response = await api.post(`/projects/${projectId}/copy`, {
+        title_suffix: options?.title_suffix || ' (Copy)',
+        include_roles: options?.include_roles !== false,
+        include_tools: options?.include_tools || false
+      });
+      return response.data?.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to duplicate project');
     }
   }
 };

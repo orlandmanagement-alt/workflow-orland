@@ -8,16 +8,16 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: any) => {
   const token = useAuthStore.getState().token;
   if (token && config.headers) config.headers.Authorization = 'Bearer ' + token;
   return config;
 });
 
 api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401 && !window.location.pathname.includes('/login')) {
+  (res: any) => res,
+  (err: any) => {
+    if ((err.response?.status === 401 || err.response?.status === 403) && !window.location.pathname.includes('/login')) {
       performCleanLogout();
     }
     return Promise.reject(err);

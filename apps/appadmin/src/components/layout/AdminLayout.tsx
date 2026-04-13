@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useThemeStore } from '@/store/useAppStore';
-import { ShieldAlert, Users, LayoutDashboard, Wallet, Gavel, LogOut, Search, Moon, Sun, Settings, MessageSquare, AlertCircle, Activity, Bell } from 'lucide-react';
+import { ShieldAlert, Users, LayoutDashboard, Wallet, Gavel, LogOut, Search, Moon, Sun, Settings, MessageSquare, Activity, Bell, ChevronDown } from 'lucide-react';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import { getRedirectUrl } from '@/lib/roleRedirect';
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -42,16 +42,31 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-
-const MENU = [
-  { path: '/admin', label: 'God Dashboard', icon: LayoutDashboard },
-  { path: '/admin/users', label: 'User & Identity', icon: Users },
-  { path: '/admin/finance', label: 'Treasury & Payouts', icon: Wallet },
-  { path: '/admin/projects', label: 'Overwatch', icon: Gavel },
-  { path: '/admin/disputes', label: 'Dispute Center', icon: ShieldAlert },
-  { path: '/admin/chat', label: 'Chat Management', icon: MessageSquare },
-  { path: '/admin/notifications', label: 'Notifications Hub', icon: Bell },
-  { path: '/admin/system/health', label: 'System Health', icon: Activity },
+const MENU_GROUPS = [
+  {
+    key: 'core',
+    label: 'Core Control',
+    items: [
+      { path: '/admin', label: 'God Dashboard', icon: LayoutDashboard },
+      { path: '/admin/users', label: 'User & Identity', icon: Users },
+      { path: '/admin/notifications', label: 'Notifications Hub', icon: Bell },
+    ],
+  },
+  {
+    key: 'operations',
+    label: 'Operations',
+    items: [
+      { path: '/admin/projects', label: 'Verification & Global Control', icon: Gavel },
+      { path: '/admin/finance', label: 'Treasury & Payouts', icon: Wallet },
+      { path: '/admin/disputes', label: 'Dispute Center', icon: ShieldAlert },
+      { path: '/admin/chat', label: 'Chat Management', icon: MessageSquare },
+    ],
+  },
+  {
+    key: 'system',
+    label: 'Platform',
+    items: [{ path: '/admin/system/health', label: 'System Health', icon: Activity }],
+  },
 ];
 
 export const AdminLayout = () => {
@@ -59,6 +74,11 @@ export const AdminLayout = () => {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    core: true,
+    operations: true,
+    system: true,
+  });
 
   // Inject dark mode class based on store
   useEffect(() => {
@@ -78,18 +98,42 @@ export const AdminLayout = () => {
             </h1>
          </div>
 
-         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-            <div className="text-[10px] font-black tracking-widest text-slate-600 uppercase mb-4 px-2">Master Controls</div>
-            {MENU.map(item => {
-              const bgClass = location.pathname === item.path || location.pathname.startsWith(item.path + '/') 
-                   ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
-                   : 'hover:bg-slate-800 hover:text-white border border-transparent';
-              return (
-                <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${bgClass} text-sm font-bold`}>
-                   <item.icon size={18} /> {item.label}
-                </Link>
-              );
-            })}
+         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-3">
+            {MENU_GROUPS.map((group) => (
+              <div key={group.key} className="rounded-xl border border-slate-800/80 bg-slate-950/40">
+                <button
+                  onClick={() => setOpenGroups((prev) => ({ ...prev, [group.key]: !prev[group.key] }))}
+                  className="flex w-full items-center justify-between px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300"
+                >
+                  {group.label}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${openGroups[group.key] ? 'rotate-180 text-emerald-400' : 'text-slate-500'}`}
+                  />
+                </button>
+
+                {openGroups[group.key] && (
+                  <div className="space-y-1 p-2 pt-0">
+                    {group.items.map((item) => {
+                      const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                      const bgClass = active
+                        ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.1)]'
+                        : 'hover:bg-slate-800 hover:text-white border border-transparent';
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${bgClass}`}
+                        >
+                          <item.icon size={17} />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
          </div>
 
          <div className="p-4 border-t border-slate-800/50 bg-black/20 flex flex-col gap-2">

@@ -1,16 +1,62 @@
-import { useState } from 'react';
-import { CalendarDays, MapPin, Clock, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CalendarDays, MapPin, Clock, CalendarPlus, ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { generateICS } from '@/utils/calendarSync';
+import { api } from '@/lib/api';
+
+interface ScheduleItem {
+  id: number;
+  date: number;
+  title: string;
+  type: string;
+  location: string;
+  time: string;
+  color: string;
+  startDate: number;
+  endDate: number;
+}
 
 export default function Schedules() {
   const [selectedDate, setSelectedDate] = useState<number | null>(15);
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulasi data jadwal (Bisa di-fetch dari API nantinya)
-  const schedules = [
-    { id: 1, date: 15, title: 'Shooting TVC Glow Soap', type: 'Shooting', location: 'Studio Alam TVRI', time: '08:00 - 18:00 WIB', color: 'bg-brand-500', startDate: new Date(new Date().setDate(15)).setHours(8,0,0,0), endDate: new Date(new Date().setDate(15)).setHours(18,0,0,0) },
-    { id: 2, date: 18, title: 'Fitting Baju - MD Ent', type: 'Wardrobe', location: 'Kuningan, Jakarta', time: '13:00 - 15:00 WIB', color: 'bg-purple-500', startDate: new Date(new Date().setDate(18)).setHours(13,0,0,0), endDate: new Date(new Date().setDate(18)).setHours(15,0,0,0) },
-    { id: 3, date: 25, title: 'Screen Test Film Aksi', type: 'Casting', location: 'Orland HQ', time: '10:00 - 12:00 WIB', color: 'bg-amber-500', startDate: new Date(new Date().setDate(25)).setHours(10,0,0,0), endDate: new Date(new Date().setDate(25)).setHours(12,0,0,0) }
-  ];
+  useEffect(() => {
+    fetchSchedules();
+  }, []);
+
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      // TODO: Replace with actual API endpoint when backend is ready
+      const response = await api.get('/api/v1/schedules').catch(err => {
+        console.log('Schedules API not ready, using mock data');
+        return { data: null };
+      });
+
+      if (response?.data?.schedules) {
+        setSchedules(response.data.schedules);
+      } else {
+        // Fallback mock data
+        setSchedules([
+          { id: 1, date: 15, title: 'Shooting TVC Glow Soap', type: 'Shooting', location: 'Studio Alam TVRI', time: '08:00 - 18:00 WIB', color: 'bg-brand-500', startDate: new Date(new Date().setDate(15)).setHours(8,0,0,0), endDate: new Date(new Date().setDate(15)).setHours(18,0,0,0) },
+          { id: 2, date: 18, title: 'Fitting Baju - MD Ent', type: 'Wardrobe', location: 'Kuningan, Jakarta', time: '13:00 - 15:00 WIB', color: 'bg-purple-500', startDate: new Date(new Date().setDate(18)).setHours(13,0,0,0), endDate: new Date(new Date().setDate(18)).setHours(15,0,0,0) },
+          { id: 3, date: 25, title: 'Screen Test Film Aksi', type: 'Casting', location: 'Orland HQ', time: '10:00 - 12:00 WIB', color: 'bg-amber-500', startDate: new Date(new Date().setDate(25)).setHours(10,0,0,0), endDate: new Date(new Date().setDate(25)).setHours(12,0,0,0) }
+        ]);
+      }
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching schedules:', err);
+      setError(err.message || 'Gagal memuat jadwal');
+      setSchedules([
+        { id: 1, date: 15, title: 'Shooting TVC Glow Soap', type: 'Shooting', location: 'Studio Alam TVRI', time: '08:00 - 18:00 WIB', color: 'bg-brand-500', startDate: new Date(new Date().setDate(15)).setHours(8,0,0,0), endDate: new Date(new Date().setDate(15)).setHours(18,0,0,0) },
+        { id: 2, date: 18, title: 'Fitting Baju - MD Ent', type: 'Wardrobe', location: 'Kuningan, Jakarta', time: '13:00 - 15:00 WIB', color: 'bg-purple-500', startDate: new Date(new Date().setDate(18)).setHours(13,0,0,0), endDate: new Date(new Date().setDate(18)).setHours(15,0,0,0) },
+        { id: 3, date: 25, title: 'Screen Test Film Aksi', type: 'Casting', location: 'Orland HQ', time: '10:00 - 12:00 WIB', color: 'bg-amber-500', startDate: new Date(new Date().setDate(25)).setHours(10,0,0,0), endDate: new Date(new Date().setDate(25)).setHours(12,0,0,0) }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
   const activeSchedule = schedules.find(s => s.date === selectedDate);

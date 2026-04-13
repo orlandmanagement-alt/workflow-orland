@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAppStore';
 import { performCleanLogout } from '@/lib/auth/logout';
+import Sidebar from './Sidebar';
+import { NotificationBell } from './NotificationBell';
 
-export default function DashboardLayout() {
+interface DashboardLayoutProps {
+  children?: ReactNode;
+}
+
+export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { login, isAuthenticated } = useAuthStore();
   const [isVerifying, setIsVerifying] = useState(true);
 
@@ -23,5 +29,27 @@ export default function DashboardLayout() {
   }, []);
 
   if (isVerifying) return <div className="h-screen flex items-center justify-center font-bold animate-pulse">Menghubungkan Portal Keamanan...</div>;
-  return <Outlet />;
+  
+  return (
+    <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* SIDEBAR */}
+      <Sidebar />
+      
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 lg:ml-64 overflow-y-auto">
+        {/* TOP BAR */}
+        <div className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 px-6 py-4 flex items-center justify-between">
+          <div className="flex-1">
+            <h1 className="text-slate-400 text-sm font-bold uppercase tracking-wider">Portal Talent Orland</h1>
+          </div>
+          <NotificationBell />
+        </div>
+
+        {/* PAGE CONTENT */}
+        <div className="p-6 lg:p-8">
+          {children || <Outlet />}
+        </div>
+      </main>
+    </div>
+  );
 }

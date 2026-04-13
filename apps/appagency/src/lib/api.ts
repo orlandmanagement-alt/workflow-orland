@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { useAuthStore } from '@/store/useAppStore';
-import { performCleanLogout } from '@/lib/auth/logout';
+import { useAuthStore } from '../store/useAppStore';
+import { performCleanLogout } from './auth/logout';
 
 export const api = axios.create({
   baseURL: 'https://api.orlandmanagement.com/api/v1',
@@ -17,12 +17,17 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) performCleanLogout();
+    if (err.response?.status === 401 || err.response?.status === 403) performCleanLogout();
     return Promise.reject(err);
   }
 );
 
-export const apiRequest = async (url, options = {}) => {
+interface ApiRequestOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  body?: unknown
+}
+
+export const apiRequest = async (url: string, options: ApiRequestOptions = {}) => {
   const response = await api({ url, method: options.method || 'GET', data: options.body });
   return response.data;
 };

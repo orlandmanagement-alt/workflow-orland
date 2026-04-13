@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Film, Mail, Phone, User, CheckCircle2, AlertCircle } from 'lucide-react';
-import { apiRequest } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface CastingQuestion {
   question: string;
@@ -98,11 +98,8 @@ export function CastingGuestSubmit({ boardInfo, onSubmitSuccess }: CastingGuestS
         answers,
       };
 
-      const res: any = await apiRequest('/api/v1/casting/guest-submit', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
+      const res: any = await api.post('/api/v1/casting/guest-submit', payload);
+	  
       if (res.status === 'ok') {
         setSubmissionId(res.submission_id);
         setStep('success');
@@ -131,10 +128,7 @@ export function CastingGuestSubmit({ boardInfo, onSubmitSuccess }: CastingGuestS
         answers,
       };
 
-      const res: any = await apiRequest('/api/v1/casting/guest-submit', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      const res: any = await api.post('/api/v1/casting/guest-submit', payload);
 
       if (res.status === 'ok') {
         setSubmissionId(res.submission_id);

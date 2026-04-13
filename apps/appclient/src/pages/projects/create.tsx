@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useProjectDraftStore } from '@/store/useProjectDraftStore';
-import { useAuthStore } from '@/store/useAppStore';
+import { useAppStore } from '@/store/useAppStore';
 import { StepBasic } from '@/components/wizard/StepBasic';
 import { StepLogistics } from '@/components/wizard/StepLogistics';
 import { StepRoles } from '@/components/wizard/StepRoles';
@@ -9,7 +9,7 @@ import { StepReview } from '@/components/wizard/StepReview';
 
 export default function CreateProjectWizard() {
   const { currentStep, resetDraft } = useProjectDraftStore();
-  const companyCategory = useAuthStore(state => state.companyCategory);
+  const companyCategory = useAppStore(state => state.companyCategory);
 
   // Bersihkan draft saat mount pertama (Opsional, tapi bagus agar bersih jika masuk dari awal)
   useEffect(() => {

@@ -4,9 +4,7 @@ import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 export const talents = sqliteTable('talents', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(), // Relasi logis ke users.id di DB_SSO
-  fullName: text('full_name').notNull(),
   category: text('category'),
-  phoneNumber: text('phone_number'),
   portfolioUrl: text('portfolio_url'),
   city: text('city'),
   heightCm: real('height_cm'),

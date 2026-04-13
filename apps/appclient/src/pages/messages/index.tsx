@@ -45,11 +45,16 @@ export default function ClientMessages() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [counterpartPresence, setCounterpartPresence] = useState<'online' | 'offline'>('offline');
+  const wsRef = useRef<WebSocket | null>(null);
+  const wsPingRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch threads on mount
   useEffect(() => {
     fetchThreads();
+    fetchCurrentSession();
     const interval = setInterval(fetchThreads, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval);
   }, []);
@@ -58,8 +63,20 @@ export default function ClientMessages() {
   useEffect(() => {
     if (activeChat) {
       fetchMessages();
+      connectWebSocket(activeChat.thread_id);
+      loadCounterpartPresence(activeChat);
       const interval = setInterval(fetchMessages, 3000); // Refresh messages every 3 seconds
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        if (wsPingRef.current) {
+          window.clearInterval(wsPingRef.current);
+          wsPingRef.current = null;
+        }
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+      };
     }
   }, [activeChat]);
 
@@ -67,6 +84,80 @@ export default function ClientMessages() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const fetchCurrentSession = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/auth/verify-session`, { withCredentials: true });
+      if (response.data?.userId) {
+        setCurrentUserId(response.data.userId);
+      }
+    } catch {
+      // Ignore, fallback logic still works from thread metadata
+    }
+  };
+
+  const getCounterpartId = (thread: Chat) => {
+    if (currentUserId && thread.client_id === currentUserId) return thread.talent_id;
+    if (currentUserId && thread.talent_id === currentUserId) return thread.client_id;
+    return thread.talent_id || thread.client_id;
+  };
+
+  const loadCounterpartPresence = async (thread: Chat) => {
+    const counterpartId = getCounterpartId(thread);
+    if (!counterpartId) return;
+
+    try {
+      const response = await axios.get(`${API_BASE}/messages/presence/${counterpartId}`, {
+        withCredentials: true,
+      });
+      const status = response.data?.data?.status === 'online' ? 'online' : 'offline';
+      setCounterpartPresence(status);
+    } catch {
+      setCounterpartPresence('offline');
+    }
+  };
+
+  const connectWebSocket = (threadId: string) => {
+    try {
+      const wsUrl = `${API_BASE.replace('https://', 'wss://').replace('http://', 'ws://')}/messages/ws/${threadId}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = async () => {
+        ws.send(JSON.stringify({ type: 'ping' }));
+        await axios.post(`${API_BASE}/messages/presence/ping`, {}, { withCredentials: true }).catch(() => undefined);
+        wsPingRef.current = window.setInterval(() => {
+          try {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          } catch {}
+        }, 30000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'presence' && activeChat) {
+            const counterpartId = getCounterpartId(activeChat);
+            if (payload.user_id === counterpartId) {
+              setCounterpartPresence(payload.status === 'online' ? 'online' : 'offline');
+            }
+          }
+
+          if (payload.type === 'typing') {
+            // Placeholder for typing indicator in next iteration
+          }
+        } catch {
+          // Ignore malformed ws payload
+        }
+      };
+
+      ws.onerror = () => {
+        // Fallback tetap polling HTTP
+      };
+    } catch {
+      // Fallback tetap polling HTTP
+    }
+  };
 
   const fetchThreads = async () => {
     try {
@@ -117,7 +208,7 @@ export default function ClientMessages() {
         `${API_BASE}/messages`,
         {
           thread_id: activeChat.thread_id,
-          recipient_id: activeChat.talent_id === '' ? activeChat.talent_id : activeChat.client_id,
+          recipient_id: getCounterpartId(activeChat),
           body: inputText.trim(),
         },
         { withCredentials: true }
@@ -237,7 +328,7 @@ export default function ClientMessages() {
                 <div>
                   <h3 className="text-sm font-black text-slate-900 dark:text-white">{activeChat.subject}</h3>
                   <p className="text-[10px] text-brand-500 font-bold uppercase">
-                    {activeChat.message_count} pesan
+                    {counterpartPresence === 'online' ? 'Live sekarang' : 'Offline'} • {activeChat.message_count} pesan
                   </p>
                 </div>
               </div>

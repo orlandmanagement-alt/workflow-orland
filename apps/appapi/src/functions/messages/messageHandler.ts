@@ -5,6 +5,9 @@ import { sanitizeMessage } from '../../utils/wordFilter'
 
 type HonoEnv = { Bindings: Bindings; Variables: Variables }
 const messageRouter = new Hono<HonoEnv>()
+const wsRooms = new Map<string, Set<any>>()
+
+const presenceKey = (userId: string) => `presence:user:${userId}`
 
 // Validation schemas
 const MessageSchema = z.object({
@@ -20,6 +23,158 @@ const ThreadSchema = z.object({
   client_id: z.string(),
   talent_id: z.string(),
   subject: z.string().optional(),
+})
+
+messageRouter.post('/presence/ping', async (c) => {
+  const userId = c.get('userId')
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+
+  const now = new Date().toISOString()
+  await c.env.ORLAND_CACHE.put(
+    presenceKey(userId),
+    JSON.stringify({ status: 'online', last_seen: now }),
+    { expirationTtl: 120 }
+  )
+
+  return c.json({ status: 'ok', data: { user_id: userId, status: 'online', last_seen: now } })
+})
+
+messageRouter.get('/presence/:userId', async (c) => {
+  const requesterId = c.get('userId')
+  if (!requesterId) return c.json({ error: 'Unauthorized' }, 401)
+
+  const userId = c.req.param('userId')
+  const cached = await c.env.ORLAND_CACHE.get(presenceKey(userId), 'json') as any
+
+  if (!cached) {
+    return c.json({ status: 'ok', data: { user_id: userId, status: 'offline', last_seen: null } })
+  }
+
+  return c.json({ status: 'ok', data: { user_id: userId, status: cached.status || 'online', last_seen: cached.last_seen || null } })
+})
+
+messageRouter.post('/presence/batch', async (c) => {
+  const requesterId = c.get('userId')
+  if (!requesterId) return c.json({ error: 'Unauthorized' }, 401)
+
+  const body = await c.req.json<{ user_ids?: string[] }>().catch(() => ({}))
+  const userIds = Array.isArray((body as any)?.user_ids) ? (body as any).user_ids.slice(0, 200) : []
+  const results: Record<string, { status: 'online' | 'offline'; last_seen: string | null }> = {}
+
+  for (const userId of userIds) {
+    const cached = await c.env.ORLAND_CACHE.get(presenceKey(userId), 'json') as any
+    results[userId] = cached
+      ? { status: 'online', last_seen: cached.last_seen || null }
+      : { status: 'offline', last_seen: null }
+  }
+
+  return c.json({ status: 'ok', data: results })
+})
+
+messageRouter.get('/ws/:threadId', async (c) => {
+  const userId = c.get('userId')
+  const threadId = c.req.param('threadId')
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+
+  const db = c.env.DB_LOGS
+  const thread = await db
+    .prepare('SELECT thread_id FROM message_threads_v2 WHERE thread_id = ? AND (client_id = ? OR talent_id = ?)')
+    .bind(threadId, userId, userId)
+    .first<any>()
+
+  if (!thread) return c.json({ error: 'Thread not found or access denied' }, 404)
+  if (c.req.header('Upgrade') !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426)
+  }
+
+  // Cloudflare Workers WebSocket Pair API (runtime-specific)
+  const WebSocketPair = (c.env as any).WebSocketPair
+  if (!WebSocketPair) return c.json({ error: 'WebSocket not available' }, 503)
+  
+  const pair: any = new WebSocketPair()
+  const server = pair[1]
+  const client = pair[0]
+  
+  if (typeof server?.accept === 'function') {
+    server.accept()
+  }
+
+  const room = wsRooms.get(threadId) || new Set<any>()
+  room.add(server)
+  wsRooms.set(threadId, room)
+
+  const now = new Date().toISOString()
+  await c.env.ORLAND_CACHE.put(
+    presenceKey(userId),
+    JSON.stringify({ status: 'online', last_seen: now }),
+    { expirationTtl: 120 }
+  )
+
+  const broadcast: any = (payload: Record<string, any>) => {
+    const text = JSON.stringify(payload)
+    for (const socket of room) {
+      try {
+        socket.send(text)
+      } catch {
+        room.delete(socket)
+      }
+    }
+  }
+
+  // Broadcast presence after broadcast function is defined
+  broadcast({ type: 'presence', user_id: userId, status: 'online', thread_id: threadId, timestamp: now })
+
+  (server as any).addEventListener?.('message', async (event: any) => {
+    try {
+      const data = JSON.parse(String(event.data || '{}'))
+
+      if (data.type === 'ping') {
+        const pingAt = new Date().toISOString()
+        await c.env.ORLAND_CACHE.put(
+          presenceKey(userId),
+          JSON.stringify({ status: 'online', last_seen: pingAt }),
+          { expirationTtl: 120 }
+        )
+        if (typeof (server as any)?.send === 'function') {
+          (server as any).send(JSON.stringify({ type: 'pong', timestamp: pingAt }))
+        }
+        return
+      }
+
+      if (data.type === 'typing') {
+        broadcast({
+          type: 'typing',
+          thread_id: threadId,
+          user_id: userId,
+          is_typing: !!data.is_typing,
+          timestamp: new Date().toISOString(),
+        })
+      }
+    } catch {
+      if (typeof (server as any)?.send === 'function') {
+        (server as any).send(JSON.stringify({ type: 'error', message: 'Invalid message format' }))
+      }
+    }
+  })
+
+  (server as any).addEventListener?.('close', async () => {
+    room.delete(server)
+    if (room.size === 0) wsRooms.delete(threadId)
+
+    const lastSeen = new Date().toISOString()
+    await c.env.ORLAND_CACHE.put(
+      presenceKey(userId),
+      JSON.stringify({ status: 'offline', last_seen: lastSeen }),
+      { expirationTtl: 300 }
+    )
+    broadcast({ type: 'presence', user_id: userId, status: 'offline', thread_id: threadId, timestamp: lastSeen })
+  })
+  
+  return new Response(null, {
+    status: 101,
+    // @ts-ignore Cloudflare Worker websocket response init
+    webSocket: client,
+  })
 })
 
 /**

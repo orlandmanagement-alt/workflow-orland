@@ -1,7 +1,7 @@
 import { 
   LayoutDashboard, Users, Video, Calendar, Trello, 
   FileText, Briefcase, Settings, Target, Shield,
-  ClipboardList, Workflow
+  ClipboardList, Workflow, Wrench, Users2
 } from 'lucide-react';
 import { CompanyCategory } from '../store/useAppStore';
 
@@ -10,7 +10,7 @@ export interface MenuItem {
   path: string;
   icon: any;
   requiredRoles?: CompanyCategory[];
-  group?: 'core' | 'workspace' | 'system';
+  group?: 'core' | 'workspace' | 'system' | 'team' | 'tools';
 }
 
 const ALL_MENUS: MenuItem[] = [
@@ -20,19 +20,28 @@ const ALL_MENUS: MenuItem[] = [
   { title: 'Projects', path: '/dashboard/projects', icon: Briefcase, group: 'core' },
   { title: 'Finance', path: '/dashboard/finance', icon: FileText, group: 'core' },
   
-  // --- WORKSPACE (DYNAMIC) ---
-  // PH Workspace
-  { title: 'Live Casting Board', path: '/dashboard/casting', icon: Video, requiredRoles: ['PH'], group: 'workspace' },
-  { title: 'Scripts & Call Sheets', path: '/dashboard/tools/ph/scripts', icon: ClipboardList, requiredRoles: ['PH'], group: 'workspace' },
-  // EO Workspace
-  { title: 'Event Staffing', path: '/dashboard/staffing', icon: Users, requiredRoles: ['EO'], group: 'workspace' },
-  { title: 'Riders & Gantt Chart', path: '/dashboard/tools/eo/riders', icon: Calendar, requiredRoles: ['EO'], group: 'workspace' },
-  { title: 'Rundown Manager', path: '/dashboard/tools/wo/rundown', icon: Workflow, requiredRoles: ['EO'], group: 'workspace' },
-  // KOL Workspace
-  { title: 'Brief Builder', path: '/dashboard/tools/kol/brief-builder', icon: Target, requiredRoles: ['KOL', 'BRAND'], group: 'workspace' },
-  { title: 'Content Pipeline', path: '/dashboard/tools/kol/drafts', icon: Trello, requiredRoles: ['KOL'], group: 'workspace' },
-  // Brand Workspace
-  { title: 'Brand Safety Check', path: '/dashboard/tools/brand/safety', icon: Shield, requiredRoles: ['BRAND'], group: 'workspace' },
+  // --- TEAM MANAGEMENT (NEW) ---
+  { title: 'Team', path: '/dashboard/team', icon: Users2, group: 'team' },
+  
+  // --- PRODUCTION TOOLS (NEW - Grouped) ---
+  { title: 'Production Tools', path: '/dashboard/tools', icon: Wrench, group: 'tools' },
+  
+  // Sub-tools for PH
+  { title: 'Call Sheets', path: '/dashboard/tools/ph/scripts', icon: ClipboardList, requiredRoles: ['PH'], group: 'tools' },
+  { title: 'Script Breakdown', path: '/dashboard/tools/ph/scripts', icon: ClipboardList, requiredRoles: ['PH'], group: 'tools' },
+  { title: 'Talent Budgeting', path: '/dashboard/tools/ph/talent-budgeting', icon: Wrench, requiredRoles: ['PH'], group: 'tools' },
+  
+  // Sub-tools for EO
+  { title: 'Riders', path: '/dashboard/tools/eo/riders', icon: Calendar, requiredRoles: ['EO'], group: 'tools' },
+  { title: 'Guest Management', path: '/dashboard/tools/eo/guest-management', icon: Users, requiredRoles: ['EO'], group: 'tools' },
+  { title: 'Rundown Manager', path: '/dashboard/tools/wo/rundown', icon: Workflow, requiredRoles: ['EO'], group: 'tools' },
+  
+  // Sub-tools for KOL
+  { title: 'Brief Builder', path: '/dashboard/tools/kol/brief-builder', icon: Target, requiredRoles: ['KOL', 'BRAND'], group: 'tools' },
+  { title: 'Content Pipeline', path: '/dashboard/tools/kol/drafts', icon: Trello, requiredRoles: ['KOL'], group: 'tools' },
+  
+  // Sub-tools for Brand
+  { title: 'Brand Safety Check', path: '/dashboard/tools/brand/safety', icon: Shield, requiredRoles: ['BRAND'], group: 'tools' },
   
   // --- SYSTEM ---
   { title: 'Settings', path: '/dashboard/settings', icon: Settings, group: 'system' }

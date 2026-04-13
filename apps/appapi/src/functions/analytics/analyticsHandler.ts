@@ -175,6 +175,32 @@ app.get('/talents/:id/analytics', async (c) => {
   }
 });
 
+// Compatibility alias for mount at /api/v1/talents
+// Final URL: /api/v1/talents/:id/analytics
+app.get('/:id/analytics', async (c) => {
+  const talentId = c.req.param('id');
+
+  try {
+    const analytics = await c.env.DB_CORE.prepare(`
+      SELECT * FROM talent_analytics WHERE talent_id = ?
+    `).bind(talentId).first<any>();
+
+    if (!analytics) {
+      return c.json({
+        views_7d: 0,
+        views_30d: 0,
+        views_all_time: 0,
+        rank_tier: 'emerging',
+        score: 0,
+      });
+    }
+
+    return c.json(analytics);
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch analytics' }, 500);
+  }
+});
+
 /**
  * GET /api/v1/dashboard/talent/analytics
  * Get talent's own analytics dashboard
@@ -250,6 +276,41 @@ app.get('/dashboard/talent/analytics', async (c) => {
   }
 });
 
+// Compatibility alias for mount at /api/v1/dashboard
+// Final URL: /api/v1/dashboard/talent/analytics
+app.get('/talent/analytics', async (c) => {
+  const userId = c.get('userId');
+
+  try {
+    const talent = await c.env.DB_CORE.prepare(
+      'SELECT id, name FROM talents WHERE user_id = ?'
+    ).bind(userId).first<any>();
+
+    if (!talent) {
+      return c.json({ error: 'Talent profile not found' }, 404);
+    }
+
+    const analytics = await c.env.DB_CORE.prepare(`
+      SELECT views_7d, views_30d, views_all_time, rank_tier, score
+      FROM talent_analytics
+      WHERE talent_id = ?
+    `).bind(talent.id).first<any>();
+
+    return c.json({
+      talentName: talent.name,
+      overview: analytics || {
+        views_7d: 0,
+        views_30d: 0,
+        views_all_time: 0,
+        rank_tier: 'emerging',
+        score: 0,
+      },
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch analytics' }, 500);
+  }
+});
+
 /**
  * GET /api/v1/rankings
  * Get talent rankings and leaderboard
@@ -301,6 +362,135 @@ app.get('/rankings', async (c) => {
     });
   } catch (error) {
     return c.json({ status: 'error', message: 'Failed to fetch rankings' }, 500);
+  }
+});
+
+// Compatibility endpoint for mount at /api/v1/rankings
+// Final URL: /api/v1/rankings/talents/:period
+app.get('/talents/:period', async (c) => {
+  try {
+    const period = c.req.param('period');
+    const limit = Math.min(parseInt(c.req.query('limit') || '20'), 100);
+    const category = c.req.query('category') || '';
+    const userId = c.get('userId');
+
+    let scoreColumn = 'ta.score';
+    if (period === 'weekly') scoreColumn = 'ta.views_7d';
+    if (period === 'monthly') scoreColumn = 'ta.views_30d';
+
+    let query = `
+      SELECT
+        ta.talent_id,
+        COALESCE(t.name, t.full_name, 'Unknown Talent') as talent_name,
+        COALESCE(t.profile_image, t.profile_picture_url, '') as profile_image,
+        COALESCE(t.category, 'other') as category,
+        COALESCE(ROUND(AVG(b.rating), 1), 0) as rating,
+        COALESCE(COUNT(DISTINCT b.booking_id), 0) as booking_count,
+        COALESCE(SUM(CASE WHEN f.type = 'payout' AND f.status = 'completed' THEN f.amount ELSE 0 END), 0) as earnings_total,
+        COALESCE(
+          ROUND(
+            (COUNT(CASE WHEN b.status = 'completed' THEN 1 END) * 100.0) /
+            NULLIF(COUNT(b.booking_id), 0),
+            0
+          ),
+          0
+        ) as completion_rate,
+        ${scoreColumn} as score_metric
+      FROM talent_analytics ta
+      JOIN talents t ON ta.talent_id = t.id
+      LEFT JOIN bookings b ON b.talent_id = ta.talent_id
+      LEFT JOIN financials f ON f.talent_id = ta.talent_id
+      WHERE t.profile_visible = true
+    `;
+
+    const params: any[] = [];
+    if (category) {
+      query += ' AND t.category = ?';
+      params.push(category);
+    }
+
+    query += `
+      GROUP BY ta.talent_id, t.name, t.full_name, t.profile_image, t.profile_picture_url, t.category, ${scoreColumn}
+      ORDER BY score_metric DESC
+      LIMIT ?
+    `;
+    params.push(limit);
+
+    const rows = await c.env.DB_CORE.prepare(query).bind(...params).all<any>();
+    const rankings = (rows.results || []).map((r: any, i: number) => ({
+      rank: i + 1,
+      talent_id: r.talent_id,
+      talent_name: r.talent_name,
+      profile_image: r.profile_image,
+      category: r.category,
+      rating: Number(r.rating || 0),
+      booking_count: Number(r.booking_count || 0),
+      earnings_total: Number(r.earnings_total || 0),
+      completion_rate: Number(r.completion_rate || 0),
+      is_self: false,
+    }));
+
+    // Best-effort self rank lookup
+    let userRank: any = null;
+    const selfTalent = await c.env.DB_CORE.prepare(
+      'SELECT id FROM talents WHERE user_id = ? LIMIT 1'
+    ).bind(userId).first<any>();
+    if (selfTalent) {
+      const idx = rankings.findIndex((r: any) => r.talent_id === selfTalent.id);
+      if (idx >= 0) {
+        rankings[idx].is_self = true;
+        userRank = rankings[idx];
+      }
+    }
+
+    return c.json({
+      rankings,
+      userRank,
+      period,
+      category: category || 'all',
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch leaderboard' }, 500);
+  }
+});
+
+// Compatibility endpoint for mount at /api/v1/rankings
+// Final URL: /api/v1/rankings/agencies/:period
+app.get('/agencies/:period', async (c) => {
+  try {
+    const limit = Math.min(parseInt(c.req.query('limit') || '20'), 100);
+    const period = c.req.param('period');
+
+    const agencies = await c.env.DB_CORE.prepare(`
+      SELECT
+        COALESCE(a.id, c.client_id) as agency_id,
+        COALESCE(a.name, c.company_name, 'Unknown Agency') as agency_name,
+        COUNT(DISTINCT b.booking_id) as booking_count,
+        COALESCE(ROUND(AVG(b.rating), 1), 0) as avg_rating,
+        COALESCE(SUM(CASE WHEN f.type = 'fee' AND f.status = 'completed' THEN f.amount ELSE 0 END), 0) as revenue
+      FROM clients c
+      LEFT JOIN agencies a ON a.client_id = c.client_id
+      LEFT JOIN bookings b ON b.agency_id = c.client_id
+      LEFT JOIN financials f ON f.client_id = c.client_id
+      WHERE c.is_agency = 1
+      GROUP BY COALESCE(a.id, c.client_id), COALESCE(a.name, c.company_name)
+      ORDER BY booking_count DESC, avg_rating DESC
+      LIMIT ?
+    `).bind(limit).all<any>();
+
+    return c.json({
+      period,
+      rankings: (agencies.results || []).map((r: any, i: number) => ({
+        rank: i + 1,
+        agency_id: r.agency_id,
+        agency_name: r.agency_name,
+        booking_count: Number(r.booking_count || 0),
+        avg_rating: Number(r.avg_rating || 0),
+        revenue: Number(r.revenue || 0),
+      })),
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch agency rankings' }, 500);
   }
 });
 

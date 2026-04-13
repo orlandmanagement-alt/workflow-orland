@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Film, Users, MapPin, Loader2, AlertCircle } from 'lucide-react';
-import { apiRequest } from '@/lib/api';
+import { api } from '@/lib/api';
 import { CastingGuestSubmit } from '@/components/casting/CastingGuestSubmit';
 
 interface CastingBoardData {
@@ -34,7 +34,7 @@ export default function CastingCallPage() {
   const fetchBoardData = async () => {
     try {
       setLoading(true);
-      const res: any = await apiRequest(`/api/v1/casting/board/${boardToken}`, {
+      const res: any = await api(`/api/v1/casting/board/${boardToken}`, {
         method: 'GET',
       });
 

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, MapPin, ShieldCheck, UploadCloud, Users, CheckCircle2, ArrowRight, ArrowLeft, Loader2, Lock, FileText, Camera, Radio } from 'lucide-react';
 import { useAuthStore } from '@/store/useAppStore'; // Assume it exists to update category
+// Tambahkan baris ini:
+import { api } from '@/lib/api';
 
 interface OnboardingData {
   companyName: string;
@@ -47,10 +49,10 @@ export const ClientOnboardingWizard = ({ onClose }: { onClose: () => void }) => 
     try {
       if (step === 4) {
         // Final Submission
-        const { apiRequest } = await import('@/lib/api');
-        await apiRequest('/clients/me', {
+        await api({
+          url: '/clients/me',
           method: 'PUT',
-          body: JSON.stringify(formData)
+          data: formData
         });
       }
       setStep(step + 1);

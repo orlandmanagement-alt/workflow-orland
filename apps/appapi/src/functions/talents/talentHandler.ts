@@ -57,10 +57,18 @@ router.get('/me', requireRole(['talent']), async (c) => {
         const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(talent.talent_id).all()
         talent.experiences = exps || [];
         
+        // Fetch User Info from SSO to merge missing email and phone
+        const ssoUser = await c.env.DB_SSO.prepare('SELECT first_name || " " || last_name as full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
+        if (ssoUser) {
+            talent.full_name = ssoUser.full_name;
+            talent.email = ssoUser.email;
+            talent.phone = ssoUser.phone;
+        }
+        
         return c.json({ status: 'ok', data: talent })
     }
     
-    const ssoUser = await c.env.DB_SSO.prepare('SELECT full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
+    const ssoUser = await c.env.DB_SSO.prepare('SELECT first_name || " " || last_name as full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
     return c.json({ status: 'ok', data: ssoUser, is_new: true })
   } catch (err: any) {
     return c.json({ status: 'error', message: 'Gagal memuat profil' }, 500)
@@ -114,48 +122,83 @@ router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema
   const location = body.location || null;
 
   try {
+    // 1. UPDATE DB_SSO FOR CROSS-DB FIELDS
+    if (fullName || phone) {
+      const nameParts = (fullName || '').split(' ');
+      const firstName = nameParts[0] || null;
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : null;
+
+      let ssoUpdateSql = 'UPDATE users SET ';
+      const ssoValues: any[] = [];
+      
+      if (fullName) {
+        ssoUpdateSql += 'first_name = ?, last_name = ?';
+        ssoValues.push(firstName, lastName);
+      }
+      
+      if (phone) {
+        if (ssoValues.length > 0) ssoUpdateSql += ', ';
+        ssoUpdateSql += 'phone = ?';
+        ssoValues.push(phone);
+      }
+      
+      ssoUpdateSql += ' WHERE id = ?';
+      ssoValues.push(userId);
+      
+      if (ssoValues.length > 1) { // Lebih dari 1 artinya ada update + userId
+        await c.env.DB_SSO.prepare(ssoUpdateSql).bind(...ssoValues).run();
+      }
+    }
+
     const existing = await c.env.DB_CORE.prepare('SELECT talent_id FROM talents WHERE user_id = ?').bind(userId).first()
 
     if (existing) {
       // Update jika profil sudah ada
       await c.env.DB_CORE.prepare(`
         UPDATE talents SET 
-          full_name=?, category=?, height=?, weight=?, birth_date=?, gender=?, 
+          category=?, height=?, weight=?, birth_date=?, gender=?, 
           headshot=?, side_view=?, full_height=?, 
           showreels=?, audios=?, additional_photos=?,
           interests=?, skills=?, union_affiliation=?, eye_color=?, hair_color=?, hip_size=?, chest_bust=?, body_type=?, specific_characteristics=?, tattoos=?, piercings=?, ethnicity=?, location=?,
-          instagram=?, tiktok=?, twitter=?, phone=?, email=? 
+          instagram=?, tiktok=?, twitter=? 
         WHERE user_id=?
       `).bind(
-        fullName, category, height, weight, birthDate, gender, headshot, sideView, fullHeight, 
+        category, height, weight, birthDate, gender, headshot, sideView, fullHeight, 
         showreels, audios, additionalPhotos, 
         interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
-        instagram, tiktok, twitter, phone, email, userId
+        instagram, tiktok, twitter, userId
       ).run()
     } else {
       // Insert jika profil baru
       const newTalentId = crypto.randomUUID()
       await c.env.DB_CORE.prepare(`
         INSERT INTO talents (
-          talent_id, user_id, full_name, category, height, weight, birth_date, gender, 
+          talent_id, user_id, category, height, weight, birth_date, gender, 
           headshot, side_view, full_height, showreels, audios, additional_photos, 
           interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
-          instagram, tiktok, twitter, phone, email
+          instagram, tiktok, twitter
         ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        newTalentId, userId, fullName, category, height, weight, birthDate, gender, 
+        newTalentId, userId, category, height, weight, birthDate, gender, 
         headshot, sideView, fullHeight, showreels, audios, additionalPhotos, 
         interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
-        instagram, tiktok, twitter, phone, email
+        instagram, tiktok, twitter
       ).run()
     }
     
     // Ambil ulang data terbaru setelah disimpan
     const updated = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE user_id = ?').bind(userId).first()
     
-    // Parse arrays agar balikan JSON rapi sebagai tipe Array
     if (updated) {
+        // Ambil data profile dari SSO yang dipisahkan
+        const ssoUser = await c.env.DB_SSO.prepare('SELECT first_name || " " || last_name as full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
+        if (ssoUser) {
+            updated.full_name = ssoUser.full_name;
+            updated.email = ssoUser.email;
+            updated.phone = ssoUser.phone;
+        }
+        
         if (typeof updated.showreels === 'string') updated.showreels = JSON.parse(updated.showreels);
         if (typeof updated.audios === 'string') updated.audios = JSON.parse(updated.audios);
         if (typeof updated.additional_photos === 'string') updated.additional_photos = JSON.parse(updated.additional_photos);

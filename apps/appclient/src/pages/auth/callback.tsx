@@ -15,10 +15,10 @@ export default function AuthCallback() {
     if (token) {
       isProcessed.current = true;
       login(token, { 
-        id: params.get('user_id'), 
-        full_name: params.get('name'), 
-        email: params.get('email'), 
-        role: params.get('role') 
+        id: params.get('user_id') || undefined, 
+        full_name: params.get('name') || undefined, 
+        email: params.get('email') || undefined, 
+        role: params.get('role') || undefined 
       });
       navigate('/dashboard', { replace: true });
     } else {

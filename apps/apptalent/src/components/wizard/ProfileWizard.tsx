@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProfileFormState } from '@/hooks/useProfileFormState';
 import { CheckCircle, ChevronRight, X } from 'lucide-react';
-import { apiRequest } from '@/lib/api';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAppStore';
 
 import Step1_BasicInfo from './steps/Step1_BasicInfo';
@@ -24,8 +24,8 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     const fetchDraft = async () => {
       try {
-        const res = await apiRequest('/talents/me');
-        if (res.status === 'ok' && res.data) {
+        const res = await api.get('/talents/me');
+        if (res.status === 200 && res.data) {
            const d = res.data;
            setInitialData(d);
            // LOGIKA AUTO-RESUME (Cek mana yang masih kosong)
@@ -54,10 +54,7 @@ export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
   const finishWizard = async () => {
     try {
       setLoadingInitial(true);
-      await apiRequest('/talents/me', {
-         method: 'PUT',
-         body: JSON.stringify(formState.values)
-      });
+      await api.put('/talents/me', formState.values);
       if (onClose) onClose();
       window.location.reload(); 
     } catch (error) {

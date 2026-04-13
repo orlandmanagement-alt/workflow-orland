@@ -10,6 +10,21 @@ binding = "DB_SSO"
 database_name = "sso_database"
 database_id = "6ebafba7-dafb-4e46-a4fe-b73e20ef7e4e"
 
+[[d1_databases]]
+binding = "DB_CORE"
+database_name = "core_database"
+database_id = "4bfd124d-66fc-4fe8-9fd9-c127641ddba3"
+
+[[d1_databases]]
+binding = "DB_LOGS"
+database_name = "logs_database"
+database_id = "284efc80-796c-4900-af41-4b1ade768d87"
+
+[[d1_databases]]
+binding = "DB_ARCHIVES"
+database_name = "archive_database"
+database_id = "c90dbea6-9a00-464c-b330-ca44a946a21a"
+
 [vars]
 # === KONFIGURASI APLIKASI ===
 APP_ENV = "production"
@@ -22,6 +37,7 @@ SSO_URL = "https://www.orlandmanagement.com"
 TALENT_URL = "https://talent.orlandmanagement.com"
 CLIENT_URL = "https://client.orlandmanagement.com"
 ADMIN_URL = "https://admin.orlandmanagement.com"
+AGENCY_URL = "https://agency.orlandmanagement.com"
 DASHBOARD_URL = "https://dashboard.orlandmanagement.com"
 API_URL = "https://api.orlandmanagement.com"
 

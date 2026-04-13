@@ -5,6 +5,117 @@ import { Bindings, Variables } from '../../index';
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // ─────────────────────────────────────────────
+// GET /stats/dashboard/:period
+// Compatibility endpoint for frontend dashboards
+// ─────────────────────────────────────────────
+router.get('/dashboard/:period', async (c) => {
+  const userId = c.get('userId');
+  const role = c.get('userRole');
+
+  if (role === 'talent') {
+    const [bookings, rating, earnings, completion, categories, recent] = await Promise.allSettled([
+      c.env.DB_CORE.prepare(
+        'SELECT COUNT(*) as total FROM bookings WHERE talent_id = ? AND status IN (\'confirmed\', \'active\', \'completed\')'
+      ).bind(userId).first<{ total: number }>(),
+      c.env.DB_CORE.prepare(
+        'SELECT COALESCE(AVG(rating), 0) as avg FROM bookings WHERE talent_id = ? AND rating IS NOT NULL'
+      ).bind(userId).first<{ avg: number }>(),
+      c.env.DB_CORE.prepare(
+        'SELECT COALESCE(SUM(amount), 0) as total FROM financials WHERE talent_id = ? AND type = \'payout\' AND status = \'completed\''
+      ).bind(userId).first<{ total: number }>(),
+      c.env.DB_CORE.prepare(
+        `SELECT COALESCE(
+          ROUND((COUNT(CASE WHEN status = 'completed' THEN 1 END) * 100.0) / NULLIF(COUNT(*), 0), 0),
+          0
+        ) as rate
+        FROM bookings WHERE talent_id = ?`
+      ).bind(userId).first<{ rate: number }>(),
+      c.env.DB_CORE.prepare(
+        `SELECT COALESCE(category, 'other') as category, COUNT(*) as count
+         FROM bookings
+         WHERE talent_id = ?
+         GROUP BY COALESCE(category, 'other')
+         ORDER BY count DESC
+         LIMIT 5`
+      ).bind(userId).all<{ category: string; count: number }>(),
+      c.env.DB_CORE.prepare(
+        `SELECT booking_id as projectId, COALESCE(project_title, 'Untitled') as title,
+                status, COALESCE(amount, 0) as earnings
+         FROM bookings
+         WHERE talent_id = ?
+         ORDER BY created_at DESC
+         LIMIT 10`
+      ).bind(userId).all<{ projectId: string; title: string; status: string; earnings: number }>(),
+    ]);
+
+    return c.json({
+      bookingsCount: bookings.status === 'fulfilled' ? (bookings.value?.total ?? 0) : 0,
+      bookingsCountChange: 0,
+      avgRating: rating.status === 'fulfilled' ? Number(rating.value?.avg ?? 0) : 0,
+      ratingChange: 0,
+      earningsTotal: earnings.status === 'fulfilled' ? Number(earnings.value?.total ?? 0) : 0,
+      earningsTrend: [],
+      completionRate: completion.status === 'fulfilled' ? Number(completion.value?.rate ?? 0) : 0,
+      completionRateChange: 0,
+      topCategories: categories.status === 'fulfilled' ? (categories.value?.results ?? []) : [],
+      recentProjects: recent.status === 'fulfilled' ? (recent.value?.results ?? []) : [],
+    });
+  }
+
+  if (role === 'client') {
+    const [projects, booked, spent, categories, recent] = await Promise.allSettled([
+      c.env.DB_CORE.prepare(
+        `SELECT COUNT(*) as active_projects,
+                SUM(CASE WHEN created_at >= date('now', '-30 days') THEN 1 ELSE 0 END) as projects_this_period
+         FROM projects WHERE client_id = ? AND status NOT IN ('cancelled', 'draft')`
+      ).bind(userId).first<{ active_projects: number; projects_this_period: number }>(),
+      c.env.DB_CORE.prepare(
+        'SELECT COUNT(*) as total FROM bookings WHERE client_id = ? AND status IN (\'confirmed\', \'active\', \'completed\')'
+      ).bind(userId).first<{ total: number }>(),
+      c.env.DB_CORE.prepare(
+        'SELECT COALESCE(SUM(amount), 0) as total FROM financials WHERE client_id = ? AND type IN (\'fee\', \'payout\') AND status = \'completed\''
+      ).bind(userId).first<{ total: number }>(),
+      c.env.DB_CORE.prepare(
+        `SELECT COALESCE(category, 'other') as category, COUNT(*) as count
+         FROM bookings
+         WHERE client_id = ?
+         GROUP BY COALESCE(category, 'other')
+         ORDER BY count DESC
+         LIMIT 5`
+      ).bind(userId).all<{ category: string; count: number }>(),
+      c.env.DB_CORE.prepare(
+        `SELECT booking_id as bookingId,
+                COALESCE(talent_name, 'Unknown Talent') as talentName,
+                COALESCE(project_title, 'Untitled') as projectTitle,
+                status,
+                COALESCE(amount, 0) as amount
+         FROM bookings
+         WHERE client_id = ?
+         ORDER BY created_at DESC
+         LIMIT 10`
+      ).bind(userId).all<{ bookingId: string; talentName: string; projectTitle: string; status: string; amount: number }>(),
+    ]);
+
+    const totalBooked = booked.status === 'fulfilled' ? Number(booked.value?.total ?? 0) : 0;
+    const totalSpent = spent.status === 'fulfilled' ? Number(spent.value?.total ?? 0) : 0;
+
+    return c.json({
+      activeProjects: projects.status === 'fulfilled' ? Number(projects.value?.active_projects ?? 0) : 0,
+      projectsThisPeriod: projects.status === 'fulfilled' ? Number(projects.value?.projects_this_period ?? 0) : 0,
+      totalBooked,
+      bookingAcceptanceRate: totalBooked > 0 ? 100 : 0,
+      totalSpent,
+      averageProjectCost: 0,
+      costPerBooking: totalBooked > 0 ? totalSpent / totalBooked : 0,
+      topTalentCategories: categories.status === 'fulfilled' ? (categories.value?.results ?? []) : [],
+      recentBookings: recent.status === 'fulfilled' ? (recent.value?.results ?? []) : [],
+    });
+  }
+
+  return c.json({ error: 'Unsupported role for dashboard endpoint' }, 403);
+});
+
+// ─────────────────────────────────────────────
 // GET /stats/talent-dashboard
 // Statistik untuk talent yang login
 // ─────────────────────────────────────────────

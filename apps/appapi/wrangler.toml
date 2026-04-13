@@ -19,7 +19,7 @@ database_name = "logs_database"
 database_id = "284efc80-796c-4900-af41-4b1ade768d87"
 
 [[d1_databases]]
-binding = "DB_ARCHIVE"
+binding = "DB_ARCHIVES"
 database_name = "archive_database"
 database_id = "c90dbea6-9a00-464c-b330-ca44a946a21a"
 
@@ -37,6 +37,7 @@ bucket_name = "orland-media"
 APP_ENV = "production"
 TALENT_URL = "https://talent.orlandmanagement.com"
 CLIENT_URL = "https://client.orlandmanagement.com"
+AGENCY_URL = "https://agency.orlandmanagement.com"
 CF_ACCOUNT_ID = "6c8fb4264bc8bce97572b708fc0eb5fb"
 
 # --- BACKGROUND JOBS (CRON) ---

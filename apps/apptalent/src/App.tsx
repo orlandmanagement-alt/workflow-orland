@@ -1,21 +1,23 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 // Layout & Auth
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import Login from '@/pages/auth/login';
 import AuthCallback from '@/pages/auth/callback';
 
-// Pages (Semua akan otomatis memanggil index.tsx dari foldernya masing-masing)
+// Pages
 import Dashboard from '@/pages/dashboard';
 import Projects from '@/pages/projects';
 import ProjectDetail from '@/pages/projects/[id]';
 import Schedules from '@/pages/schedules';
+import Earnings from '@/pages/earnings';
 import Payouts from '@/pages/payouts';
 import MediaPortfolio from '@/pages/media';
 import Contracts from '@/pages/contracts';
 import Messages from '@/pages/messages';
-import AIMatch from "@/pages/jobs/match"; // Sudah bersih, memanggil index.tsx baru
+import AIMatch from "@/pages/jobs/match";
 import JobInvites from '@/pages/jobs/invites';
 import JobBoard from '@/pages/jobs/board';
 import JobDetail from '@/pages/jobs/board/[id]';
@@ -23,36 +25,38 @@ import KYCVerification from '@/pages/kyc';
 import Audition from "@/pages/audition";
 import Helpdesk from '@/pages/help';
 import Settings from '@/pages/settings';
-import ProfileEditor from '@/pages/profile'; // Sudah bersih, memanggil index.tsx baru
+import ProfileEditor from '@/pages/profile';
 import LiveBoardJoin from '@/pages/live-boards/[id]';
 import PublicProfile from '@/pages/p/[username]';
+import InviteLandingPage from '@/pages/Invite/InviteLandingPage';
 
 export default function App() {
+  // Apply dark mode by default
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
+
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes (Tanpa perlu login) */}
+          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/invite/:token" element={<InviteLandingPage />} />
           <Route path="/p/:username" element={<PublicProfile />} />
-          
-          {/* Live Casting Room */}
           <Route path="/live-boards/:id" element={<LiveBoardJoin />} />
 
-          {/* Protected Routes (Harus Login - Gatekeeper ada di DashboardLayout) */}
+          {/* Protected Routes */}
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            
-            {/* Fitur Utama */}
             <Route path="/jobs/match" element={<AIMatch />} />
             <Route path="/profile" element={<ProfileEditor />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
-            
-            {/* Fitur Tambahan */}
             <Route path="/schedules" element={<Schedules />} />
+            <Route path="/earnings" element={<Earnings />} />
             <Route path="/payouts" element={<Payouts />} />
             <Route path="/media" element={<MediaPortfolio />} />
             <Route path="/contracts" element={<Contracts />} />
@@ -64,10 +68,9 @@ export default function App() {
             <Route path="/audition" element={<Audition />} />
             <Route path="/help" element={<Helpdesk />} />
             <Route path="/settings" element={<Settings />} />
-
           </Route>
 
-          {/* Fallback 404 Route */}
+          {/* Fallback 404 */}
           <Route path="*" element={
             <div className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white">
               <h1 className="text-6xl font-extrabold text-brand-600 mb-4">404</h1>

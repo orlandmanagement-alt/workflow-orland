@@ -1,9 +1,9 @@
-import { apiRequest } from '../api';
+import { api } from '../api';
 
 export const projectService = {
   getProjects: async () => {
     try {
-      const res = await apiRequest('/projects');
+      const res = await api('/projects');
       return res?.data || [];
     } catch (error) {
       console.warn("API Proyek belum siap, mengembalikan array kosong.");
@@ -12,7 +12,7 @@ export const projectService = {
   },
   getProjectById: async (id: string) => {
     try {
-      const res = await apiRequest(`/projects/${id}`);
+      const res = await api(`/projects/${id}`);
       return res?.data || {};
     } catch (error) {
       return { id, title: 'Proyek Tidak Ditemukan', status: 'Unknown' };
@@ -20,7 +20,7 @@ export const projectService = {
   },
   getAvailableProjects: async () => {
     try {
-      const res = await apiRequest('/projects/available');
+      const res = await api('/projects/available');
       return res?.data || [];
     } catch (error) {
       console.warn("Gagal menarik daftar open casting.");
@@ -29,7 +29,7 @@ export const projectService = {
   },
   getMatchScore: async (profileData: any) => {
     try {
-      const res = await apiRequest('/projects/match-score', {
+      const res = await api('/projects/match-score', {
         method: 'POST',
         data: profileData
       });

@@ -3,7 +3,7 @@ import { Bell, Search, Menu, User, Shield, LogOut, X, Settings, CheckCircle2 } f
 import ThemeToggle from '../ui/ThemeToggle';
 import { performCleanLogout } from '../../lib/auth/logout';
 import { useAuthStore } from '../../store/useAppStore';
-import { apiRequest } from '../../lib/api';
+import { api } from '../../lib/api';
 
 export default function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -19,14 +19,16 @@ export default function Header() {
 
   // Mengambil inisial nama dari Zustand
   useEffect(() => {
-    if (user?.name) {
-      setUserName(user.name.substring(0, 2).toUpperCase());
+    if (user?.full_name) {
+      setUserName(user.full_name.substring(0, 2).toUpperCase());
+    } else if (user?.first_name) {
+      setUserName(user.first_name.substring(0, 2).toUpperCase());
     }
   }, [user]);
 
   // Fetch Notifikasi
   useEffect(() => {
-    apiRequest('/notifications?limit=5&offset=0')
+    api('/notifications?limit=5&offset=0')
       .then((res: any) => {
          if (res.status === 'ok') {
            setNotifications(res.data || []);

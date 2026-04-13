@@ -1,9 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from './store/useAppStore';
 
 // Layout
-import ClientLayout from './components/layout/ClientLayout';
+import { ClientLayout } from './components/layout/ClientLayout';
 
 // Pages
 import AuthCallback from './pages/auth/callback';
@@ -13,6 +13,7 @@ import ProjectsHub from './pages/projects/index';
 import FinanceHub from "./pages/finance/invoices";
 import ContractsHub from "./pages/contracts/index";
 import TeamSettings from "./pages/settings/team";
+import TeamManagement from "./pages/team/index";
 import ClientMessages from "./pages/messages/index";
 import TalentDiscovery from "./pages/talents/search";
 import ProjectDetail from "./pages/projects/detail";
@@ -21,11 +22,13 @@ import WorkspaceHost from "./pages/projects/workspace";
 
 // Dynamic Tools (Import directly or dynamically in a real app)
 import PHScripts from "./pages/tools/ph/scripts";
+import PHTalentBudgeting from "./pages/tools/ph/talent-budgeting";
 import KOLBriefBuilder from "./pages/tools/kol/brief-builder";
 import KOLDrafts from "./pages/tools/kol/drafts";
 import BrandSafety from "./pages/tools/brand/safety";
 import WORundown from "./pages/tools/wo/rundown";
-import EORiders from "./pages/tools/eo/riders"; // Kita akan buat file ini setelahnya
+import EORiders from "./pages/tools/eo/riders";
+import EOGuestManagement from "./pages/tools/eo/guest-management";
 
 // --- STRICT GATEKEEPER ---
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -50,7 +53,7 @@ export default function App() {
         <Route path="/login" element={<ClientAuth />} />
         
         {/* SEMUA RUTE UTAMA DILINDUNGI GATEKEEPER & DI DALAM CLIENT LAYOUT */}
-        <Route element={<ProtectedRoute><ClientLayout /></ProtectedRoute>}>
+        <Route element={<ProtectedRoute><ClientLayout><Outlet /></ClientLayout></ProtectedRoute>}>
           {/* Core Routes */}
           <Route path="/dashboard" element={<ClientDashboard />} />
           <Route path="/dashboard/projects" element={<ProjectsHub />} />
@@ -61,15 +64,26 @@ export default function App() {
           <Route path="/dashboard/finance" element={<FinanceHub />} />
           <Route path="/dashboard/contracts" element={<ContractsHub />} />
           <Route path="/dashboard/settings" element={<TeamSettings />} />
+          <Route path="/dashboard/team" element={<TeamManagement />} />
           <Route path="/dashboard/messages" element={<ClientMessages />} />
 
-          {/* Dynamic Tools Routes */}
+          {/* Production Tools Routes - PH */}
           <Route path="/dashboard/tools/ph/scripts" element={<PHScripts />} />
+          <Route path="/dashboard/tools/ph/talent-budgeting" element={<PHTalentBudgeting />} />
+          
+          {/* Production Tools Routes - KOL */}
           <Route path="/dashboard/tools/kol/brief-builder" element={<KOLBriefBuilder />} />
           <Route path="/dashboard/tools/kol/drafts" element={<KOLDrafts />} />
-          <Route path="/dashboard/tools/brand/safety" element={<BrandSafety />} />
-          <Route path="/dashboard/tools/wo/rundown" element={<WORundown />} />
+          
+          {/* Production Tools Routes - EO */}
           <Route path="/dashboard/tools/eo/riders" element={<EORiders />} />
+          <Route path="/dashboard/tools/eo/guest-management" element={<EOGuestManagement />} />
+          
+          {/* Production Tools Routes - Brand */}
+          <Route path="/dashboard/tools/brand/safety" element={<BrandSafety />} />
+          
+          {/* Production Tools Routes - WO */}
+          <Route path="/dashboard/tools/wo/rundown" element={<WORundown />} />
           
           {/* Missing route stubs to prevent 404 on layout click */}
           <Route path="/dashboard/casting" element={<div className="p-10"><h1 className="text-2xl font-bold dark:text-white">Live Casting Board</h1></div>} />

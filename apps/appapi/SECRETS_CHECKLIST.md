@@ -6,7 +6,7 @@ Dokumen ini berisi daftar kunci rahasia yang **WAJIB** dimasukkan ke server Clou
 Kamu harus membuat layanan ini di Dasbor Cloudflare terlebih dahulu, lalu menyalin ID-nya dan menempelkannya di `wrangler.toml`:
 - [ ] `database_id` untuk `DB_CORE`
 - [ ] `database_id` untuk `DB_LOGS`
-- [ ] `database_id` untuk `DB_ARCHIVE`
+- [ ] `database_id` untuk `DB_ARCHIVES`
 - [ ] `id` untuk `ORLAND_CACHE` (Workers & Pages -> KV)
 - [ ] `CF_ACCOUNT_ID` di bagian `[vars]` (Ada di URL Dasbor Cloudflare-mu atau menu Workers Overview)
 

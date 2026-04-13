@@ -2,3 +2,11 @@
 > appclient@1.0.0 build
 > tsc && vite build
 
+src/components/wizard/ClientOnboardingWizard.tsx(50,15): error TS2304: Cannot find name 'api'.
+npm error Lifecycle script `build` failed with error:
+npm error code 2
+npm error path C:\Users\USER\Documents\antigravity\workflow-orland\apps\appclient
+npm error workspace appclient@1.0.0
+npm error location C:\Users\USER\Documents\antigravity\workflow-orland\apps\appclient
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c tsc && vite build

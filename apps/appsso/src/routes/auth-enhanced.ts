@@ -30,6 +30,7 @@ type Bindings = {
   TALENT_URL?: string
   CLIENT_URL?: string
   ADMIN_URL?: string
+  AGENCY_URL?: string
   PBKDF2_ITER?: string
   SESSION_TTL_MIN?: string
   COOKIE_DOMAIN?: string
@@ -68,6 +69,8 @@ async function getPortalUrl(env: Bindings, user: any, sid: string) {
   
   if (safeRole === 'admin' || safeRole === 'super_admin') {
     baseUrl = env.ADMIN_URL || 'https://admin.orlandmanagement.com';
+  } else if (safeRole === 'agency') {
+    baseUrl = env.AGENCY_URL || 'https://agency.orlandmanagement.com';
   } else if (safeRole === 'client') {
     baseUrl = env.CLIENT_URL || 'https://client.orlandmanagement.com';
   } else {
@@ -125,9 +128,12 @@ auth.post('/register', async (c) => {
       return c.json({ status: 'error', message: 'Masukkan alamat email yang valid (Contoh: nama@gmail.com)' }, 400);
     }
 
-    const ipAddress = getClientIp(c)
-    const isHuman = await verifyTurnstile(body.turnstile_token, ipAddress, c.env.TURNSTILE_SECRET)
-    if (!isHuman) return c.json({ status: 'error', message: 'Gagal verifikasi keamanan (CAPTCHA).' }, 403)
+	const ipAddress = getClientIp(c)
+    
+    // --- [DISABLED TURNSTILE SEMENTARA] ---
+    // const isHuman = await verifyTurnstile(body.turnstile_token, ipAddress, c.env.TURNSTILE_SECRET)
+    // if (!isHuman) return c.json({ status: 'error', message: 'Gagal verifikasi keamanan (CAPTCHA).' }, 403)
+    // --------------------------------------
 
     if (!body.password || !body.role) return c.json({ status: 'error', message: 'Data pendaftaran tidak lengkap.' }, 400)
 

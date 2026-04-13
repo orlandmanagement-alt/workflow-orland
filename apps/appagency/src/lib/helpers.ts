@@ -2,14 +2,26 @@
 // File: apps/appagency/src/lib/helpers.ts
 
 /**
- * Format number as Indonesian Rupiah currency
+ * Format number as currency (supports multiple currencies)
+ * @param amount The numeric amount to format
+ * @param currency The currency code (default: 'IDR')
  */
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('id-ID', {
+export const formatCurrency = (amount: number, currency: string = 'IDR'): string => {
+  const localeMap: Record<string, string> = {
+    IDR: 'id-ID',
+    USD: 'en-US',
+    EUR: 'en-EU',
+    SGD: 'en-SG',
+    MYR: 'ms-MY',
+  }
+
+  const locale = localeMap[currency] || 'id-ID'
+  
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: currency,
+    minimumFractionDigits: currency === 'IDR' ? 0 : 2,
+    maximumFractionDigits: currency === 'IDR' ? 0 : 2,
   }).format(amount)
 }
 

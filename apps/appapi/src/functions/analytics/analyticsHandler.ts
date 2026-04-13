@@ -211,12 +211,18 @@ app.get('/dashboard/talent/analytics', async (c) => {
   try {
     // Get talent ID from user
     const talent = await c.env.DB_CORE.prepare(
-      'SELECT id, name FROM talents WHERE user_id = ?'
+      'SELECT talent_id as id, user_id FROM talents WHERE user_id = ?'
     ).bind(userId).first<any>();
 
     if (!talent) {
       return c.json({ error: 'Talent profile not found' }, 404);
     }
+
+    const ssoUser = await c.env.DB_SSO.prepare(
+      "SELECT first_name || ' ' || last_name as full_name FROM users WHERE id = ?"
+    ).bind(talent.user_id).first<any>();
+
+    const talentName = ssoUser?.full_name || 'Unknown Talent';
 
     // Get analytics
     const analytics = await c.env.DB_CORE.prepare(`
@@ -256,7 +262,7 @@ app.get('/dashboard/talent/analytics', async (c) => {
     return c.json({
       status: 'success',
       data: {
-        talentName: talent.name,
+        talentName: talentName,
         overview: analytics || {
           views_7d: 0,
           views_30d: 0,
@@ -283,12 +289,18 @@ app.get('/talent/analytics', async (c) => {
 
   try {
     const talent = await c.env.DB_CORE.prepare(
-      'SELECT id, name FROM talents WHERE user_id = ?'
+      'SELECT talent_id as id, user_id FROM talents WHERE user_id = ?'
     ).bind(userId).first<any>();
 
     if (!talent) {
       return c.json({ error: 'Talent profile not found' }, 404);
     }
+
+    const ssoUser = await c.env.DB_SSO.prepare(
+      "SELECT first_name || ' ' || last_name as full_name FROM users WHERE id = ?"
+    ).bind(talent.user_id).first<any>();
+
+    const talentName = ssoUser?.full_name || 'Unknown Talent';
 
     const analytics = await c.env.DB_CORE.prepare(`
       SELECT views_7d, views_30d, views_all_time, rank_tier, score
@@ -297,7 +309,7 @@ app.get('/talent/analytics', async (c) => {
     `).bind(talent.id).first<any>();
 
     return c.json({
-      talentName: talent.name,
+      talentName: talentName,
       overview: analytics || {
         views_7d: 0,
         views_30d: 0,

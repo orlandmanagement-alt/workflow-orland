@@ -172,22 +172,37 @@ router.get('/info', async (c) => {
       return c.json({ status: 'ok', data: null })
     }
 
-    // Get agency details
-    const agency = await c.env.DB_CORE.prepare(`
+    // Get agency details from DB_CORE
+    const agencyCore = await c.env.DB_CORE.prepare(`
       SELECT 
-        c.client_id as agency_id,
-        c.company_name as agency_name,
-        c.logo_url,
-        u.full_name as admin_name,
-        u.email as admin_email
-      FROM clients c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.client_id = ? AND c.is_agency = 1
+        client_id as agency_id,
+        company_name as agency_name,
+        logo_url,
+        user_id
+      FROM clients
+      WHERE client_id = ? AND is_agency = 1
     `).bind(talent.agency_id).first<any>()
+
+    if (!agencyCore) {
+      return c.json({ status: 'error', message: 'Agency not found' }, 404)
+    }
+
+    // Fetch user details from DB_SSO
+    const adminUser = await c.env.DB_SSO.prepare(`
+      SELECT first_name || ' ' || last_name as admin_name, email as admin_email
+      FROM users
+      WHERE id = ?
+    `).bind(agencyCore.user_id).first<any>()
 
     return c.json({
       status: 'ok',
-      data: agency,
+      data: {
+        agency_id: agencyCore.agency_id,
+        agency_name: agencyCore.agency_name,
+        logo_url: agencyCore.logo_url,
+        admin_name: adminUser?.admin_name || 'Unknown Admin',
+        admin_email: adminUser?.admin_email || 'unknown@example.com'
+      },
     })
   } catch (err: any) {
     return c.json({ status: 'error', message: 'Failed to fetch agency info' }, 500)
@@ -231,10 +246,8 @@ router.get('/roster', async (c) => {
       SELECT
         at.id as agency_talent_id,
         t.talent_id,
-        COALESCE(t.name, t.full_name, 'Unknown Talent') as name,
-        COALESCE(t.email, '') as email,
+        t.user_id,
         COALESCE(t.gender, 'female') as gender,
-        COALESCE(t.age, 0) as age,
         COALESCE(t.height_cm, 0) as height_cm,
         COALESCE(t.weight_kg, 0) as weight_kg,
         COALESCE(t.skin_tone, 'medium') as skin_tone,
@@ -258,10 +271,27 @@ router.get('/roster', async (c) => {
     const requiredSkills = safeParseArray(req?.required_skills)
     const requiredLanguages = safeParseArray(req?.required_languages)
 
+    // Fetch names and emails from SSO
+    let ssoUsersMap: Record<string, { name: string; email: string }> = {};
+    if (roster.results && roster.results.length > 0) {
+      const userIds = roster.results.map(t => `'${t.user_id}'`).join(',');
+      const { results: users } = await c.env.DB_SSO.prepare(`
+        SELECT id, first_name || ' ' || last_name as full_name, email FROM users WHERE id IN (${userIds})
+      `).all<any>();
+      
+      ssoUsersMap = (users || []).reduce((acc, user) => ({
+        ...acc,
+        [user.id]: { name: user.full_name, email: user.email }
+      }), {});
+    }
+
     const candidates: any[] = []
     const ineligibleReasons: Array<{ talentId: string; name: string; failureReason: string }> = []
 
     for (const t of roster.results || []) {
+      const ssoUser = ssoUsersMap[t.user_id] || { name: 'Unknown Talent', email: '' };
+      t.name = ssoUser.name;
+      t.email = ssoUser.email;
       const skills = safeParseArray(t.skills_json)
       const languages = safeParseArray(t.languages_json)
 

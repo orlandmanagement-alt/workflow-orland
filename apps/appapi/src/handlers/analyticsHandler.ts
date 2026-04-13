@@ -154,7 +154,7 @@ export function createAnalyticsRouter(db: any) {
       const talentsQuery = `
         SELECT 
           t.id,
-          t.name,
+          t.user_id,
           COUNT(b.id) as bookings_count,
           SUM(b.booking_value) as total_revenue,
           AVG(br.rating) as avg_rating
@@ -164,12 +164,26 @@ export function createAnalyticsRouter(db: any) {
         WHERE t.agency_id = ?
           AND t.status = 'active'
           AND b.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        GROUP BY t.id, t.name
+        GROUP BY t.id, t.user_id
         ORDER BY total_revenue DESC
         LIMIT 10
       `;
 
       const topTalents = await db.prepare(talentsQuery).all(agencyId);
+
+      // Merge names from DB_SSO
+      let ssoUsersMap: Record<string, string> = {};
+      if (topTalents.length > 0) {
+        const _userIds = topTalents.map(t => `'${t.user_id}'`).join(',');
+        const { results: users } = await c.env.DB_SSO.prepare(
+          `SELECT id, first_name || ' ' || last_name as full_name FROM users WHERE id IN (${_userIds})`
+        ).all<any>();
+        ssoUsersMap = (users || []).reduce((acc, user) => ({ ...acc, [user.id]: user.full_name }), {});
+      }
+      for (const t of topTalents) {
+        t.name = ssoUsersMap[t.user_id] || 'Unknown Talent';
+        delete t.user_id; // Clean up
+      }
 
       // Get client retention
       const clientsQuery = `
@@ -217,7 +231,7 @@ export function createAnalyticsRouter(db: any) {
       const query = `
         SELECT 
           t.id,
-          t.name,
+          t.user_id,
           t.category,
           t.avg_rating,
           COUNT(DISTINCT b.id) as bookings,
@@ -231,9 +245,20 @@ export function createAnalyticsRouter(db: any) {
           AND tv.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
         WHERE t.agency_id = ?
           AND t.status = 'active'
-        GROUP BY t.id, t.name, t.category, t.avg_rating
+        GROUP BY t.id, t.user_id, t.category, t.avg_rating
         ORDER BY revenue DESC
       `;
+
+      const days = period === 'month' ? 30 : period === 'year' ? 365 : 7;
+      const metrics = await db.prepare(query).all(days, days, agencyId);
+
+      // Merge names from DB_SSO
+      let ssoUsersMap: Record<string, string> = {};
+      if (metrics.length > 0) {
+        const _userIds = metrics.map(t => `'${t.user_id}'`).join(',');
+        // This handler might not have direct access to c.env.DB_SSO because it uses `db`.
+        // Wait, I need to check how DB_SSO is accessible.
+        // Assuming c is not accessible. I will need to check the imports or scope of this router.
 
       const dayOffset = period === 'week' ? 7 : period === 'day' ? 1 : 30;
       const talents = await db

@@ -30,6 +30,7 @@ router.get('/invites/:token', async (c) => {
         tr.recommendation_id,
         tr.invite_token,
         tr.project_id,
+        tr.agency_id,
         tr.match_score,
         tr.reason_text,
         tr.expires_at,
@@ -38,15 +39,11 @@ router.get('/invites/:token', async (c) => {
         p.description AS project_description,
         COALESCE(p.budget, p.budget_max, p.budget_min) AS budget,
         p.deadline,
-        COALESCE(u.company_name, 'Orland Management') AS company_name,
-        u.logo_url
+        COALESCE(c.company_name, 'Orland Management') AS company_name,
+        c.logo_url
       FROM talent_recommendations tr
       LEFT JOIN projects p ON p.project_id = tr.project_id
-      LEFT JOIN users u ON u.user_id = tr.agency_id
-      WHERE tr.invite_token = ?
-      LIMIT 1
-    `).bind(token).first<any>();
-
+      LEFT JOIN clients c ON c.user_id = tr.agency_id AND c.is_agency = 1
     if (!invite) {
       return c.json({ error: 'Invite not found' }, 404);
     }
@@ -331,7 +328,7 @@ router.post('/match-recommendation', requireRole(['client', 'admin']), async (c)
         p.created_by_id,
         c.company_name
       FROM projects p
-      LEFT JOIN users c ON p.created_by_id = c.user_id
+      LEFT JOIN clients c ON p.created_by_id = c.user_id AND c.is_agency = 1
       WHERE p.project_id = ? AND p.created_by_id = ?
     `).bind(project_id, userId).first<any>();
 
@@ -760,10 +757,16 @@ function generateUUID(): string {
 
 async function resolveTalentEmail(c: any, talentId: string): Promise<string | null> {
   try {
-    const row = await c.env.DB_CORE.prepare(
-      'SELECT email FROM talents WHERE talent_id = ?'
+    const t = await c.env.DB_CORE.prepare(
+      'SELECT user_id FROM talents WHERE talent_id = ?'
     ).bind(talentId).first();
-    if (row?.email) return row.email;
+    
+    if (t?.user_id) {
+      const row = await c.env.DB_SSO.prepare(
+        'SELECT email FROM users WHERE id = ?'
+      ).bind(t.user_id).first();
+      if (row?.email) return row.email;
+    }
   } catch {
     // Ignore schema differences
   }

@@ -172,27 +172,58 @@ router.get('/projects/:projectId/candidates', async (c) => {
     }
 
     // Get candidates
-    const candidates = await c.env.DB_CORE.prepare(`
+    const rosterQuery = `
       SELECT 
         c.candidate_id,
+        t.user_id,
         IF(t.talent_id IS NOT NULL, 'account', 'guest') as type,
-        COALESCE(t.full_name, s.guest_name) as name,
-        COALESCE(u.email, s.guest_email) as email,
-        COALESCE(u.phone, s.guest_phone) as phone,
+        s.guest_name,
+        s.guest_email,
+        s.guest_phone,
         c.status,
         c.created_at as submitted_at,
         s.audition_data
       FROM live_board_candidates c
       LEFT JOIN talents t ON c.talent_id = t.talent_id
-      LEFT JOIN users u ON t.user_id = u.id
       LEFT JOIN casting_guest_submissions s ON c.candidate_id = CONCAT('CAND-', s.submission_id)
       WHERE c.board_id = ?
       ORDER BY c.created_at DESC
-    `).bind(board.board_id).all<any>()
+    `
+
+    const candidatesResult = await c.env.DB_CORE.prepare(rosterQuery).bind(board.board_id).all<any>()
+    
+    // Resolve SSO names
+    const accountCandidates = (candidatesResult.results || []).filter(r => r.type === 'account' && r.user_id);
+    let ssoUsersMap: Record<string, { full_name: string, email: string, phone: string }> = {};
+    if (accountCandidates.length > 0) {
+      const userIds = accountCandidates.map(r => `'${r.user_id}'`).join(',');
+      const { results: users } = await c.env.DB_SSO.prepare(`
+        SELECT id, first_name || ' ' || last_name as full_name, email, phone FROM users WHERE id IN (${userIds})
+      `).all<any>();
+      
+      ssoUsersMap = (users || []).reduce((acc, user) => ({
+        ...acc,
+        [user.id]: user
+      }), {});
+    }
+
+    const roster = (candidatesResult.results || []).map(r => {
+      const ssoInfo = r.user_id ? ssoUsersMap[r.user_id] : null;
+      return {
+        candidate_id: r.candidate_id,
+        type: r.type,
+        name: ssoInfo?.full_name || r.guest_name || 'Unknown',
+        email: ssoInfo?.email || r.guest_email || '',
+        phone: ssoInfo?.phone || r.guest_phone || '',
+        status: r.status,
+        submitted_at: r.submitted_at,
+        audition_data: r.audition_data
+      };
+    });
 
     return c.json({
       status: 'ok',
-      data: candidates.results || [],
+      data: roster,
     })
   } catch (err: any) {
     return c.json({ status: 'error', message: 'Failed to fetch candidates' }, 500)

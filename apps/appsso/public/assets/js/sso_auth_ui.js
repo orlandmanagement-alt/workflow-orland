@@ -1,4 +1,4 @@
-const TURNSTILE_SITE_KEY = "0x4AAAAAACs8dTzAqMf1YwNJ";
+//const TURNSTILE_SITE_KEY = "0x4AAAAAACs8dTzAqMf1YwNJ";
 const allViews = ['view-success-redirect', 'view-login', 'view-register', 'view-msg-email', 'view-reset-password', 'view-pin-check', 'view-pin-input', 'view-pin-setup', 'view-otp-verify', 'view-input-id-only', 'view-social-role'];
 let otpInterval;
 
@@ -48,8 +48,10 @@ window.switchMode = function(mode) {
     window.resetTurnstile();
 }
 
-window.renderTurnstileWidgets = function() { if (!window.turnstile) return; ['turnstile-login', 'turnstile-register'].forEach(id => { const el = document.getElementById(id); if (el && !el.hasChildNodes()) window.turnstile.render(el, { sitekey: TURNSTILE_SITE_KEY, theme: 'light' }); }); }
-window.resetTurnstile = function() { if (window.turnstile) window.turnstile.reset(); }
+// --- [DISABLED TURNSTILE SEMENTARA] ---
+// window.renderTurnstileWidgets = function() { return; /* if (!window.turnstile) return; ['turnstile-login', 'turnstile-register'].forEach(id => { const el = document.getElementById(id); if (el && !el.hasChildNodes()) window.turnstile.render(el, { sitekey: TURNSTILE_SITE_KEY, theme: 'light' }); }); */ }
+// window.resetTurnstile = function() { return; /* if (window.turnstile) window.turnstile.reset(); */ }
+// --------------------------------------
 
 // Tambahkan di mana saja (disarankan di dekat fungsi login lainnya)
 window.handleGoogleLogin = async function(response) {
@@ -133,11 +135,14 @@ function doRedirectCountdown(role, title = "Anda Sudah Login!", targetUrl) {
 window.doLogout = async function() { window.showToast("Logout...", "info"); await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = "/"; }
 
 window.handleRegisterSubmit = async function() {
-    const ts = document.querySelector('#turnstile-register [name="cf-turnstile-response"]')?.value; if(!ts && window.turnstile) return window.showToast("Centang Captcha", "error");
-    if(document.getElementById('reg-pass').value.length < 8) return window.showToast("Password minimal 8 karakter", "error");
+	// --- [DISABLED TURNSTILE SEMENTARA] ---
+   // const ts = document.querySelector('#turnstile-register [name="cf-turnstile-response"]')?.value; if(!ts && window.turnstile) return window.showToast("Centang Captcha", "error");
+    const ts = "";
+	// --------------------------------------
+	if(document.getElementById('reg-pass').value.length < 8) return window.showToast("Password minimal 8 karakter", "error");
     window.showToast("Memproses...", "info");
     const res = await sendApi('register', { fullName: document.getElementById('reg-user').value, email: document.getElementById('reg-email').value, phone: document.getElementById('reg-phone').value, password: document.getElementById('reg-pass').value, role: document.querySelector('input[name="reg-role"]:checked').value, turnstile_token: ts });
-    window.resetTurnstile();
+    // window.resetTurnstile();
     if(res.status === 'ok') { window.showToast("Sukses!", "success"); window.showView('view-msg-email'); } else window.showToast(res.message, "error");
 }
 
@@ -200,10 +205,13 @@ window.resendOtp = async function() {
 }
 
 window.handleRegularLogin = async function() {
-    const ts = document.querySelector('#turnstile-login [name="cf-turnstile-response"]')?.value; if(!ts && window.turnstile) return window.showToast("Harap centang Captcha", "error");
-    window.showToast("Memverifikasi...", "info");
+	// --- [DISABLED TURNSTILE SEMENTARA] ---
+    // const ts = document.querySelector('#turnstile-login [name="cf-turnstile-response"]')?.value; if(!ts && window.turnstile) return window.showToast("Harap centang Captcha", "error");
+    const ts = "";
+	// --------------------------------------
+	window.showToast("Memverifikasi...", "info");
     const res = await sendApi('login-password', { identifier: document.getElementById('login-id').value, password: document.getElementById('login-pass').value, turnstile_token: ts });
-    window.resetTurnstile();
+   // window.resetTurnstile();
     if(res.status === 'ok') { window.showToast("Login Berhasil!", "success"); doRedirectCountdown(res.role || 'User', "Login Sukses!", res.redirect_url); } else window.showToast(res.message, "error");
 }
 

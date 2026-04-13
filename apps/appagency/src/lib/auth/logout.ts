@@ -4,5 +4,5 @@ export const performCleanLogout = async () => {
   } catch (e) {}
   localStorage.removeItem('orland-auth-storage');
   sessionStorage.clear();
-  window.location.replace('https://sso.orlandmanagement.com/?app=agency');
+  window.location.replace('https://www.orlandmanagement.com/?app=agency');
 };

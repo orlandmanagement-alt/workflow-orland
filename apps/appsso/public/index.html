@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+   <!-- <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script> -->
    <script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Poppins', 'sans-serif'] }, colors: { primary: '#5b83e8', secondary: '#f4f6f9', error: '#ef4444' } } } }</script>
@@ -66,7 +66,7 @@
                         <input type="password" id="login-pass" placeholder="Password" class="bg-transparent w-full ml-3 text-sm pr-8 focus:outline-none" required>
                         <i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('login-pass', this)"></i>
                     </div>
-                    <div id="turnstile-login" class="flex justify-center mt-2"></div>
+                    <!-- <div id="turnstile-login" class="flex justify-center mt-2"></div> -->
                     <div class="flex justify-between items-center text-sm pt-1">
                         <div class="flex gap-2">
                             <a href="#" onclick="window.showView('view-login-otp')" class="text-primary font-medium hover:underline text-xs cursor-pointer">Login OTP</a>
@@ -101,7 +101,7 @@
                         <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-envelope text-gray-400 w-5"></i><input type="email" id="reg-email" placeholder="Email Aktif" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required></div>
                         <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-phone text-gray-400 w-5"></i><input type="tel" id="reg-phone" inputmode="numeric" pattern="[0-9]*" oninput="window.enforceNumeric(this)" placeholder="Nomor WA" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required></div>
                         <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-lock text-gray-400 w-5"></i><input type="password" id="reg-pass" placeholder="Password (Min. 8 Karakter)" class="bg-transparent w-full ml-3 text-sm pr-8 focus:outline-none" required><i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('reg-pass', this)"></i></div>
-                        <div id="turnstile-register" class="flex justify-center mt-2"></div>
+                        <!-- <div id="turnstile-register" class="flex justify-center mt-2"></div> -->
                         <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Daftar Sekarang</button>
                     </div>
                 </form>

@@ -37,16 +37,42 @@ router.post('/talents', requireRole(['admin', 'client']), zValidator('json', sea
     params.push(body.max_rate)
   }
   
+  // NOTE: filtering by full_name is partially supported now by finding matching users in DB_SSO first
+  let userIdsFilter: string[] | null = null;
   if (body.keyword) {
-    query += ' AND full_name LIKE ?'
-    params.push(`%${body.keyword}%`)
+    const { results: matchedUsers } = await c.env.DB_SSO.prepare(
+      "SELECT id FROM users WHERE (first_name || ' ' || last_name) LIKE ? OR first_name LIKE ? OR last_name LIKE ?"
+    ).bind(`%${body.keyword}%`, `%${body.keyword}%`, `%${body.keyword}%`).all<any>();
+    
+    userIdsFilter = (matchedUsers || []).map(u => u.id);
+    
+    if (userIdsFilter.length === 0) {
+      return c.json({ status: 'ok', data: [] })
+    }
+    
+    query += ` AND user_id IN (${userIdsFilter.map(() => '?').join(',')})`;
+    params.push(...userIdsFilter);
   }
   
   query += ' LIMIT ? OFFSET ?'
   params.push(body.limit, body.offset)
   
   // 3. Eksekusi ke D1
-  const { results } = await c.env.DB_CORE.prepare(query).bind(...params).all()
+  const { results: rawResults } = await c.env.DB_CORE.prepare(query).bind(...params).all<any>()
+
+  let ssoUsersMap: Record<string, string> = {};
+  if (rawResults && rawResults.length > 0) {
+    const userIds = rawResults.map(r => `'${r.user_id}'`).join(',');
+    const { results: users } = await c.env.DB_SSO.prepare(
+      `SELECT id, first_name || ' ' || last_name as full_name FROM users WHERE id IN (${userIds})`
+    ).all<any>();
+    ssoUsersMap = (users || []).reduce((acc, user) => ({ ...acc, [user.id]: user.full_name }), {});
+  }
+
+  const results = (rawResults || []).map(r => ({
+    ...r,
+    full_name: ssoUsersMap[r.user_id] || 'Unknown Talent'
+  }));
   
   // 4. Simpan ke Cache selama 1 Jam (3600 detik) untuk pencarian yang identik
   await c.env.ORLAND_CACHE.put(cacheKey, JSON.stringify(results || []), { expirationTtl: 3600 })

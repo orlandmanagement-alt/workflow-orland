@@ -251,7 +251,12 @@ app.get('/content/board', async (c: Context) => {
     // Get talent names
     const talentIds = [...new Set(drafts.results.map((d: any) => d.talent_id))]
     const talents = await db
-      .prepare('SELECT id, name FROM talents WHERE id IN (' + talentIds.map(() => '?').join(',') + ')')
+      .prepare(`
+        SELECT t.id, u.first_name || ' ' || u.last_name as name
+        FROM talents t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.id IN (${talentIds.map(() => '?').join(',')})
+      `)
       .bind(...talentIds)
       .all()
 

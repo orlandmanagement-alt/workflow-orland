@@ -19,7 +19,7 @@ import type {
   BulkSubmissionResponse,
   FinancialSummary as FinancialSummaryType,
   MultiTalentSubmissionState,
-} from '@/types/multiTalentSubmission'
+} from '../../types/multiTalentSubmission'
 
 // ============================================================================
 // MAIN FLOW COMPONENT

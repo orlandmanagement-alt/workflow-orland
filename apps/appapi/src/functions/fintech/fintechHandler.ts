@@ -68,8 +68,12 @@ app.post('/contracts/generate', async (c) => {
     const [jobExists, talentExists] = await Promise.all([
       c.env.DB_CORE.prepare('SELECT id, title FROM projects WHERE id = ?')
         .bind(contractData.job_id).first<any>(),
-      c.env.DB_CORE.prepare('SELECT id, name FROM talents WHERE id = ?')
-        .bind(contractData.talent_id).first<any>()
+      c.env.DB_CORE.prepare(`
+        SELECT t.id, u.first_name || ' ' || u.last_name as name
+        FROM talents t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.id = ?
+      `).bind(contractData.talent_id).first<any>()
     ]);
 
     if (!jobExists || !talentExists) {
@@ -189,10 +193,11 @@ app.get('/contracts', async (c) => {
 
   try {
     let query = `
-      SELECT c.*, p.title as project_title, t.name as talent_name
+      SELECT c.*, p.title as project_title, u.first_name || ' ' || u.last_name as talent_name
       FROM contracts c
       LEFT JOIN projects p ON c.job_id = p.id
       LEFT JOIN talents t ON c.talent_id = t.id
+      LEFT JOIN users u ON t.user_id = u.id
     `;
 
     if (role === 'client') {
@@ -472,10 +477,11 @@ app.get('/invoices', async (c) => {
 
   try {
     let query = `
-      SELECT i.*, c.id as contract_id, t.name as talent_name
+      SELECT i.*, c.id as contract_id, u.first_name || ' ' || u.last_name as talent_name
       FROM invoices i
       LEFT JOIN contracts c ON i.contract_id = c.id
       LEFT JOIN talents t ON c.talent_id = t.id
+      LEFT JOIN users u ON t.user_id = u.id
     `;
 
     if (role === 'client') {

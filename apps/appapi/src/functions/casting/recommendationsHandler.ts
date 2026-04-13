@@ -44,7 +44,9 @@ router.get('/invites/:token', async (c) => {
       FROM talent_recommendations tr
       LEFT JOIN projects p ON p.project_id = tr.project_id
       LEFT JOIN clients c ON c.user_id = tr.agency_id AND c.is_agency = 1
-    if (!invite) {
+      WHERE tr.invite_token = ?
+      LIMIT 1
+    `).bind(token).first<any>();
       return c.json({ error: 'Invite not found' }, 404);
     }
 

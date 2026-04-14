@@ -69,7 +69,7 @@
     .tab-active { color: #7c3aed; font-weight: 800; }
     .tab-active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -7px; height: 3px; border-radius: 999px; background: linear-gradient(90deg, #8b5cf6, #ec4899); box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4); }
     
-    /* Custom Scrollbar (Hidden for tabs, styled for others) */
+    /* Custom Scrollbar */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -87,12 +87,24 @@
     .float-menu { position: fixed; top: 15px; right: 15px; z-index: 50; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
     .float-btn { background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: 1px solid #e5e7eb; padding: 6px 12px; border-radius: 99px; font-size: 12px; font-weight: 800; color: #4f46e5; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: all 0.2s; display: flex; align-items: center; gap: 4px; }
     .float-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.15); background: #fff; }
+
+    /* Global API Loader */
+    #apiLoader { position: fixed; inset: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index: 999999; display: flex; flex-col; justify-content: center; items-center; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(139, 92, 246, 0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
 <body class="h-full antialiased pb-20 relative">
 
-  <div class="max-w-[1100px] mx-auto px-3.5 pt-8 pb-10">
+  <!-- Global API Loader (Hidden by default) -->
+  <div id="apiLoader" class="hide flex-col items-center justify-center">
+    <div class="spinner mb-3"></div>
+    <div class="font-black text-violet-700 tracking-widest text-sm" id="apiLoaderText">SYNCING DATA...</div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="max-w-[1100px] mx-auto px-3.5 pt-8 pb-10" id="mainAppContainer" style="opacity: 0; transition: opacity 0.5s;">
     
     <!-- Top Alert -->
     <div class="flex gap-2.5 items-center bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200 p-3 rounded-2xl text-[13px] mb-4 shadow-sm hover:shadow-md transition-shadow" id="topAlert">
@@ -188,6 +200,7 @@
             </div>
           </div>
           
+          <!-- Download Compcard Button Desktop -->
           <div class="mt-4 pt-4 border-t border-slate-100">
             <button class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md border-none px-4 py-3 rounded-xl font-black text-[13px] hover-lift flex justify-center items-center gap-2" type="button"><span>⬇️</span> Download Comp Card (PDF)</button>
           </div>
@@ -203,6 +216,7 @@
             <div class="flex justify-between items-center p-2.5 border border-transparent rounded-xl hover:bg-slate-50 transition-colors"><span class="text-xl drop-shadow-sm">📱</span><span id="txtPhone" class="font-black text-slate-700">-</span></div>
             <div class="flex justify-between items-center p-2.5 border border-transparent rounded-xl hover:bg-slate-50 transition-colors"><span class="text-xl drop-shadow-sm">✉️</span><span id="txtEmail" class="font-black text-slate-700 truncate max-w-[180px]">-</span></div>
           </div>
+          <!-- Edit Contact -->
           <div id="contactEdit" class="grid gap-2.5 text-[13px] hide">
             <div class="flex flex-col gap-1"><label class="text-[10px] font-black text-violet-500 uppercase">Phone</label><input id="inpPhone" class="border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-violet-400 font-bold text-slate-700 w-full"></div>
             <div class="flex flex-col gap-1"><label class="text-[10px] font-black text-violet-500 uppercase">Email</label><input id="inpEmail" type="email" class="border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-violet-400 font-bold text-slate-700 w-full"></div>
@@ -257,6 +271,7 @@
                 <button class="w-10 h-10 rounded-full bg-white text-slate-600 border border-slate-200 shadow-sm hover:shadow-md hover:text-blue-600 flex items-center justify-center font-bold transition-all hover:scale-105" id="btnShareDesktop" title="Share Profile">🔗</button>
               </div>
             </div>
+            <div class="text-[11px] text-slate-400 font-bold mt-2 bg-slate-50 inline-block px-3 py-1 rounded-full border border-slate-100">Profile ID: <span class="text-slate-600" id="profileIdLabel">7199262</span></div>
           </div>
         </div>
 
@@ -284,6 +299,7 @@
 
         <!-- ===== PANEL: INFO ===== -->
         <section class="panel block animate-[fadeIn_0.4s_ease-out]" id="panel-info">
+          
           <!-- INTERESTED IN -->
           <div class="mt-5 border border-slate-100 rounded-[16px] bg-white shadow-sm">
             <div class="p-3.5 bg-gradient-to-r from-violet-50 to-fuchsia-50 border-b border-slate-100 font-black text-[12px] text-violet-800 tracking-widest border-l-4 border-l-violet-500">INTERESTED IN</div>
@@ -301,7 +317,7 @@
             <div class="p-3.5 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-slate-100 font-black text-[12px] text-blue-800 tracking-widest border-l-4 border-l-blue-500">SKILLS</div>
             <div class="p-4">
               <div class="flex items-center gap-3 border-2 border-slate-100 focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-50 rounded-xl p-1.5 pl-4 transition-all bg-white relative z-20">
-                <input type="text" id="inpSkill" maxlength="25" placeholder="Add skills..." class="border-none outline-none flex-1 text-[13px] font-semibold text-slate-700 bg-transparent">
+                <input type="text" id="inpSkill" maxlength="25" placeholder="Add skills (e.g. Swimming)..." class="border-none outline-none flex-1 text-[13px] font-semibold text-slate-700 bg-transparent">
                 <span class="text-[11px] text-slate-400 font-black"><span id="skillCharCount">0</span>/25</span>
                 <button class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 rounded-lg font-black text-[12px] shadow-md hover:scale-105 transition-transform" id="btnAddSkill">Save</button>
               </div>
@@ -323,7 +339,7 @@
               <div class="border border-slate-50 bg-slate-50 rounded-xl p-3"><div class="text-[11px] text-slate-400 font-black uppercase">Ethnicity</div><div class="text-[14px] font-black text-slate-800" id="txtEthnicity">-</div></div>
             </div>
 
-            <!-- Edit 2 Kolom (Mobile & Desktop) -->
+            <!-- Edit 2 Kolom -->
             <div class="p-4 grid grid-cols-2 gap-4 hide bg-emerald-50/10" id="persEdit">
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-emerald-700 font-black uppercase truncate">Gender</label><select class="border-2 border-emerald-100 rounded-xl px-2 py-2 text-[12px] outline-none font-semibold bg-white" id="inpGender"><option>Male</option><option>Female</option><option>Non-Binary</option><option>Other</option></select></div>
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-emerald-700 font-black uppercase truncate">DOB</label><input type="date" class="border-2 border-emerald-100 rounded-xl px-2 py-2 text-[12px] outline-none font-semibold bg-white" id="inpDob"></div>
@@ -344,6 +360,7 @@
               <div class="border border-slate-50 bg-slate-50 rounded-xl p-3"><div class="text-[11px] text-slate-400 font-black uppercase mb-1">Eye Color</div><div class="text-[14px] font-black text-rose-600" id="apv_eye">n/a</div></div>
               <div class="border border-slate-50 bg-slate-50 rounded-xl p-3"><div class="text-[11px] text-slate-400 font-black uppercase mb-1">Hair Color</div><div class="text-[14px] font-black text-rose-600" id="apv_hair">n/a</div></div>
             </div>
+            <!-- Edit 2 Kolom -->
             <div class="p-4 hide bg-rose-50/10 grid grid-cols-2 gap-4" id="apEdit">
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-rose-700 font-black uppercase truncate">Height</label><select class="border-2 border-rose-100 rounded-xl px-2 py-2 text-[12px] font-semibold bg-white outline-none" id="ap_height"></select></div>
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-rose-700 font-black uppercase truncate">Weight</label><select class="border-2 border-rose-100 rounded-xl px-2 py-2 text-[12px] font-semibold bg-white outline-none" id="ap_weight"></select></div>
@@ -356,15 +373,17 @@
         <!-- ===== PANEL: PHOTOS ===== -->
         <section class="panel hide animate-[fadeIn_0.4s_ease-out]" id="panel-photos">
           <div class="mt-5">
+            <!-- Main Photos -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <!-- HEADSHOT -->
               <div class="border border-slate-100 rounded-[20px] overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white relative">
                 <div class="bg-gradient-to-r from-fuchsia-50 to-pink-50 border-b border-fuchsia-100 p-2.5 text-center text-[11px] font-black text-fuchsia-700 tracking-widest">HEADSHOT</div>
-                <div class="relative h-[240px] bg-white cursor-pointer group" data-upload="headshot">
+                <div class="relative h-[240px] bg-white cursor-pointer group">
                   <img id="ph_headshot" src="" class="w-full h-full object-cover hide transition-transform duration-500 group-hover:scale-105">
-                  <div class="absolute inset-2 border-2 border-dashed border-fuchsia-200 rounded-xl flex flex-col items-center justify-center bg-fuchsia-50/50 gap-1.5 transition-colors group-hover:bg-fuchsia-100/50" id="ph_headshot_empty">
+                  <div class="absolute inset-2 border-2 border-dashed border-fuchsia-200 rounded-xl flex flex-col items-center justify-center bg-fuchsia-50/50 gap-1.5 transition-colors group-hover:bg-fuchsia-100/50" id="ph_headshot_empty" data-upload="headshot">
                     <span class="text-fuchsia-600 font-black">📷 Upload</span>
                   </div>
+                  <!-- Edit/Delete Hover Action -->
                   <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                     <button class="w-7 h-7 rounded-full bg-white/90 text-blue-500 font-black shadow-sm hide edit-photo-btn" data-upload="headshot" title="Edit/Replace">✎</button>
                     <button class="w-7 h-7 rounded-full bg-white/90 text-red-500 font-black shadow-sm hide rm-photo-btn" data-remove-photo="headshot" title="Remove">×</button>
@@ -375,9 +394,9 @@
               <!-- SIDE VIEW -->
               <div class="border border-slate-100 rounded-[20px] overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white relative">
                 <div class="bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-100 p-2.5 text-center text-[11px] font-black text-sky-700 tracking-widest">SIDE VIEW</div>
-                <div class="relative h-[240px] bg-white cursor-pointer group" data-upload="side">
+                <div class="relative h-[240px] bg-white cursor-pointer group">
                   <img id="ph_side" src="" class="w-full h-full object-cover hide transition-transform duration-500 group-hover:scale-105">
-                  <div class="absolute inset-2 border-2 border-dashed border-sky-200 rounded-xl flex flex-col items-center justify-center bg-sky-50/50 gap-1.5 transition-colors group-hover:bg-sky-100/50" id="ph_side_empty">
+                  <div class="absolute inset-2 border-2 border-dashed border-sky-200 rounded-xl flex flex-col items-center justify-center bg-sky-50/50 gap-1.5 transition-colors group-hover:bg-sky-100/50" id="ph_side_empty" data-upload="side">
                     <span class="text-sky-600 font-black">👤 Upload</span>
                   </div>
                   <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -390,9 +409,9 @@
               <!-- FULL HEIGHT -->
               <div class="border border-slate-100 rounded-[20px] overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white relative">
                 <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100 p-2.5 text-center text-[11px] font-black text-emerald-700 tracking-widest">FULL HEIGHT</div>
-                <div class="relative h-[240px] bg-white cursor-pointer group" data-upload="full">
+                <div class="relative h-[240px] bg-white cursor-pointer group">
                   <img id="ph_full" src="" class="w-full h-full object-cover hide transition-transform duration-500 group-hover:scale-105">
-                  <div class="absolute inset-2 border-2 border-dashed border-emerald-200 rounded-xl flex flex-col items-center justify-center bg-emerald-50/50 gap-1.5 transition-colors group-hover:bg-emerald-100/50" id="ph_full_empty">
+                  <div class="absolute inset-2 border-2 border-dashed border-emerald-200 rounded-xl flex flex-col items-center justify-center bg-emerald-50/50 gap-1.5 transition-colors group-hover:bg-emerald-100/50" id="ph_full_empty" data-upload="full">
                     <span class="text-emerald-600 font-black">🧍 Upload</span>
                   </div>
                   <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -409,13 +428,14 @@
               <div class="text-[12px] text-slate-500 font-semibold mb-3">Drag & drop multiple images here or click to browse</div>
               <button class="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-5 py-2.5 rounded-full font-black text-[13px] shadow-md hover:-translate-y-0.5 transition-all pointer-events-none" type="button" id="btnAddAdditional">+ Add Photos</button>
             </div>
+            
             <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mt-4" id="additionalPhotosGrid"></div>
           </div>
         </section>
 
         <!-- ===== PANEL: ASSETS ===== -->
         <section class="panel hide animate-[fadeIn_0.4s_ease-out]" id="panel-assets">
-          <div class="grid grid-cols-1 gap-5 mt-5">
+          <div class="flex flex-col gap-5 mt-5">
             <!-- VIDEO BLOCK -->
             <div class="border border-slate-100 rounded-[20px] p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-3">
@@ -454,6 +474,7 @@
               </div>
             </div>
 
+            <!-- Credit Editor Form -->
             <div id="creditFormWrapper" class="border-2 border-amber-200 bg-amber-50 p-4 rounded-[20px] mb-4 hide shadow-inner relative">
               <div class="font-black text-amber-800 text-[14px] mb-4 uppercase" id="cr_formTitle">Add New Credit</div>
               <div class="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-4">
@@ -465,6 +486,7 @@
                   <div class="flex flex-col gap-1.5 mt-3"><label class="text-[11px] font-black text-amber-800 uppercase">Company</label><input type="text" class="border-2 border-amber-100 rounded-xl px-4 py-2 text-[13px] outline-none focus:border-amber-400 font-semibold bg-white" id="cr_company" placeholder="Production company"></div>
                   <div class="flex flex-col gap-1.5 mt-3"><label class="text-[11px] font-black text-amber-800 uppercase">About</label><textarea class="border-2 border-amber-100 rounded-xl px-4 py-2 text-[13px] outline-none focus:border-amber-400 font-semibold min-h-[70px] bg-white" id="cr_about"></textarea></div>
                 </div>
+                <!-- Credit Photo -->
                 <div class="flex flex-col gap-1.5">
                   <label class="text-[11px] font-black text-amber-800 uppercase text-center">Photo</label>
                   <div class="border-2 border-dashed border-amber-200 rounded-xl bg-white aspect-[3/4] relative cursor-pointer hover:bg-amber-100/50 flex flex-col items-center justify-center text-amber-500 overflow-hidden" id="wrapCrPhoto">
@@ -481,6 +503,7 @@
               </div>
             </div>
 
+            <!-- Dropzone CSV area -->
             <div class="border-2 border-dashed border-amber-200 bg-amber-50/50 p-8 text-center rounded-[20px] hover:bg-amber-50 transition-colors" id="creditEmptyState">
               <div class="text-[14px] text-amber-600 font-bold mb-3">No credits added yet.</div>
               <div class="text-[12px] text-slate-500 mb-3">You can manually add, or drag & drop a CSV file here.</div>
@@ -491,7 +514,7 @@
             
             <div id="creditsPagination" class="mt-4 flex justify-center gap-2 hide">
                <button id="crPrev" class="px-3 py-1 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 text-sm hover:bg-slate-50">« Prev</button>
-               <span id="crPageInfo" class="px-3 py-1 font-black text-slate-700 text-sm">1</span>
+               <span id="crPageInfo" class="px-3 py-1 font-black text-slate-700 text-sm">1 / 1</span>
                <button id="crNext" class="px-3 py-1 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 text-sm hover:bg-slate-50">Next »</button>
             </div>
           </div>
@@ -501,8 +524,9 @@
     </div>
   </div>
 
-  <!-- Hidden Inputs -->
+  <!-- Multi File Input (Hidden) -->
   <input type="file" id="fileInputMulti" accept="image/*" multiple class="hide">
+  <!-- Single File Input (Hidden) -->
   <input type="file" id="fileInputSingle" accept="image/*" class="hide">
 
   <!-- MODAL: CROP -->
@@ -552,6 +576,7 @@
         <button class="w-8 h-8 rounded-full bg-white hover:bg-red-100 text-slate-500 border flex items-center justify-center font-bold text-xl cursor-pointer" data-close="modal">×</button>
       </div>
       <div class="p-6 flex flex-col md:flex-row gap-8 items-center md:items-start bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-orange-50/40 to-white">
+        
         <div class="w-[160px] h-[160px] shrink-0 relative rounded-full flex items-center justify-center progress-circle shadow-lg" id="modalChartCircle" style="--pct: 0deg;">
           <div class="absolute inset-2.5 bg-white rounded-full shadow-inner overflow-hidden flex items-center justify-center">
              <img id="progressAvatar" src="" class="w-full h-full object-cover hide">
@@ -559,23 +584,37 @@
           </div>
           <div class="absolute -bottom-4 bg-white border border-amber-200 px-4 py-1 rounded-full shadow-md text-slate-800 font-black text-lg" id="modalChartRating">0%</div>
         </div>
+        
         <div class="flex-1 flex flex-col gap-4 w-full">
+          <!-- Info Progress -->
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm relative group cursor-pointer btnGoTo" data-goto="info">
-            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center"><span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-blue-100 text-blue-600 grid place-items-center">📝</span> Info</span><span class="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full" id="progPctInfo">0%</span></div>
+            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center">
+              <span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-blue-100 text-blue-600 grid place-items-center">📝</span> Info</span>
+              <span class="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full" id="progPctInfo">0%</span>
+            </div>
             <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-1"><div class="h-full bg-gradient-to-r from-blue-400 to-indigo-500 transition-all duration-700" id="progBarInfo" style="width:0%"></div></div>
             <div class="text-[10px] text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity text-right">Click to Complete Info →</div>
           </div>
+          <!-- Photos Progress -->
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm relative group cursor-pointer btnGoTo" data-goto="photos">
-            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center"><span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-fuchsia-100 text-fuchsia-600 grid place-items-center">📸</span> Photos</span><span class="bg-fuchsia-50 text-fuchsia-700 px-2.5 py-0.5 rounded-full" id="progPctPhotos">0%</span></div>
+            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center">
+              <span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-fuchsia-100 text-fuchsia-600 grid place-items-center">📸</span> Photos</span>
+              <span class="bg-fuchsia-50 text-fuchsia-700 px-2.5 py-0.5 rounded-full" id="progPctPhotos">0%</span>
+            </div>
             <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-1"><div class="h-full bg-gradient-to-r from-fuchsia-400 to-pink-500 transition-all duration-700" id="progBarPhotos" style="width:0%"></div></div>
             <div class="text-[10px] text-fuchsia-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity text-right">Click to Add Photos →</div>
           </div>
+          <!-- Assets/Media Progress -->
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm relative group cursor-pointer btnGoTo" data-goto="assets">
-            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center"><span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-emerald-100 text-emerald-600 grid place-items-center">🎵</span> Media (Video/Audio)</span><span class="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full" id="progPctMedia">0%</span></div>
+            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center">
+              <span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-emerald-100 text-emerald-600 grid place-items-center">🎵</span> Media (Video/Audio)</span>
+              <span class="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full" id="progPctMedia">0%</span>
+            </div>
             <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-1"><div class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-700" id="progBarMedia" style="width:0%"></div></div>
             <div class="text-[10px] text-emerald-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity text-right">Click to Add Media →</div>
           </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -585,18 +624,23 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 
-  <!-- SCRIPT JS -->
+  <!-- SCRIPT JS: AppAPI Integration & Full Logic -->
   <script>
     document.addEventListener("DOMContentLoaded", function() {
+      // Configuration
+      var API_CONFIG = {
+         BASE_URL: "https://api.orlandmanagement.com/api/v1/talents",
+         UPLOAD_URL: "https://api.orlandmanagement.com/api/v1/talents/upload"
+      };
+
       var qs = function(s, p) { return (p || document).querySelector(s); };
       var qsa = function(s, p) { return Array.prototype.slice.call((p || document).querySelectorAll(s)); };
       var genId = function() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); };
 
-      var KEY = "talent_profile_v10_final";
       var state = {
         name: { first: "Orland", last: "Management" },
-        contacts: { phone: "(088) 101–1430", email: "orlandmanagement@gmail.com" },
-        personal: { gender: "Male", dob: "1986-05-06", loc: "State Line, PA", ethnicity: "Other" },
+        contacts: { phone: "", email: "" },
+        personal: { gender: "-", dob: "", loc: "", ethnicity: "-" },
         personalLink: "", interestedIn: [], skills: [],
         social: { facebook:"", instagram:"", tiktok:"", x:"", youtube:"", website:"", imdb:"", linkedin:"" },
         photos: { headshot:"", side:"", full:"", additional:[] },
@@ -604,46 +648,162 @@
         assets: { youtube:[], audio:[] }, credits: []
       };
 
-      function loadState() {
-        try {
-          var raw = localStorage.getItem(KEY); if (!raw) return; var p = JSON.parse(raw);
-          Object.keys(state).forEach(function(k) { if(p[k]!==undefined) { if(Array.isArray(state[k])) state[k]=p[k]||[]; else if(typeof state[k]==="object") Object.assign(state[k], p[k]); else state[k]=p[k]; } });
-        } catch(e) {}
-      }
-      function saveState() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} updateProgress(); MHS.update(); }
+      // AppAPI Communication Object
+      var AppAPI = {
+         getToken: function() {
+             var ssoData = localStorage.getItem('orland_sso_user');
+             if(ssoData) {
+                 try { return JSON.parse(ssoData).token || ""; } catch(e){}
+             }
+             return ""; // or read from cookie if API requires cookie auth
+         },
+         fetchProfile: async function() {
+             try {
+                // Tampilkan loader saat sync pertama
+                qs("#apiLoader")?.classList.remove("hide");
+                
+                var res = await fetch(API_CONFIG.BASE_URL + "/me", {
+                   method: "GET",
+                   // credentials: "include", // Aktifkan jika menggunakan SSO Cookie Auth
+                   headers: { "Authorization": "Bearer " + this.getToken() }
+                });
+                
+                var data = await res.json();
+                if(data && data.status === 'ok' && data.data) {
+                   this.mapDBToState(data.data);
+                } else {
+                   this.fallbackToSSO(); // Fallback jika API gagal/kosong
+                }
+             } catch(e) {
+                console.warn("API Fetch Failed. Loading from SSO fallback.", e);
+                this.fallbackToSSO();
+             } finally {
+                qs("#apiLoader")?.classList.add("hide");
+                qs("#mainAppContainer").style.opacity = "1";
+             }
+         },
+         saveProfile: async function() {
+             try {
+                var payload = this.mapStateToDB();
+                var res = await fetch(API_CONFIG.BASE_URL + "/me", { // Sesuaikan endpoint PUT (misal /update)
+                   method: "PUT",
+                   // credentials: "include",
+                   headers: { 
+                       "Authorization": "Bearer " + this.getToken(),
+                       "Content-Type": "application/json" 
+                   },
+                   body: JSON.stringify(payload)
+                });
+                var data = await res.json();
+                if(!res.ok) throw new Error(data.error || "Gagal menyimpan");
+             } catch(e) {
+                console.error("API Save Failed", e);
+                // alert("Background Sync Failed: " + e.message); // Opsional
+             }
+         },
+         uploadMedia: async function(blob, photoType) {
+             var formData = new FormData();
+             formData.append("file", blob, photoType + "_" + Date.now() + ".jpg");
+             
+             var res = await fetch(API_CONFIG.UPLOAD_URL, {
+                 method: "POST",
+                 // credentials: "include",
+                 headers: { "Authorization": "Bearer " + this.getToken() },
+                 body: formData
+             });
+             
+             if(!res.ok) throw new Error("Upload Failed");
+             var data = await res.json();
+             return data.url || data.data.url; // Asumsi response mereturn URL publik R2
+         },
+         fallbackToSSO: function() {
+             var ssoData = localStorage.getItem('orland_sso_user');
+             if(ssoData) {
+                 try {
+                     var u = JSON.parse(ssoData);
+                     if(u.first_name || u.last_name || u.full_name) {
+                         if(u.full_name) {
+                             var pts = u.full_name.split(" ");
+                             state.name.first = pts[0]; state.name.last = pts.slice(1).join(" ");
+                         } else {
+                             state.name.first = u.first_name||""; state.name.last = u.last_name||"";
+                         }
+                     }
+                     state.contacts.email = u.email || "";
+                     state.contacts.phone = u.phone || "";
+                 } catch(e){}
+             }
+         },
+         mapDBToState: function(db) {
+             state.personal.gender = db.gender || "-";
+             state.personal.dob = db.dob || "";
+             state.personal.loc = db.domicile || "";
+             state.personal.ethnicity = db.skin_tone || "-";
+             
+             state.contacts.phone = db.phone || "";
+             state.contacts.email = db.email || "";
+             
+             state.appearance.height = db.height_cm ? db.height_cm + " cm" : "N/A";
+             state.appearance.weight = db.weight_kg ? db.weight_kg + " kg" : "N/A";
+             state.appearance.eye = db.eye_color || "N/A";
+             state.appearance.hair = db.hair_color || "N/A";
+             
+             state.photos.headshot = db.headshot_url || "";
+             state.photos.side = db.side_view_url || ""; // Asumsi di DB namanya side_view_url
+             state.photos.full = db.full_body_url || "";
+             state.photos.additional = db.portfolio_photos || []; // Asumsi array dari JSON.parse backend
+             
+             state.skills = db.skills || []; // Asumsi array
+             state.interestedIn = db.interested_in || []; // Asumsi array dari JSON
+             state.social = db.social_media || state.social; // Asumsi object dari JSON
+             state.assets = db.assets || state.assets; // Asumsi object {youtube:[], audio:[]}
+             state.credits = db.credits || []; // Relasi credits
+         },
+         mapStateToDB: function() {
+             return {
+                 gender: state.personal.gender,
+                 dob: state.personal.dob,
+                 domicile: state.personal.loc,
+                 skin_tone: state.personal.ethnicity,
+                 phone: state.contacts.phone,
+                 email: state.contacts.email,
+                 height_cm: parseInt(state.appearance.height) || null,
+                 weight_kg: parseFloat(state.appearance.weight) || null,
+                 eye_color: state.appearance.eye,
+                 hair_color: state.appearance.hair,
+                 headshot_url: state.photos.headshot,
+                 side_view_url: state.photos.side,
+                 full_body_url: state.photos.full,
+                 portfolio_photos: state.photos.additional,
+                 skills_json: state.skills,
+                 interested_in_json: state.interestedIn,
+                 social_media_json: state.social,
+                 assets_json: state.assets,
+                 credits: state.credits // Backend harus handle bulk insert/update relasi ini
+             };
+         }
+      };
 
-      // Desktop & Mobile Actions (Dark Mode, Share, Global Import/Export)
+      // Wrapper untuk save lokal + save ke API
+      function saveState() { 
+          updateProgress(); 
+          MHS.update(); 
+          AppAPI.saveProfile(); // Background Sync ke Database
+      }
+
+      // Action Handlers
       var toggleDark = function() { document.documentElement.classList.toggle("dark"); };
       var shareProfile = function() { navigator.clipboard.writeText(window.location.href).then(function(){alert("Profile Link Copied to Clipboard!");}).catch(function(){alert("Failed to copy link.");}); };
       
       qs("#btnToggleDarkDesktop")?.addEventListener("click", toggleDark);
       qs("#mhsToggleDark")?.addEventListener("click", toggleDark);
-      qs("#btnToggleDark")?.addEventListener("click", toggleDark);
-      
       qs("#btnShareDesktop")?.addEventListener("click", shareProfile);
       qs("#mhsShare")?.addEventListener("click", shareProfile);
-      qs("#btnShareProfile")?.addEventListener("click", shareProfile);
-
-      qs("#btnExportGlobal")?.addEventListener("click", function() {
-        var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-        var link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", "TalentProfile_Backup.json");
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-      });
-      qs("#inpImportGlobal")?.addEventListener("change", function(e) {
-        var f = e.target.files[0]; if(!f) return;
-        var rd = new FileReader();
-        rd.onload = function(ev) {
-          try { var parsed = JSON.parse(ev.target.result); Object.assign(state, parsed); saveState(); window.location.reload(); }
-          catch(e) { alert("Invalid JSON Profile Backup File."); }
-        }; rd.readAsText(f); e.target.value="";
-      });
 
       var V = {
         phone: function(v) { var p=(v||"").replace(/\s|[-()]/g,"").trim(); return /^\d+$/.test(p) && (p.startsWith("08")||p.startsWith("62")); },
         url: function(v) { try{ var u=new URL((v||"").trim()); return u.protocol==="https:"||u.protocol==="http:"; }catch(e){return false;} },
-        ytEx: function(u) { try{ var r=new URL(u); if(/youtu\.be/.test(r.hostname))return r.pathname.slice(1); if(/youtube\.com/.test(r.hostname))return r.searchParams.get("v")||r.pathname.split("/").pop(); }catch(e){} return ""; },
-        socialMap: { facebook:["facebook.com"], instagram:["instagram.com"], tiktok:["tiktok.com"], x:["x.com","twitter.com"], youtube:["youtube.com","youtu.be"], website:null, imdb:["imdb.com"], vimeo:["vimeo.com"], linkedin:["linkedin.com"], flickr:["flickr.com"], sagaftra:null },
-        socialUrl: function(k, u) { var s=(u||"").trim(); if(!s)return true; if(!V.url(s))return false; var r=V.socialMap[k]; if(!r)return true; try{ var h=new URL(s).hostname.replace(/^www\./,'').toLowerCase(); return r.some(function(d){return h===d||h.endsWith("."+d);}); }catch(e){return false;} }
+        ytEx: function(u) { try{ var r=new URL(u); if(/youtu\.be/.test(r.hostname))return r.pathname.slice(1); if(/youtube\.com/.test(r.hostname))return r.searchParams.get("v")||r.pathname.split("/").pop(); }catch(e){} return ""; }
       };
 
       var Modals = {
@@ -665,6 +825,7 @@
       // Mobile Hero Slider
       var MHS = {
         idx: 0,
+        total: 0,
         update: function() {
           var t = qs("#mhsTrack"), n = qs("#mhsNameOverlay");
           if(n) n.textContent = ((state.name.first||"")+" "+(state.name.last||"")).trim()||"Name";
@@ -728,7 +889,7 @@
       qs("#btnHeaderEditIcon").addEventListener("click", function(){qs("#headerName").click();});
       qs("#btnNameSave").addEventListener("click", function(){state.name.first=qs("#nameFirst").value.trim(); state.name.last=qs("#nameLast").value.trim(); saveState(); renderHeader(); Modals.close("modalName");});
 
-      // Regular Toggle Sections
+      // Unified Toggle Edit/Save
       function toggleSec(btnId, viewId, editId, onSaveStr) {
         var btn=qs("#"+btnId), v=qs("#"+viewId), e=qs("#"+editId); if(!btn||!v||!e)return;
         btn.addEventListener("click", function() {
@@ -761,10 +922,9 @@
       toggleSec("btnEditPers", "persView", "persEdit", "pers");
       toggleSec("btnEditAp", "apView", "apEdit", "ap");
 
-      // Custom Logic for Social Media Toggle
+      // Custom Social Toggle Logic
       var socKeys = ["facebook","instagram","tiktok","youtube","website"];
       var isSocDirty = false;
-      
       var renderSoc = function() {
         var list=qs("#socialList"), emp=qs("#socialEmpty"); list.innerHTML=""; var has=false;
         socKeys.forEach(function(k){
@@ -775,34 +935,28 @@
 
       var btnEditSocial = qs("#btnEditSocial");
       var updateSocialBtnText = function() {
-        isSocDirty = false;
-        socKeys.forEach(function(k){ if(qs("#sm_"+k).value.trim() !== "") isSocDirty = true; });
-        btnEditSocial.innerHTML = isSocDirty ? "💾 Save" : "✖ Close";
+        isSocDirty = false; socKeys.forEach(function(k){ if(qs("#sm_"+k).value.trim() !== "") isSocDirty = true; });
+        if(btnEditSocial) btnEditSocial.innerHTML = isSocDirty ? "💾 Save" : "✖ Close";
       };
-
       qsa(".social-input").forEach(function(inp){ inp.addEventListener("input", updateSocialBtnText); });
 
       btnEditSocial?.addEventListener("click", function() {
         var v=qs("#socialView"), e=qs("#socialEdit");
         if(!e.classList.contains("hide")) {
-          // Saving or Closing
           if(isSocDirty) {
              var hasErr = false;
-             socKeys.forEach(function(k){ var val = qs("#sm_"+k).value.trim(); if(val && !V.socialUrl(k,val)){alert("Link "+k+" tidak valid."); hasErr=true;} });
+             socKeys.forEach(function(k){ var val = qs("#sm_"+k).value.trim(); if(val && !V.url(val)){alert("Link "+k+" tidak valid."); hasErr=true;} });
              if(hasErr) return;
-             socKeys.forEach(function(k){ state.social[k] = qs("#sm_"+k).value.trim(); });
-             saveState(); renderSoc();
+             socKeys.forEach(function(k){ state.social[k] = qs("#sm_"+k).value.trim(); }); saveState(); renderSoc();
           }
           e.classList.add("hide"); v.classList.remove("hide"); this.innerHTML="✎ Edit";
         } else {
-          // Opening edit mode
           socKeys.forEach(function(k){ qs("#sm_"+k).value = state.social[k] || ""; });
           v.classList.add("hide"); e.classList.remove("hide"); updateSocialBtnText();
         }
       });
-      qs("#btnEditSocial2")?.addEventListener("click", function(){if(qs("#socialEdit").classList.contains("hide")) btnEditSocial.click();});
 
-      // Chips & Dropdowns
+      // Dropdowns
       var activePan=null;
       document.addEventListener("click", function(e){
         var b=e.target.closest("[data-dd]");
@@ -837,7 +991,7 @@
         iSk.addEventListener("input",function(){cSk.textContent=iSk.value.length;}); bSk.addEventListener("click",addSk); iSk.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addSk();}});
       }
 
-      // Photos & Cropper Queue
+      // Photos & Cropper Queue with AppAPI R2 Upload
       var cropper=null, currPhoto="headshot", cropQueue=[], isCropping=false;
       
       var renderPhotos=function(){
@@ -898,12 +1052,9 @@
       function handleFilesToQueue(files) {
         var arr = Array.from(files).filter(function(f){return f.type.startsWith("image/");});
         if(!arr.length) return;
-        
         var readNext = function(idx) {
           if(idx >= arr.length) { if(!isCropping) processNextCrop(); return; }
-          var rd = new FileReader();
-          rd.onload = function(ev) { cropQueue.push(ev.target.result); readNext(idx+1); };
-          rd.readAsDataURL(arr[idx]);
+          var rd = new FileReader(); rd.onload = function(ev) { cropQueue.push(ev.target.result); readNext(idx+1); }; rd.readAsDataURL(arr[idx]);
         };
         readNext(0);
       }
@@ -923,13 +1074,27 @@
 
       qs("#btnCropApply")?.addEventListener("click", function(){
         if(!cropper) return;
-        var cv = cropper.getCroppedCanvas({maxWidth:1000,maxHeight:1333});
-        var u = cv.toDataURL("image/jpeg",0.88);
-        if(currPhoto==="additional") state.photos.additional.push(u); else state.photos[currPhoto]=u; 
-        saveState();
-        cropQueue.shift();
-        processNextCrop();
+        var btn = this; var oriText = btn.innerHTML;
+        btn.innerHTML = "⏳ Uploading..."; btn.disabled = true;
+
+        cropper.getCroppedCanvas({maxWidth:1000,maxHeight:1333}).toBlob(async function(blob) {
+            try {
+                // Upload ke AppAPI R2 Bucket
+                var url = await AppAPI.uploadMedia(blob, currPhoto);
+                
+                if(currPhoto==="additional") state.photos.additional.push(url); else state.photos[currPhoto]=url; 
+                
+                if(cropper)cropper.destroy(); cropper=null; cropQueue.shift();
+                btn.innerHTML = oriText; btn.disabled = false;
+                
+                saveState(); processNextCrop();
+            } catch(e) {
+                alert("Gagal mengunggah foto. Periksa koneksi Anda.");
+                btn.innerHTML = oriText; btn.disabled = false;
+            }
+        }, "image/jpeg", 0.88);
       });
+      
       qs("#btnCropCancel")?.addEventListener("click", function(){
         if(cropper)cropper.destroy(); cropper=null; cropQueue=[]; isCropping=false; Modals.close("modalCrop");
       });
@@ -986,15 +1151,10 @@
         });
         
         if(totalPages > 1) {
-           p.classList.remove("hide");
-           qs("#crPageInfo").textContent = crPage + " / " + totalPages;
-           qs("#crPrev").disabled = crPage === 1;
-           qs("#crNext").disabled = crPage === totalPages;
-           qs("#crPrev").style.opacity = crPage === 1 ? "0.5" : "1";
-           qs("#crNext").style.opacity = crPage === totalPages ? "0.5" : "1";
-        } else {
-           p.classList.add("hide");
-        }
+           p.classList.remove("hide"); qs("#crPageInfo").textContent = crPage + " / " + totalPages;
+           qs("#crPrev").disabled = crPage === 1; qs("#crNext").disabled = crPage === totalPages;
+           qs("#crPrev").style.opacity = crPage === 1 ? "0.5" : "1"; qs("#crNext").style.opacity = crPage === totalPages ? "0.5" : "1";
+        } else { p.classList.add("hide"); }
       };
       
       qs("#crPrev")?.addEventListener("click", function(){ if(crPage > 1) { crPage--; rCr(); } });
@@ -1010,9 +1170,20 @@
       }
       
       qs("#wrapCrPhoto")?.addEventListener("click", function(){ qs("#inpCrPhoto").click(); });
-      qs("#inpCrPhoto")?.addEventListener("change", function(e){
-        var f=e.target.files[0]; if(!f)return; var rd=new FileReader();
-        rd.onload=function(ev){ creditPhotoUrl=ev.target.result; updateCreditPhotoPreview(); }; rd.readAsDataURL(f); e.target.value="";
+      qs("#inpCrPhoto")?.addEventListener("change", async function(e){
+        var f=e.target.files[0]; if(!f)return; 
+        
+        // Upload Credit Photo ke API R2
+        qs("#cr_formTitle").textContent = "⏳ Uploading Photo...";
+        try {
+            var url = await AppAPI.uploadMedia(f, "credit");
+            creditPhotoUrl = url; updateCreditPhotoPreview();
+            qs("#cr_formTitle").textContent = creditEditingId ? "Edit Credit" : "Add New Credit";
+        } catch(err) {
+            alert("Gagal mengunggah foto.");
+            qs("#cr_formTitle").textContent = creditEditingId ? "Edit Credit" : "Add New Credit";
+        }
+        e.target.value="";
       });
       qs("#btnRmCrPhoto")?.addEventListener("click", function(e){ e.stopPropagation(); creditPhotoUrl=""; updateCreditPhotoPreview(); });
       
@@ -1036,17 +1207,11 @@
         saveState(); qs("#creditFormWrapper").classList.add("hide"); rCr();
       });
 
-      // CSV Template
+      // Template CSV
       qs("#btnTemplateCSV")?.addEventListener("click", function() {
         var csv = "Title,Year,Company,About\nExample Lead Actor,2024,Netflix,Played the main character\nSupporting Role,2022,HBO,Appeared in 3 episodes";
         var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); var link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", "credits_template.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
       });
-      qs("#btnExportCSV")?.addEventListener("click", function() {
-        if(!state.credits.length) return alert("No credits to export.");
-        var csv = "Title,Year,Company,About\n"; state.credits.forEach(function(c){ csv += '"'+(c.title||"").replace(/"/g,'""')+'","'+(c.year||"")+'","'+(c.company||"").replace(/"/g,'""')+'","'+(c.about||"").replace(/"/g,'""').replace(/\n/g," ")+'"\n'; });
-        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); var link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", "credits.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
-      });
-
       var handleCSV = function(file) {
         if(!file || !file.name.endsWith(".csv")) return alert("Please upload a .csv file.");
         var rd = new FileReader();
@@ -1077,7 +1242,6 @@
         var w=function(id,v){var e=qs("#"+id);if(e)e.style.width=v+"%";}; w("progBarInfo",ptI); w("progBarPhotos",ptP); w("progBarMedia",ptM); w("progressBarFill",t);
         var x=function(id,v){var e=qs("#"+id);if(e)e.textContent=v;}; x("progPctInfo",ptI+"%"); x("progPctPhotos",ptP+"%"); x("progPctMedia",ptM+"%"); 
         
-        // Remove 10k logic, use 100% scale
         qs("#mainProgressBadge").textContent = t + "%";
         var mhsRat = qs("#mhsRatingText"); if(mhsRat) mhsRat.textContent = t + "%";
         x("modalChartRating", t + "%");
@@ -1090,24 +1254,28 @@
       }
       qs("#btnProgressOpen")?.addEventListener("click",function(){Modals.open("modalProgress");});
 
-      // INIT
-      loadState();
-      initDropdowns();
-      
+      // INITIALIZATION & API SYNC
       var fillSel = function(id, items, sel) { var e = qs("#"+id); if (e) { e.innerHTML = ""; items.forEach(function(v) { e.innerHTML += "<option value='"+v+"'>"+v+"</option>"; }); if(sel) e.value = sel; } };
       var hts=["N/A"]; for(var i=150;i<=210;i++)hts.push(i+" cm"); var wts=["N/A"]; for(var j=40;j<=150;j++)wts.push(j+" kg");
       var eyes=["N/A","Black","Blue","Brown","Green","Grey","Hazel","Other"]; var hairs=["N/A","Black","Blonde","Brown","Grey","Red","Other"];
       fillSel("ap_height", hts, state.appearance.height); fillSel("ap_weight", wts, state.appearance.weight); fillSel("ap_eye", eyes, state.appearance.eye); fillSel("ap_hair", hairs, state.appearance.hair);
 
-      MHS.init();
-      renderHeader(); 
-      qs("#txtPhone").textContent=state.contacts.phone||"-"; qs("#txtEmail").textContent=state.contacts.email||"-";
-      qs("#txtPL").textContent=state.personalLink||"Add URL";
-      qs("#txtGender").textContent=state.personal.gender||"-"; qs("#txtDob").textContent=state.personal.dob?state.personal.dob.split("-").reverse().join("/"):"-"; qs("#txtLoc").textContent=state.personal.loc||"-"; qs("#txtEthnicity").textContent=state.personal.ethnicity||"-";
-      
-      ["height","weight","eye","hair"].forEach(function(k){ var v = state.appearance[k]; qs("#apv_"+k).textContent=v; qs("#apv_"+k).className=(v!=="N/A"?"text-[14px] font-black text-rose-600":"text-[14px] font-black text-slate-400"); });
+      function renderAll() {
+          initDropdowns();
+          MHS.init();
+          renderHeader(); 
+          qs("#txtPhone").textContent=state.contacts.phone||"-"; qs("#txtEmail").textContent=state.contacts.email||"-";
+          qs("#txtPL").textContent=state.personalLink||"Add URL";
+          qs("#txtGender").textContent=state.personal.gender||"-"; qs("#txtDob").textContent=state.personal.dob?state.personal.dob.split("-").reverse().join("/"):"-"; qs("#txtLoc").textContent=state.personal.loc||"-"; qs("#txtEthnicity").textContent=state.personal.ethnicity||"-";
+          ["height","weight","eye","hair"].forEach(function(k){ var v = state.appearance[k]; qs("#apv_"+k).textContent=v; qs("#apv_"+k).className=(v!=="N/A"?"text-[14px] font-black text-rose-600":"text-[14px] font-black text-slate-400"); });
+          rInt(); rSk(); renderSoc(); renderPhotos(); rAss(); rCr(); updateProgress();
+      }
 
-      rInt(); rSk(); renderSoc(); renderPhotos(); rAss(); rCr(); updateProgress();
+      // Mulai dengan API Fetch
+      AppAPI.fetchProfile().then(function() {
+          renderAll();
+      });
+
     });
   </script>
 </body>

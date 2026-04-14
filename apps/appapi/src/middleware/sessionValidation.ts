@@ -7,7 +7,7 @@ interface AuthContext {
   user?: {
     id: string
     email: string
-    role: 'talent' | 'client' | 'admin' | 'super_admin'
+    role: 'talent' | 'client' | 'agency' | 'admin' | 'super_admin'
   }
   sessionId?: string
   isValid?: boolean

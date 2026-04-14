@@ -20,12 +20,12 @@ import JobsMatch from '../pages/jobs/match/index';
 import JobsInvites from '../pages/jobs/invites';
 import JobBoard from '../pages/jobs/board/index';
 import JobBoardDetail from '../pages/jobs/board/[id]';
-import PublicProfile from '../pages/p/[username]';
-import LiveBoards from '../pages/live-boards/[id]';
-import CastingGuest from '../pages/casting/[boardToken]';
-import Leaderboard from '../pages/Leaderboard/TalentLeaderboard';
-import InviteLandingPage from '../pages/Invite/InviteLandingPage';
-import NotFound from '../pages/NotFound';
+import OnboardingPage from "../pages/OnboardingPage";
+import ProfilePage from "../pages/ProfilePage";
+import PublicProfilePage from "../pages/PublicProfilePage";
+import RegisterPage from "../pages/RegisterPage";
+import Root from "../pages/Root";
+import EditableProfilePage from '../pages/EditableProfilePage';
 
 /**
  * App Routes Configuration
@@ -36,7 +36,10 @@ export const AppRoutes: React.FC = () => {
     <Routes>
       {/* Public Routes (no auth required) */}
       <Route path="/invite/:token" element={<InviteLandingPage />} />
-      <Route path="/p/:username" element={<PublicProfile />} />
+      <Route path="/p/:username" element={<PublicProfilePage />} />
+      <Route path="onboarding" element={<OnboardingPage />} />
+      <Route path="profile" element={<ProfilePage />} />
+      <Route path="app" element={<App />} />
 
       {/* Protected Routes - Dashboard */}
       <Route path="/" element={<Dashboard />} />

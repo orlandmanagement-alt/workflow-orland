@@ -25,39 +25,21 @@
   </script>
 
   <style>
-    /* Reset & Base */
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, sans-serif; margin: 0; color: #111827; overflow-x: hidden; transition: background-color 0.3s; }
-    
-    /* Smart Dark Mode Implementation */
     html.dark { filter: invert(1) hue-rotate(180deg); background-color: #111; }
     html.dark img, html.dark video, html.dark iframe, html.dark .no-invert, html.dark .avatar-bg { filter: invert(1) hue-rotate(180deg); }
     html.dark body::before { opacity: 0.2; }
-
-    /* Animated Gradient Background */
-    body::before {
-      content: ""; position: fixed; inset: 0; z-index: -1;
-      background: linear-gradient(-45deg, #eff6ff, #f3e8ff, #fce7f3, #fffbeb);
-      background-size: 400% 400%; animation: gradient-x 15s ease infinite;
-    }
+    body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(-45deg, #eff6ff, #f3e8ff, #fce7f3, #fffbeb); background-size: 400% 400%; animation: gradient-x 15s ease infinite; }
     
-    /* Effects & Overlays */
     .avatar-bg { background: radial-gradient(circle at 45% 35%, #e0e7ff 0 22%, transparent 23%), radial-gradient(circle at 50% 28%, #f3e8ff 0 18%, transparent 19%), linear-gradient(#f8fafc, #ffffff); }
     .avatar-overlay::after { content: ""; position: absolute; inset: auto 0 0 0; height: 50%; background: linear-gradient(to top, rgba(139, 92, 246, 0.15), transparent); pointer-events: none; }
     .minibox-overlay::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(167,139,250,.15) 0 10%, transparent 11%), radial-gradient(circle at 45% 35%, rgba(244,114,182,.1) 0 8%, transparent 9%); pointer-events: none; }
     
-    /* Dropdown Glassmorphism */
-    .dd-panel {
-      position: absolute; left: 0; right: 0; top: calc(100% + 6px);
-      border: 1px solid rgba(255,255,255,0.5); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 14px;
-      box-shadow: 0 10px 40px rgba(139, 92, 246, 0.15); padding: 8px; z-index: 99999; max-height: 260px; overflow-y: auto;
-    }
+    .dd-panel { position: absolute; left: 0; right: 0; top: calc(100% + 6px); border: 1px solid rgba(255,255,255,0.5); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 14px; box-shadow: 0 10px 40px rgba(139, 92, 246, 0.15); padding: 8px; z-index: 99999; max-height: 260px; overflow-y: auto; }
     @media (max-width: 520px) { .dd-panel.is-fixed { position: fixed !important; left: 12px !important; right: 12px !important; width: auto !important; max-height: min(60vh, 340px); z-index: 200000 !important; } }
 
-    /* Mobile Hero Slider (MHS) */
     .mhs-track { transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
-
-    /* Hovers & Utilities */
     .hover-lift { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease; }
     .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(139, 92, 246, 0.15); }
     .hover-scale { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -65,37 +47,22 @@
     .smooth-color { transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; }
     .hide { display: none !important; }
     
-    /* Tabs */
     .tab-active { color: #7c3aed; font-weight: 800; }
     .tab-active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -7px; height: 3px; border-radius: 999px; background: linear-gradient(90deg, #8b5cf6, #ec4899); box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4); }
     
-    /* Custom Scrollbar */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-    /* Progress Circle */
     .progress-circle { background: conic-gradient(#f59e0b var(--pct), #fef3c7 0); }
-
-    /* Drag & Drop Overlay */
     .drag-over { border-color: #8b5cf6 !important; background-color: rgba(139, 92, 246, 0.1) !important; transform: scale(1.02); }
-
-    /* Floating Utilities Menu */
-    .float-menu { position: fixed; top: 15px; right: 15px; z-index: 50; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-    .float-btn { background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); border: 1px solid #e5e7eb; padding: 6px 12px; border-radius: 99px; font-size: 12px; font-weight: 800; color: #4f46e5; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: all 0.2s; display: flex; align-items: center; gap: 4px; }
-    .float-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.15); background: #fff; }
-
-    /* Global API Loader */
+    
+    /* Loading States */
     #apiLoader { position: fixed; inset: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
     .spinner { width: 40px; height: 40px; border: 4px solid rgba(139, 92, 246, 0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Sticky Save Toast */
-    .toast-enter { transform: translateY(0); opacity: 1; }
-    .toast-leave { transform: translateY(20px); opacity: 0; }
   </style>
 </head>
 
@@ -212,6 +179,7 @@
             </div>
           </div>
           
+          <!-- Download Compcard Button Desktop -->
           <div class="mt-4 pt-4 border-t border-slate-100">
             <button class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md border-none px-4 py-3 rounded-xl font-black text-[13px] hover-lift flex justify-center items-center gap-2" type="button"><span>⬇️</span> Download Comp Card (PDF)</button>
           </div>
@@ -227,6 +195,7 @@
             <div class="flex justify-between items-center p-2.5 border border-transparent rounded-xl hover:bg-slate-50 transition-colors"><span class="text-xl drop-shadow-sm">📱</span><span id="txtPhone" class="font-black text-slate-700">-</span></div>
             <div class="flex justify-between items-center p-2.5 border border-transparent rounded-xl hover:bg-slate-50 transition-colors"><span class="text-xl drop-shadow-sm">✉️</span><span id="txtEmail" class="font-black text-slate-700 truncate max-w-[180px]">-</span></div>
           </div>
+          <!-- Edit Contact -->
           <div id="contactEdit" class="grid gap-2.5 text-[13px] hide">
             <div class="flex flex-col gap-1"><label class="text-[10px] font-black text-violet-500 uppercase">Phone</label><input id="inpPhone" class="border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-violet-400 font-bold text-slate-700 w-full"></div>
             <div class="flex flex-col gap-1"><label class="text-[10px] font-black text-violet-500 uppercase">Email</label><input id="inpEmail" type="email" class="border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-violet-400 font-bold text-slate-700 w-full"></div>
@@ -255,6 +224,7 @@
             </div>
             <div id="socialList" class="grid gap-2.5 hide"></div>
           </div>
+          <!-- 2 Kolom selalu (Desktop & Mobile) -->
           <div id="socialEdit" class="hide mt-3 grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-1.5"><label class="text-[9px] font-black uppercase tracking-wider text-slate-500 truncate">Facebook</label><input class="border-2 border-slate-100 rounded-lg px-2 py-1.5 text-[11px] outline-none focus:border-violet-300 social-input" id="sm_facebook"></div>
             <div class="flex flex-col gap-1.5"><label class="text-[9px] font-black uppercase tracking-wider text-slate-500 truncate">Instagram</label><input class="border-2 border-slate-100 rounded-lg px-2 py-1.5 text-[11px] outline-none focus:border-pink-300 social-input" id="sm_instagram"></div>
@@ -285,7 +255,7 @@
           </div>
         </div>
 
-        <!-- TABS -->
+        <!-- TABS (No scrollbar, tighter spacing) -->
         <div class="flex gap-6 mt-4 border-b-2 border-slate-100 pb-1 overflow-x-auto no-scrollbar" id="tabs">
           <div class="font-bold text-slate-400 text-[14px] relative pb-2 cursor-pointer hover:text-violet-500 transition-colors tab-active whitespace-nowrap" data-tab="info">Info</div>
           <div class="font-bold text-slate-400 text-[14px] relative pb-2 cursor-pointer hover:text-fuchsia-500 transition-colors whitespace-nowrap" data-tab="photos">Photos</div>
@@ -349,6 +319,7 @@
               <div class="border border-slate-50 bg-slate-50 rounded-xl p-3"><div class="text-[11px] text-slate-400 font-black uppercase">Ethnicity</div><div class="text-[14px] font-black text-slate-800" id="txtEthnicity">-</div></div>
             </div>
 
+            <!-- Edit 2 Kolom -->
             <div class="p-4 grid grid-cols-2 gap-4 hide bg-emerald-50/10" id="persEdit">
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-emerald-700 font-black uppercase truncate">Gender</label><select class="border-2 border-emerald-100 rounded-xl px-2 py-2 text-[12px] outline-none font-semibold bg-white" id="inpGender"><option>Male</option><option>Female</option><option>Non-Binary</option><option>Other</option></select></div>
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-emerald-700 font-black uppercase truncate">DOB</label><input type="date" class="border-2 border-emerald-100 rounded-xl px-2 py-2 text-[12px] outline-none font-semibold bg-white" id="inpDob"></div>
@@ -381,6 +352,7 @@
         <!-- ===== PANEL: PHOTOS ===== -->
         <section class="panel hide animate-[fadeIn_0.4s_ease-out]" id="panel-photos">
           <div class="mt-5">
+            <!-- Main Photos -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <!-- HEADSHOT -->
               <div class="border border-slate-100 rounded-[20px] overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white relative">
@@ -441,7 +413,8 @@
 
         <!-- ===== PANEL: ASSETS ===== -->
         <section class="panel hide animate-[fadeIn_0.4s_ease-out]" id="panel-assets">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+          <div class="grid grid-cols-1 gap-5 mt-5">
+            <!-- VIDEO BLOCK -->
             <div class="border border-slate-100 rounded-[20px] p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-3">
                 <div class="font-black text-slate-800 text-[12px] tracking-widest">▶ VIDEOS <span class="text-slate-400 font-bold lowercase tracking-normal text-[11px]">(youtube)</span></div>
@@ -450,9 +423,10 @@
                 <input class="border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none text-[13px] flex-1 focus:border-red-300 font-semibold" id="inpYt" placeholder="Paste YouTube URL...">
                 <button class="bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 rounded-xl font-black text-[13px] hover:bg-red-100 shadow-sm" type="button" id="btnAddYt">Add</button>
               </div>
-              <div id="listYt" class="grid gap-3 mt-4"></div>
+              <div id="listYt" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4"></div>
             </div>
 
+            <!-- AUDIO BLOCK -->
             <div class="border border-slate-100 rounded-[20px] p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-3">
                 <div class="font-black text-slate-800 text-[12px] tracking-widest">🎵 AUDIO <span class="text-slate-400 font-bold lowercase tracking-normal text-[11px]">(mp3/wav)</span></div>
@@ -461,7 +435,7 @@
                 <input class="border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none text-[13px] flex-1 focus:border-purple-300 font-semibold" id="inpAudio" placeholder="Paste Audio URL...">
                 <button class="bg-purple-50 text-purple-600 border border-purple-200 px-4 py-2.5 rounded-xl font-black text-[13px] hover:bg-purple-100 shadow-sm" type="button" id="btnAddAudio">Add</button>
               </div>
-              <div id="listAudio" class="grid gap-3 mt-4"></div>
+              <div id="listAudio" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4"></div>
             </div>
           </div>
         </section>
@@ -472,13 +446,10 @@
             <div class="flex flex-wrap justify-between items-center mb-4 bg-gradient-to-r from-amber-50 to-yellow-50 p-3.5 rounded-2xl border border-amber-100 gap-2">
               <div class="font-black text-[13px] text-amber-800 tracking-widest flex items-center gap-2"><span class="text-lg">⭐</span> CREDITS</div>
               <div class="flex gap-2 flex-wrap">
-                <button class="bg-white text-blue-700 px-3 py-1.5 rounded-full font-black text-[11px] border border-blue-200 hover:bg-blue-50 shadow-sm cursor-pointer" id="btnTemplateCSV">📄 Template CSV</button>
-                <label class="bg-white text-indigo-700 px-3 py-1.5 rounded-full font-black text-[11px] border border-indigo-200 hover:bg-indigo-50 shadow-sm cursor-pointer">⬆ Import CSV<input type="file" id="inpCsv" accept=".csv" class="hide"></label>
                 <button class="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full font-black cursor-pointer border border-amber-200 hover:bg-amber-200 shadow-sm" id="btnCreditAdd">+ Add</button>
               </div>
             </div>
 
-            <!-- Credit Editor Form -->
             <div id="creditFormWrapper" class="border-2 border-amber-200 bg-amber-50 p-4 rounded-[20px] mb-4 hide shadow-inner relative">
               <div class="font-black text-amber-800 text-[14px] mb-4 uppercase" id="cr_formTitle">Add New Credit</div>
               <div class="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-4">
@@ -490,7 +461,6 @@
                   <div class="flex flex-col gap-1.5 mt-3"><label class="text-[11px] font-black text-amber-800 uppercase">Company</label><input type="text" class="border-2 border-amber-100 rounded-xl px-4 py-2 text-[13px] outline-none focus:border-amber-400 font-semibold bg-white" id="cr_company" placeholder="Production company"></div>
                   <div class="flex flex-col gap-1.5 mt-3"><label class="text-[11px] font-black text-amber-800 uppercase">About</label><textarea class="border-2 border-amber-100 rounded-xl px-4 py-2 text-[13px] outline-none focus:border-amber-400 font-semibold min-h-[70px] bg-white" id="cr_about"></textarea></div>
                 </div>
-                <!-- Credit Photo -->
                 <div class="flex flex-col gap-1.5">
                   <label class="text-[11px] font-black text-amber-800 uppercase text-center">Photo</label>
                   <div class="border-2 border-dashed border-amber-200 rounded-xl bg-white aspect-[3/4] relative cursor-pointer hover:bg-amber-100/50 flex flex-col items-center justify-center text-amber-500 overflow-hidden" id="wrapCrPhoto">
@@ -507,10 +477,8 @@
               </div>
             </div>
 
-            <!-- Dropzone CSV area -->
             <div class="border-2 border-dashed border-amber-200 bg-amber-50/50 p-8 text-center rounded-[20px] hover:bg-amber-50 transition-colors" id="creditEmptyState">
               <div class="text-[14px] text-amber-600 font-bold mb-3">No credits added yet.</div>
-              <div class="text-[12px] text-slate-500 mb-3">You can manually add, or drag & drop a CSV file here.</div>
               <button class="bg-amber-100 text-amber-700 px-5 py-2 rounded-full font-black cursor-pointer border border-amber-200 hover:bg-amber-200 shadow-sm" id="btnCreditAddEmpty">+ Add Experience</button>
             </div>
 
@@ -579,7 +547,7 @@
         <button class="w-8 h-8 rounded-full bg-white hover:bg-red-100 text-slate-500 border flex items-center justify-center font-bold text-xl cursor-pointer" data-close="modal">×</button>
       </div>
       <div class="p-6 flex flex-col md:flex-row gap-8 items-center md:items-start bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-orange-50/40 to-white">
-        <div class="w-[160px] h-[160px] shrink-0 relative rounded-full flex items-center justify-center progress-circle shadow-lg" id="modalChartCircle" style="--pct: 0deg; background: conic-gradient(#f59e0b var(--pct), #fef3c7 0);">
+        <div class="w-[160px] h-[160px] shrink-0 relative rounded-full flex items-center justify-center progress-circle shadow-lg" id="modalChartCircle" style="--pct: 0deg;">
           <div class="absolute inset-2.5 bg-white rounded-full shadow-inner overflow-hidden flex items-center justify-center">
              <img id="progressAvatar" src="" class="w-full h-full object-cover hide">
              <div id="progressAvatarEmpty" class="text-amber-500 font-black text-3xl">★</div>
@@ -613,422 +581,6 @@
   </style>
 
   <!-- SCRIPT JS: FULL APPAPI INTEGRATION & AUTO SYNC -->
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      // 1. CONFIGURATION API
-      var API_CONFIG = {
-         BASE_URL: "https://api.orlandmanagement.com/api/profile", // Endpoint GET /me dan PUT /update
-         UPLOAD_URL: "https://api.orlandmanagement.com/api/v1/talents/upload" // Endpoint POST upload foto
-      };
-
-      var qs = function(s, p) { return (p || document).querySelector(s); };
-      var qsa = function(s, p) { return Array.prototype.slice.call((p || document).querySelectorAll(s)); };
-      var genId = function() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); };
-
-      var state = {
-        name: { first: "Orland", last: "Management" },
-        contacts: { phone: "", email: "" },
-        personal: { gender: "-", dob: "", loc: "", ethnicity: "-" },
-        personalLink: "", interestedIn: [], skills: [],
-        social: { facebook:"", instagram:"", tiktok:"", x:"", youtube:"", website:"", imdb:"", linkedin:"" },
-        photos: { headshot:"", side:"", full:"", additional:[] },
-        appearance: { height:"N/A", weight:"N/A", eye:"N/A", hair:"N/A" },
-        assets: { youtube:[], audio:[] }, credits: []
-      };
-
-      // 2. TOAST NOTIFICATION (STICKY SYNC STATUS)
-      var toastTimeout;
-      function showSyncToast(message, isSpinning, isError = false) {
-          var toast = qs("#syncToast");
-          var spinner = qs("#syncToastSpinner");
-          var iconOk = qs("#syncToastIcon");
-          var iconErr = qs("#syncToastErr");
-          var text = qs("#syncToastText");
-
-          if(!toast) return;
-          clearTimeout(toastTimeout);
-          
-          text.textContent = message;
-          toast.classList.remove("opacity-0", "translate-y-20");
-          
-          if(isSpinning) {
-              spinner.classList.remove("hide"); iconOk.classList.add("hide"); iconErr.classList.add("hide");
-              toast.classList.replace("border-slate-700", "border-blue-500/50");
-          } else if(isError) {
-              spinner.classList.add("hide"); iconOk.classList.add("hide"); iconErr.classList.remove("hide");
-              toast.classList.replace("border-blue-500/50", "border-red-500/50");
-              toastTimeout = setTimeout(function(){ toast.classList.add("opacity-0", "translate-y-20"); }, 4000);
-          } else {
-              spinner.classList.add("hide"); iconOk.classList.remove("hide"); iconErr.classList.add("hide");
-              toast.classList.replace("border-blue-500/50", "border-emerald-500/50");
-              toastTimeout = setTimeout(function(){ toast.classList.add("opacity-0", "translate-y-20"); }, 3000);
-          }
-      }
-
-      // 3. API COMMUNICATION OBJECT (AppAPI)
-      var AppAPI = {
-         getToken: function() {
-             try { var sso = JSON.parse(localStorage.getItem('orland_sso_user')); return sso?.token || ""; } 
-             catch(e) { return ""; }
-         },
-         fetchProfile: async function() {
-             try {
-                qs("#apiLoader")?.classList.remove("hide");
-                var res = await fetch(API_CONFIG.BASE_URL + "/me", {
-                   method: "GET", headers: { "Authorization": "Bearer " + this.getToken() }
-                });
-                var data = await res.json();
-                if(data && (data.status === 'ok' || data.data)) { this.mapDBToState(data.data); } 
-                else { this.fallbackToSSO(); }
-             } catch(e) { console.warn("API Fetch Failed.", e); this.fallbackToSSO(); } 
-             finally { qs("#apiLoader")?.classList.add("hide"); qs("#mainAppContainer").style.opacity = "1"; }
-         },
-         saveProfile: async function() {
-             try {
-                var payload = this.mapStateToDB();
-                var res = await fetch(API_CONFIG.BASE_URL + "/update", {
-                   method: "PUT",
-                   headers: { "Authorization": "Bearer " + this.getToken(), "Content-Type": "application/json" },
-                   body: JSON.stringify(payload)
-                });
-                if(!res.ok) throw new Error("API Update Failed");
-             } catch(e) { throw e; }
-         },
-         uploadMedia: async function(blob, photoType) {
-             var fd = new FormData();
-             fd.append("file", blob, photoType + "_" + Date.now() + ".jpg");
-             var res = await fetch(API_CONFIG.UPLOAD_URL, {
-                 method: "POST", headers: { "Authorization": "Bearer " + this.getToken() }, body: fd
-             });
-             if(!res.ok) throw new Error("Upload Failed");
-             var data = await res.json();
-             return data.url || data.data?.url || ""; 
-         },
-         fallbackToSSO: function() {
-             try {
-                 var sso = JSON.parse(localStorage.getItem('orland_sso_user'));
-                 if(sso) {
-                     if(sso.full_name) { var p = sso.full_name.split(" "); state.name.first = p[0]; state.name.last = p.slice(1).join(" "); }
-                     else { state.name.first = sso.first_name||""; state.name.last = sso.last_name||""; }
-                     state.contacts.email = sso.email || ""; state.contacts.phone = sso.phone || "";
-                 }
-             } catch(e){}
-         },
-         mapDBToState: function(db) {
-             if(!db) return;
-             state.personal.gender = db.gender || "-"; state.personal.dob = db.dob || "";
-             state.personal.loc = db.domicile || ""; state.personal.ethnicity = db.skin_tone || "-";
-             state.contacts.phone = db.phone || state.contacts.phone; state.contacts.email = db.email || state.contacts.email;
-             state.appearance.height = db.height_cm ? db.height_cm + " cm" : "N/A";
-             state.appearance.weight = db.weight_kg ? db.weight_kg + " kg" : "N/A";
-             state.appearance.eye = db.eye_color || "N/A"; state.appearance.hair = db.hair_color || "N/A";
-             state.photos.headshot = db.headshot_url || ""; state.photos.side = db.side_view_url || ""; state.photos.full = db.full_body_url || "";
-             state.photos.additional = db.portfolio_photos || []; 
-             state.skills = db.skills || db.skills_json || []; state.interestedIn = db.interested_in || db.interested_in_json || [];
-             state.social = db.social_media || db.social_media_json || state.social;
-             state.assets = db.assets || db.assets_json || state.assets;
-             state.credits = db.credits || []; 
-         },
-         mapStateToDB: function() {
-             return {
-                 age: state.personal.dob ? new Date().getFullYear() - new Date(state.personal.dob).getFullYear() : null,
-                 gender: state.personal.gender, domicile: state.personal.loc, skin_tone: state.personal.ethnicity,
-                 phone: state.contacts.phone, email: state.contacts.email,
-                 height_cm: parseInt(state.appearance.height) || null, weight_kg: parseFloat(state.appearance.weight) || null,
-                 eye_color: state.appearance.eye, hair_color: state.appearance.hair, face_type: "N/A",
-                 headshot_url: state.photos.headshot, side_view_url: state.photos.side, full_body_url: state.photos.full,
-                 portfolio_photos: state.photos.additional,
-                 skills_json: state.skills, interested_in_json: state.interestedIn,
-                 social_media_json: state.social, assets_json: state.assets, credits: state.credits
-             };
-         }
-      };
-
-      // 4. AUTO-SYNC WRAPPER (Save to Local + Cloud)
-      async function saveState() {
-          try {
-              localStorage.setItem(KEY, JSON.stringify(state)); // Backup Local
-              updateProgress(); MHS.update();
-              
-              showSyncToast("Syncing with server...", true); // Tampilkan Loading
-              await AppAPI.saveProfile(); // API Request PUT
-              showSyncToast("All changes saved!", false); // Tampilkan Success
-          } catch(e) {
-              console.error(e);
-              showSyncToast("Failed to sync. Saved locally.", false, true); // Tampilkan Error
-          }
-      }
-
-      // 5. EVENT LISTENERS (UI)
-      var toggleDark = function() { document.documentElement.classList.toggle("dark"); };
-      var shareProfile = function() { navigator.clipboard.writeText(window.location.href).then(function(){alert("Profile Link Copied to Clipboard!");}).catch(function(){alert("Failed to copy link.");}); };
-      qs("#btnToggleDarkDesktop")?.addEventListener("click", toggleDark); qs("#mhsToggleDark")?.addEventListener("click", toggleDark);
-      qs("#btnShareDesktop")?.addEventListener("click", shareProfile); qs("#mhsShare")?.addEventListener("click", shareProfile);
-
-      var V = {
-        phone: function(v) { var p=(v||"").replace(/\s|[-()]/g,"").trim(); return /^\d+$/.test(p) && (p.startsWith("08")||p.startsWith("62")); },
-        url: function(v) { try{ var u=new URL((v||"").trim()); return u.protocol==="https:"||u.protocol==="http:"; }catch(e){return false;} },
-        ytEx: function(u) { try{ var r=new URL(u); if(/youtu\.be/.test(r.hostname))return r.pathname.slice(1); if(/youtube\.com/.test(r.hostname))return r.searchParams.get("v")||r.pathname.split("/").pop(); }catch(e){} return ""; }
-      };
-
-      var Modals = {
-        open: function(id) { var m=qs("#"+id); if(m){ m.classList.remove("hide"); document.body.style.overflow="hidden"; } if(id==="modalProgress") updateProgress(); },
-        close: function(id) { if(id){ var m=qs("#"+id); if(m)m.classList.add("hide"); }else{ qsa(".modal").forEach(function(m){m.classList.add("hide");}); } document.body.style.overflow=""; }
-      };
-      qsa("[data-close='modal']").forEach(function(b){b.addEventListener("click",function(){Modals.close();});});
-
-      var jumpToTab = function(tName) {
-        var tab = qs('[data-tab="'+tName+'"]'); if(!tab)return;
-        qsa("[data-tab]").forEach(function(t){t.classList.remove("tab-active");}); tab.classList.add("tab-active");
-        qsa(".panel").forEach(function(p){p.classList.add("hide"); p.classList.remove("animate-[fadeIn_0.4s_ease-out]");});
-        var panel=qs("#panel-"+tName); if(panel){ panel.classList.remove("hide"); void panel.offsetWidth; panel.classList.add("animate-[fadeIn_0.4s_ease-out]"); }
-        Modals.close("modalProgress");
-      };
-      qsa("[data-tab]").forEach(function(tab){tab.addEventListener("click", function(){jumpToTab(tab.getAttribute("data-tab"));});});
-      qsa(".btnGoTo").forEach(function(b){b.addEventListener("click", function(){jumpToTab(b.getAttribute("data-goto"));});});
-
-      // Mobile Hero Slider
-      var MHS = {
-        idx: 0, total: 0,
-        update: function() {
-          var t = qs("#mhsTrack"), n = qs("#mhsNameOverlay");
-          if(n) n.textContent = ((state.name.first||"")+" "+(state.name.last||"")).trim()||"Name";
-          if(t) {
-            t.innerHTML = ""; var keys = ["headshot", "side", "full"]; var allPhotos = [];
-            keys.forEach(function(k){ if(state.photos[k]) allPhotos.push({k:k, u:state.photos[k]}); else allPhotos.push({k:k, u:null}); });
-            state.photos.additional.forEach(function(u){ allPhotos.push({k:"additional", u:u}); });
-            allPhotos.forEach(function(p) {
-              var d = document.createElement("div"); d.className = "flex-[0_0_100%] h-full flex items-center justify-center bg-slate-800 relative";
-              if(p.u) d.innerHTML = "<img src='"+p.u+"' class='w-full h-full object-cover'>"; else d.innerHTML = "<span class='text-white/40 font-black uppercase tracking-widest text-lg'>No " + p.k + "</span>"; t.appendChild(d);
-            });
-            this.total = allPhotos.length; if(this.idx >= this.total) this.idx = 0; this.go(this.idx);
-          }
-        },
-        go: function(i) {
-          if(this.total === 0) return; if(i < 0) i = this.total - 1; if(i >= this.total) i = 0; this.idx = i;
-          var t = qs("#mhsTrack"), d = qs("#mhsDots"); if(t) t.style.transform = "translateX(-" + (this.idx * 100) + "%)";
-          if(d) { d.innerHTML = ""; for(var x=0; x<this.total; x++){ var s = document.createElement("span"); s.className = "w-2 h-2 rounded-full transition-all " + (x===this.idx ? "bg-white scale-125" : "bg-white/40"); d.appendChild(s); } }
-        },
-        init: function() {
-          var _this = this; qs("#mhsPrev")?.addEventListener("click", function(){ _this.go(_this.idx-1); }); qs("#mhsNext")?.addEventListener("click", function(){ _this.go(_this.idx+1); });
-          qs("#mhsEditName")?.addEventListener("click", function(){ qs("#headerName").click(); });
-          qs("#mhsEditPhoto")?.addEventListener("click", function(){ var keys = ["headshot", "side", "full"]; currPhoto = _this.idx < 3 ? keys[_this.idx] : "additional"; qs("#fileInputSingle").click(); });
-          var sx=0, dx=0, tch=false, el=qs("#mhsContainer");
-          if(el){ el.addEventListener("touchstart", function(e){if(e.touches.length===1){tch=true;sx=e.touches[0].clientX;dx=0;}},{passive:true}); el.addEventListener("touchmove", function(e){if(tch){dx=e.touches[0].clientX-sx;}},{passive:true}); el.addEventListener("touchend", function(){if(tch){tch=false;if(Math.abs(dx)>40){if(dx<0)_this.go(_this.idx+1);else _this.go(_this.idx-1);}}},{passive:true}); }
-        }
-      };
-
-      function renderHeader() { qs("#headerName").textContent = ((state.name.first||"")+" "+(state.name.last||"")).trim()||"Name"; MHS.update(); }
-      qs("#headerName").addEventListener("click", function(){qs("#nameFirst").value=state.name.first; qs("#nameLast").value=state.name.last; Modals.open("modalName");});
-      qs("#btnHeaderEditIcon").addEventListener("click", function(){qs("#headerName").click();});
-      qs("#btnNameSave").addEventListener("click", function(){state.name.first=qs("#nameFirst").value.trim(); state.name.last=qs("#nameLast").value.trim(); saveState(); renderHeader(); Modals.close("modalName");});
-
-      function toggleSec(btnId, viewId, editId, onSaveStr) {
-        var btn=qs("#"+btnId), v=qs("#"+viewId), e=qs("#"+editId); if(!btn||!v||!e)return;
-        btn.addEventListener("click", function() {
-          var isEditing = !e.classList.contains("hide");
-          if(isEditing) {
-            var ok = true;
-            if(onSaveStr==="contacts") {
-              var p=qs("#inpPhone").value.trim(), em=qs("#inpEmail").value.trim();
-              if(p&&!V.phone(p)){alert("Phone invalid."); ok=false;} else { state.contacts.phone=p; state.contacts.email=em; qs("#txtPhone").textContent=p||"-"; qs("#txtEmail").textContent=em||"-"; }
-            } else if(onSaveStr==="pl") {
-              var url=qs("#inpPL").value.trim(); if(url&&!V.url(url)){alert("URL invalid");ok=false;} else {state.personalLink=url; qs("#txtPL").textContent=url||"Add URL";}
-            } else if(onSaveStr==="pers") {
-              state.personal.gender=qs("#inpGender").value; state.personal.dob=qs("#inpDob").value; state.personal.loc=qs("#inpLoc").value.trim(); state.personal.ethnicity=qs("#inpEthnicity").value;
-              qs("#txtGender").textContent=state.personal.gender||"-"; qs("#txtDob").textContent=state.personal.dob?state.personal.dob.split("-").reverse().join("/"):"-"; qs("#txtLoc").textContent=state.personal.loc||"-"; qs("#txtEthnicity").textContent=state.personal.ethnicity||"-";
-            } else if(onSaveStr==="ap") {
-              ["height","weight","eye","hair"].forEach(function(k){ state.appearance[k]=qs("#ap_"+k).value; qs("#apv_"+k).textContent=state.appearance[k]; qs("#apv_"+k).className=(state.appearance[k]!=="N/A"?"text-[14px] font-black text-rose-600":"text-[14px] font-black text-slate-400"); });
-            }
-            if(ok) { saveState(); e.classList.add("hide"); v.classList.remove("hide"); btn.innerHTML="✎ Edit"; }
-          } else {
-            v.classList.add("hide"); e.classList.remove("hide"); btn.innerHTML="💾 Save";
-            if(onSaveStr==="contacts"){qs("#inpPhone").value=state.contacts.phone;qs("#inpEmail").value=state.contacts.email;}
-            else if(onSaveStr==="pl"){qs("#inpPL").value=state.personalLink; qs("#inpPL").focus();}
-            else if(onSaveStr==="pers"){qs("#inpGender").value=state.personal.gender; qs("#inpDob").value=state.personal.dob; qs("#inpLoc").value=state.personal.loc; qs("#inpEthnicity").value=state.personal.ethnicity;}
-            else if(onSaveStr==="ap"){["height","weight","eye","hair"].forEach(function(k){qs("#ap_"+k).value=state.appearance[k];});}
-          }
-        });
-      }
-      toggleSec("btnEditContacts", "contactView", "contactEdit", "contacts"); toggleSec("btnEditPL", "plView", "plEdit", "pl"); toggleSec("btnEditPers", "persView", "persEdit", "pers"); toggleSec("btnEditAp", "apView", "apEdit", "ap");
-
-      var socKeys = ["facebook","instagram","tiktok","youtube","website"]; var isSocDirty = false;
-      var renderSoc = function() {
-        var list=qs("#socialList"), emp=qs("#socialEmpty"); list.innerHTML=""; var has=false;
-        socKeys.forEach(function(k){ var u=state.social[k]; if(u){ has=true; var d=document.createElement("div"); d.className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-violet-200 transition-colors"; d.innerHTML="<span class='font-black text-slate-600 text-[11px] uppercase tracking-widest'>"+k+"</span><a href='"+u+"' target='_blank' class='text-violet-600 font-bold text-[12px] hover:underline truncate max-w-[60%] text-right'>"+u+"</a>"; list.appendChild(d); } });
-        if(has){emp.classList.add("hide"); list.classList.remove("hide");} else {emp.classList.remove("hide"); list.classList.add("hide");}
-      };
-      var btnEditSocial = qs("#btnEditSocial");
-      var updateSocialBtnText = function() { isSocDirty = false; socKeys.forEach(function(k){ if(qs("#sm_"+k).value.trim() !== "") isSocDirty = true; }); if(btnEditSocial) btnEditSocial.innerHTML = isSocDirty ? "💾 Save" : "✖ Close"; };
-      qsa(".social-input").forEach(function(inp){ inp.addEventListener("input", updateSocialBtnText); });
-      btnEditSocial?.addEventListener("click", function() {
-        var v=qs("#socialView"), e=qs("#socialEdit");
-        if(!e.classList.contains("hide")) {
-          if(isSocDirty) { var hasErr = false; socKeys.forEach(function(k){ var val = qs("#sm_"+k).value.trim(); if(val && !V.url(val)){alert("Link "+k+" tidak valid."); hasErr=true;} }); if(hasErr) return; socKeys.forEach(function(k){ state.social[k] = qs("#sm_"+k).value.trim(); }); saveState(); renderSoc(); }
-          e.classList.add("hide"); v.classList.remove("hide"); this.innerHTML="✎ Edit";
-        } else { socKeys.forEach(function(k){ qs("#sm_"+k).value = state.social[k] || ""; }); v.classList.add("hide"); e.classList.remove("hide"); updateSocialBtnText(); }
-      });
-
-      // Chips
-      var activePan=null;
-      document.addEventListener("click", function(e){
-        var b=e.target.closest("[data-dd]");
-        if(b){ var p=qs("#"+b.dataset.dd); if(p){ var isOp=!p.classList.contains("hide"); qsa(".dd-panel").forEach(function(x){x.classList.add("hide");}); if(!isOp){p.classList.remove("hide"); activePan=p;}else{activePan=null;} return;} }
-        if(!e.target.closest(".dropdown")){ qsa(".dd-panel").forEach(function(x){x.classList.add("hide");}); activePan=null; }
-      });
-      var chipColors = ["bg-violet-100 text-violet-800 border-violet-200", "bg-rose-100 text-rose-800 border-rose-200", "bg-emerald-100 text-emerald-800 border-emerald-200", "bg-blue-100 text-blue-800 border-blue-200", "bg-amber-100 text-amber-800 border-amber-200"];
-      function renderChips(containerId, arr, onRemove) {
-        var c=qs("#"+containerId); if(!c)return; c.innerHTML="";
-        arr.forEach(function(lbl, i){ var col=chipColors[i%chipColors.length], d=document.createElement("div"); d.className="px-3 py-1.5 rounded-full text-[12px] font-black inline-flex items-center gap-2 shadow-sm border " + col; d.innerHTML="<span>"+lbl+"</span><button class='w-4 h-4 rounded-full bg-black/10 hover:bg-black/20 border-none cursor-pointer flex items-center justify-center font-black transition-colors'>×</button>"; d.querySelector("button").addEventListener("click", function(){onRemove(lbl);}); c.appendChild(d); });
-      }
-
-      var intOpts=["Acting","Modeling","Reality TV","Theater","Music Videos","Singing","Dancing","Voice-Over","Extras","Commercials"];
-      function initDropdowns() {
-        var pInt=qs("#interestedDD"); if(pInt){
-          pInt.innerHTML = ""; intOpts.forEach(function(l){ var d=document.createElement("label"); d.className="flex items-center gap-3 p-2.5 hover:bg-slate-50 cursor-pointer rounded-xl"; d.innerHTML="<input type='checkbox' class='w-4 h-4 cursor-pointer accent-violet-600' "+(state.interestedIn.indexOf(l)>-1?"checked":"")+"><span class='font-bold text-[13px]'>"+l+"</span>"; d.querySelector("input").addEventListener("change", function(e){if(e.target.checked)state.interestedIn.push(l); else state.interestedIn.splice(state.interestedIn.indexOf(l),1); saveState(); rInt();}); pInt.appendChild(d); });
-        }
-      }
-      var rInt=function(){ renderChips("interestedChips", state.interestedIn, function(l){state.interestedIn.splice(state.interestedIn.indexOf(l),1); saveState(); rInt(); qsa("input",qs("#interestedDD")).forEach(function(cb){if(cb.nextSibling.textContent===l)cb.checked=false;});}); };
-
-      var rSk=function(){ renderChips("listSkills", state.skills, function(l){state.skills.splice(state.skills.indexOf(l),1); saveState(); rSk();}); };
-      var iSk=qs("#inpSkill"), bSk=qs("#btnAddSkill"), cSk=qs("#skillCharCount");
-      if(iSk){ var addSk=function(){var v=iSk.value.trim().replace(/\s+/g," "); if(v&&v.length<=25&&state.skills.indexOf(v)===-1){state.skills.push(v); iSk.value=""; cSk.textContent="0"; saveState(); rSk();}}; iSk.addEventListener("input",function(){cSk.textContent=iSk.value.length;}); bSk.addEventListener("click",addSk); iSk.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addSk();}}); }
-
-      // Photos
-      var cropper=null, currPhoto="headshot", cropQueue=[], isCropping=false;
-      var renderPhotos=function(){
-        ["headshot","side","full"].forEach(function(k){
-          var u=state.photos[k], sw=qs("#wrap"+k.charAt(0).toUpperCase()+k.slice(1)), imgSb=qs("#sb_"+k);
-          if(sw && imgSb){ var btns = sw.nextElementSibling; if(u){sw.classList.add("has-photo"); imgSb.src=u; imgSb.classList.remove("hide"); if(btns) { qs("button[data-upload]", btns).classList.remove("hide"); qs("button[data-remove-photo]", btns).classList.remove("hide"); } } else {sw.classList.remove("has-photo"); imgSb.src=""; imgSb.classList.add("hide"); if(btns) { qs("button[data-upload]", btns).classList.add("hide"); qs("button[data-remove-photo]", btns).classList.add("hide"); } } }
-          var m=qs("#ph_"+k), e=qs("#ph_"+k+"_empty");
-          if(m&&e){ var pWrap = m.parentNode, edBtn = qs(".edit-photo-btn", pWrap), rmBtn = qs(".rm-photo-btn", pWrap); if(u){m.src=u; m.classList.remove("hide"); e.classList.add("hide"); if(edBtn)edBtn.classList.remove("hide"); if(rmBtn)rmBtn.classList.remove("hide");} else {m.classList.add("hide"); e.classList.remove("hide"); if(edBtn)edBtn.classList.add("hide"); if(rmBtn)rmBtn.classList.add("hide");} }
-        });
-        var grd=qs("#additionalPhotosGrid"); if(grd){ grd.innerHTML=""; (state.photos.additional).forEach(function(u,i){ var d=document.createElement("div"); d.className="border border-slate-200 rounded-2xl bg-white overflow-hidden relative aspect-[3/4] shadow-sm group"; d.innerHTML="<button class='absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button><img src='"+u+"' class='w-full h-full object-cover group-hover:scale-105 transition-transform'>"; d.querySelector(".x").addEventListener("click",function(e){e.stopPropagation();if(confirm("Hapus foto?")){state.photos.additional.splice(i,1);saveState();renderPhotos();}}); grd.appendChild(d); }); } MHS.update();
-      };
-
-      qsa("[data-remove-photo]").forEach(function(el){ el.addEventListener("click", function(e){ e.stopPropagation(); if(confirm("Hapus foto utama ini?")){ state.photos[el.getAttribute("data-remove-photo")]=""; saveState(); renderPhotos(); } }); });
-      qsa("[data-upload]").forEach(function(el){el.addEventListener("click",function(e){e.stopPropagation();currPhoto=el.getAttribute("data-upload");qs("#fileInputSingle").click();});});
-      qs("#dropzoneAdditional")?.addEventListener("click", function(e){ if(e.target.id!=="btnAddAdditional") qs("#fileInputMulti").click(); }); qs("#btnAddAdditional")?.addEventListener("click", function(e){ e.stopPropagation(); qs("#fileInputMulti").click(); });
-
-      function processNextCrop() {
-        if(cropQueue.length === 0) { isCropping = false; Modals.close("modalCrop"); renderPhotos(); return; }
-        isCropping = true; Modals.open("modalCrop"); var src = cropQueue[0], i = qs("#cropTarget"); qs("#cropModalTitle").textContent = "✂️ Crop Photo (" + cropQueue.length + " left)"; qs("#btnCropApply").textContent = cropQueue.length > 1 ? "Apply & Next" : "Apply & Save";
-        i.onload = function() { if(cropper) cropper.destroy(); cropper = new Cropper(i, { aspectRatio: 3/4, viewMode: 1, background: false }); }; i.src = src;
-      }
-      function handleFilesToQueue(files) {
-        var arr = Array.from(files).filter(function(f){return f.type.startsWith("image/");}); if(!arr.length) return;
-        var readNext = function(idx) { if(idx >= arr.length) { if(!isCropping) processNextCrop(); return; } var rd = new FileReader(); rd.onload = function(ev) { cropQueue.push(ev.target.result); readNext(idx+1); }; rd.readAsDataURL(arr[idx]); }; readNext(0);
-      }
-
-      qs("#fileInputSingle")?.addEventListener("change", function(e){ handleFilesToQueue(e.target.files); e.target.value=""; });
-      qs("#fileInputMulti")?.addEventListener("change", function(e){ currPhoto="additional"; handleFilesToQueue(e.target.files); e.target.value=""; });
-      var dropZone = qs("#dropzoneAdditional"); if(dropZone) { dropZone.addEventListener("dragover", function(e){ e.preventDefault(); dropZone.classList.add("drag-over"); }); dropZone.addEventListener("dragleave", function(e){ e.preventDefault(); dropZone.classList.remove("drag-over"); }); dropZone.addEventListener("drop", function(e){ e.preventDefault(); dropZone.classList.remove("drag-over"); if(e.dataTransfer.files && e.dataTransfer.files.length > 0) { currPhoto = "additional"; handleFilesToQueue(e.dataTransfer.files); } }); }
-
-      qs("#btnCropApply")?.addEventListener("click", function(){
-        if(!cropper) return;
-        var btn = this; var oriText = btn.innerHTML; btn.innerHTML = "⏳ Uploading..."; btn.disabled = true;
-        
-        cropper.getCroppedCanvas({maxWidth:1000,maxHeight:1333}).toBlob(async function(blob) {
-            try {
-                // Gunakan AppAPI untuk upload ke Cloudflare R2
-                var url = await AppAPI.uploadMedia(blob, currPhoto);
-                if(currPhoto==="additional") state.photos.additional.push(url); else state.photos[currPhoto]=url; 
-                if(cropper)cropper.destroy(); cropper=null; cropQueue.shift(); btn.innerHTML = oriText; btn.disabled = false;
-                saveState(); processNextCrop();
-            } catch(e) {
-                alert("Gagal mengunggah foto. Pastikan API Upload berjalan.");
-                btn.innerHTML = oriText; btn.disabled = false;
-            }
-        }, "image/jpeg", 0.88);
-      });
-      qs("#btnCropCancel")?.addEventListener("click", function(){ if(cropper)cropper.destroy(); cropper=null; cropQueue=[]; isCropping=false; Modals.close("modalCrop"); });
-
-      // Assets
-      var rAss=function(){
-        var yL=qs("#listYt"); if(yL){ yL.innerHTML=""; state.assets.youtube.forEach(function(u,i){ var id=V.ytEx(u), d=document.createElement("div"); d.className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 relative group shadow-sm"; d.innerHTML="<button class='absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button>"+(id?"<iframe class='w-full aspect-video border-0 bg-slate-900' src='https://www.youtube.com/embed/"+id+"' allowfullscreen></iframe>":"<div class='p-4'><a class='text-blue-600 font-bold break-all hover:underline' href='"+u+"' target='_blank'>"+u+"</a></div>"); d.querySelector(".x").addEventListener("click",function(){state.assets.youtube.splice(i,1);saveState();rAss();}); yL.appendChild(d); }); }
-        var aL=qs("#listAudio"); if(aL){ aL.innerHTML=""; state.assets.audio.forEach(function(u,i){ var au=/\.(mp3|wav|ogg)(\?.*)?$/i.test(u), d=document.createElement("div"); d.className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 relative group p-4 shadow-sm flex flex-col justify-center min-h-[100px]"; d.innerHTML="<button class='absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button><div class='font-black text-slate-800 mb-2'>"+(au?"Audio File":"Audio Link")+"</div>"+(au?"<audio class='w-full' controls src='"+u+"'></audio>":"<a class='text-blue-600 font-bold break-all hover:underline' href='"+u+"' target='_blank'>"+u+"</a>"); d.querySelector(".x").addEventListener("click",function(){state.assets.audio.splice(i,1);saveState();rAss();}); aL.appendChild(d); }); }
-      };
-      qs("#btnAddYt")?.addEventListener("click",function(){var u=qs("#inpYt").value.trim(); if(u){if(!V.ytEx(u))return alert("Invalid YouTube URL."); if(state.assets.youtube.indexOf(u)===-1)state.assets.youtube.push(u); qs("#inpYt").value=""; saveState(); rAss();} });
-      qs("#btnAddAudio")?.addEventListener("click",function(){var u=qs("#inpAudio").value.trim(); if(u){if(state.assets.audio.indexOf(u)===-1)state.assets.audio.push(u); qs("#inpAudio").value=""; saveState(); rAss();} });
-
-      // Credits
-      var creditEditingId = null; var crPage = 1;
-      var rCr=function(){
-        var l=qs("#listCredits"), e=qs("#creditEmptyState"), p=qs("#creditsPagination"); if(!l||!e||!p)return;
-        l.innerHTML=""; if(!state.credits.length){e.classList.remove("hide"); p.classList.add("hide"); return;} e.classList.add("hide");
-        state.credits.sort(function(a,b){ return parseInt(b.year||0) - parseInt(a.year||0); });
-        var totalPages = Math.ceil(state.credits.length / 6); if(crPage > totalPages) crPage = totalPages; if(crPage < 1) crPage = 1;
-        var paginated = state.credits.slice((crPage-1)*6, crPage*6);
-        paginated.forEach(function(cr, rel_i){ 
-          var i = (crPage-1)*6 + rel_i; var d=document.createElement("div"); d.className="border border-amber-100 bg-white p-4 rounded-[20px] relative shadow-sm hover:shadow-md group flex gap-4 transition-all"; 
-          var html = "<div class='flex-1'><div class='flex justify-between items-baseline mb-1 pr-16'><b class='text-[16px] text-amber-900 font-black'>"+(cr.title||"Untitled")+"</b><div class='text-[12px] font-black text-amber-600 px-2.5 py-0.5 bg-amber-100 rounded-full'>"+(cr.year||"")+"</div></div><div class='text-amber-700 font-black text-[12px] uppercase tracking-wide mb-2'>"+(cr.company||"")+"</div><div class='text-slate-600 text-[13px] leading-relaxed'>"+(cr.about||"").replace(/[<>]/g,"")+"</div></div>";
-          if(cr.photo) html += "<div class='w-20 h-24 shrink-0 rounded-lg overflow-hidden border border-slate-200'><img src='"+cr.photo+"' class='w-full h-full object-cover'></div>";
-          html += "<div class='absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center font-bold btn-up' title='Move Up'>▲</button><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center font-bold btn-dn' title='Move Down'>▼</button><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-amber-500 hover:bg-amber-50 flex items-center justify-center font-bold btn-ed' title='Edit'>✎</button><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-red-500 hover:bg-red-50 flex items-center justify-center font-bold btn-rm' title='Delete'>×</button></div>";
-          d.innerHTML = html;
-          d.querySelector(".btn-rm").addEventListener("click",function(){if(confirm("Hapus Credit?")){state.credits.splice(i,1);saveState();rCr();}});
-          d.querySelector(".btn-ed").addEventListener("click",function(){ openCreditForm(cr); });
-          d.querySelector(".btn-up").addEventListener("click",function(){ if(i>0){ var tmp=state.credits[i]; state.credits[i]=state.credits[i-1]; state.credits[i-1]=tmp; saveState(); rCr();} });
-          d.querySelector(".btn-dn").addEventListener("click",function(){ if(i<state.credits.length-1){ var tmp=state.credits[i]; state.credits[i]=state.credits[i+1]; state.credits[i+1]=tmp; saveState(); rCr();} }); l.appendChild(d); 
-        });
-        if(totalPages > 1) { p.classList.remove("hide"); qs("#crPageInfo").textContent = crPage + " / " + totalPages; qs("#crPrev").disabled = crPage === 1; qs("#crNext").disabled = crPage === totalPages; qs("#crPrev").style.opacity = crPage === 1 ? "0.5" : "1"; qs("#crNext").style.opacity = crPage === totalPages ? "0.5" : "1"; } else { p.classList.add("hide"); }
-      };
-      qs("#crPrev")?.addEventListener("click", function(){ if(crPage > 1) { crPage--; rCr(); } }); qs("#crNext")?.addEventListener("click", function(){ var tp = Math.ceil(state.credits.length / 6); if(crPage < tp) { crPage++; rCr(); } });
-      
-      var cy=qs("#cr_year"), yr=new Date().getFullYear(); if(cy){for(var y=yr+1;y>=yr-70;y--)cy.innerHTML+="<option value='"+y+"'>"+y+"</option>";}
-      var creditPhotoUrl = ""; function updateCreditPhotoPreview() { var img = qs("#imgCrPhoto"), btnRm = qs("#btnRmCrPhoto"); if(creditPhotoUrl) { img.src=creditPhotoUrl; img.classList.remove("hide"); btnRm.classList.remove("hide"); } else { img.classList.add("hide"); btnRm.classList.add("hide"); } }
-      qs("#wrapCrPhoto")?.addEventListener("click", function(){ qs("#inpCrPhoto").click(); });
-      qs("#inpCrPhoto")?.addEventListener("change", async function(e){
-        var f=e.target.files[0]; if(!f)return; 
-        qs("#cr_formTitle").textContent = "⏳ Uploading Photo...";
-        try {
-            var url = await AppAPI.uploadMedia(f, "credit");
-            creditPhotoUrl = url; updateCreditPhotoPreview();
-        } catch(err) { alert("Gagal mengunggah foto."); }
-        qs("#cr_formTitle").textContent = creditEditingId ? "Edit Credit" : "Add New Credit"; e.target.value="";
-      });
-      qs("#btnRmCrPhoto")?.addEventListener("click", function(e){ e.stopPropagation(); creditPhotoUrl=""; updateCreditPhotoPreview(); });
-      
-      function openCreditForm(cr) { creditEditingId = cr ? cr.id : null; qs("#cr_formTitle").textContent = cr ? "Edit Credit" : "Add New Credit"; qs("#btnCreditSave").textContent = cr ? "Update" : "Save Credit"; qs("#cr_title").value = cr ? cr.title : ""; qs("#cr_year").value = cr ? cr.year : yr; qs("#cr_company").value = cr ? cr.company : ""; qs("#cr_about").value = cr ? cr.about : ""; creditPhotoUrl = cr ? (cr.photo||"") : ""; updateCreditPhotoPreview(); qs("#creditFormWrapper").classList.remove("hide"); qs("#creditEmptyState").classList.add("hide"); }
-      ["btnCreditAdd","btnCreditAddEmpty"].forEach(function(id){qs("#"+id)?.addEventListener("click",function(){openCreditForm(null);});});
-      qs("#btnCreditCancel")?.addEventListener("click",function(){qs("#creditFormWrapper").classList.add("hide");rCr();});
-      qs("#btnCreditSave")?.addEventListener("click",function(){ var t=qs("#cr_title").value.trim(), c=qs("#cr_company").value.trim(), a=qs("#cr_about").value.trim(), y=qs("#cr_year").value; if(t.length<2)return alert("Title required."); if(creditEditingId) { var cr = state.credits.find(function(x){return x.id===creditEditingId;}); if(cr) { cr.title=t; cr.company=c; cr.about=a; cr.year=y; cr.photo=creditPhotoUrl; } } else { state.credits.unshift({id:genId(), title:t, company:c, about:a, year:y, photo:creditPhotoUrl}); crPage=1; } saveState(); qs("#creditFormWrapper").classList.add("hide"); rCr(); });
-
-      // Progress
-      function updateProgress() {
-        var pi=0, pp=0, pm=0; 
-        if(state.name.first)pi++; if(state.contacts.phone)pi++; if(state.personal.dob)pi++;
-        if(state.photos.headshot)pp++; if(state.photos.side)pp++;
-        if(state.assets.youtube.length>0 || state.assets.audio.length>0)pm++;
-        var ptI=Math.round((pi/3)*100), ptP=Math.round((pp/2)*100), ptM=pm*100; var t=Math.round((ptI*0.4) + (ptP*0.4) + (ptM*0.2));
-        var w=function(id,v){var e=qs("#"+id);if(e)e.style.width=v+"%";}; w("progBarInfo",ptI); w("progBarPhotos",ptP); w("progBarMedia",ptM); w("progressBarFill",t);
-        var x=function(id,v){var e=qs("#"+id);if(e)e.textContent=v;}; x("progPctInfo",ptI+"%"); x("progPctPhotos",ptP+"%"); x("progPctMedia",ptM+"%"); 
-        qs("#mainProgressBadge").textContent = t + "%"; var mhsRat = qs("#mhsRatingText"); if(mhsRat) mhsRat.textContent = t + "%"; x("modalChartRating", t + "%");
-        var c=qs("#modalChartCircle"); if(c)c.style.setProperty("--pct",(t*3.6)+"deg");
-        var al=qs("#topAlert"); if(al){if(state.photos.headshot)al.classList.add("hide");else al.classList.remove("hide");}
-        var pImg=qs("#progressAvatar"), pEmp=qs("#progressAvatarEmpty"); if(pImg&&pEmp){ if(state.photos.headshot){pImg.src=state.photos.headshot; pImg.classList.remove("hide"); pEmp.classList.add("hide");}else{pImg.classList.add("hide"); pEmp.classList.remove("hide");} }
-      }
-      qs("#btnProgressOpen")?.addEventListener("click",function(){Modals.open("modalProgress");});
-
-      // RENDER ALL DATA
-      var fillSel = function(id, items, sel) { var e = qs("#"+id); if (e) { e.innerHTML = ""; items.forEach(function(v) { e.innerHTML += "<option value='"+v+"'>"+v+"</option>"; }); if(sel) e.value = sel; } };
-      var hts=["N/A"]; for(var i=150;i<=210;i++)hts.push(i+" cm"); var wts=["N/A"]; for(var j=40;j<=150;j++)wts.push(j+" kg");
-      var eyes=["N/A","Black","Blue","Brown","Green","Grey","Hazel","Other"]; var hairs=["N/A","Black","Blonde","Brown","Grey","Red","Other"];
-      fillSel("ap_height", hts, state.appearance.height); fillSel("ap_weight", wts, state.appearance.weight); fillSel("ap_eye", eyes, state.appearance.eye); fillSel("ap_hair", hairs, state.appearance.hair);
-
-      function renderAll() {
-          initDropdowns(); MHS.init(); renderHeader(); 
-          qs("#txtPhone").textContent=state.contacts.phone||"-"; qs("#txtEmail").textContent=state.contacts.email||"-"; qs("#txtPL").textContent=state.personalLink||"Add URL";
-          qs("#txtGender").textContent=state.personal.gender||"-"; qs("#txtDob").textContent=state.personal.dob?state.personal.dob.split("-").reverse().join("/"):"-"; qs("#txtLoc").textContent=state.personal.loc||"-"; qs("#txtEthnicity").textContent=state.personal.ethnicity||"-";
-          ["height","weight","eye","hair"].forEach(function(k){ var v = state.appearance[k]; qs("#apv_"+k).textContent=v; qs("#apv_"+k).className=(v!=="N/A"?"text-[14px] font-black text-rose-600":"text-[14px] font-black text-slate-400"); });
-          rInt(); rSk(); renderSoc(); renderPhotos(); rAss(); rCr(); updateProgress();
-      }
-
-      // START APP: Fetch API
-      AppAPI.fetchProfile().then(function() {
-          renderAll();
-      });
-
-    });
-  </script>
+  <script src="../../task/blogspot/talent-engine.js"></script>
 </body>
 </html>

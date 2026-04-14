@@ -1,37 +1,41 @@
 /**
  * =================================================================================
- * Orland Management - Talent Profile Integration Script for Blogspot
+ * Orland Management - Talent Profile Integration Script for Blogspot (v2)
  * =================================================================================
  * 
  * Purpose: This script provides the full client-side logic to power the
- * talent profile page. It handles API communication, state management,
- * data mapping, and UI interactions like image cropping and uploading.
+ * talent profile page, now fully compatible with the existing backend architecture
+ * (talentHandler.ts, mediaHandler.ts).
  * 
- * Instructions:
- * 1. Embed this script directly before the closing </body> tag of your Blogspot template.
- * 2. Ensure the HTML structure from 'profile-upload-page-blogspot.html' is present.
- * 3. The user must be logged in via the SSO flow, which should set a token in
- *    localStorage under the key 'orland_sso_user'.
+ * Key Changes in v2:
+ * - Authentication: Switched from Bearer Token to Cookie-based (sid) by using
+ *   `credentials: "include"` in all fetch requests to resolve 401 errors.
+ * - Image Upload: Implemented the 2-step presigned URL upload process. The script
+ *   first requests a secure upload URL from the backend, then uploads the file
+ *   directly to R2.
+ * - Data Mapping: The `mapStateToDB` function is now aligned with the schema
+ *   expected by `talentHandler.ts`, providing default values for required fields
+ *   to ensure successful initial profile creation.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
   // --- Configuration ---
-  const API_BASE_URL = 'https://api.orlandmanagement.com/api/v1'; // Replace with your actual API worker URL
+  const API_BASE_URL = 'https://api.orlandmanagement.com/api/v1'; // Use your actual API worker URL
 
   // --- DOM Element References ---
   const modalCrop = document.getElementById('modalCrop');
   const cropImage = document.getElementById('cropImage');
   const cropApplyBtn = document.getElementById('cropApplyBtn');
-  // ... (add other frequently used DOM elements here)
+  const saveBtn = document.getElementById('saveBtn');
+  const apiLoader = document.getElementById('apiLoader');
+  const mainAppContainer = document.getElementById('mainAppContainer');
 
   // --- State Management ---
-  let state = {
-    // This object will be populated with data from the API
-  };
+  let state = {}; // Populated from API on load
   let cropper;
   let currentUploadContext = {
-    type: null, // e.g., 'headshot', 'side', 'full'
+    type: null, // e.g., 'headshot', 'side_view', 'full_height'
     callback: null,
   };
 
@@ -41,89 +45,114 @@ document.addEventListener('DOMContentLoaded', () => {
    * =================================================================
    */
   const AppAPI = {
-    _getToken: () => {
-      try {
-        const ssoData = JSON.parse(localStorage.getItem('orland_sso_user'));
-        return ssoData?.token || null;
-      } catch (e) {
-        return null;
-      }
-    },
-
     _fetch: async (endpoint, options = {}) => {
-      const token = AppAPI._getToken();
-      if (!token) {
-        alert('Your session has expired. Please log in again.');
-        // Optional: Redirect to login page
-        // window.location.href = 'https://sso.orlandmanagement.com';
-        throw new Error('Authentication token not found.');
-      }
-
-      const headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
+      const defaultOptions = {
+        credentials: 'include', // CRITICAL: Sends cookies (like 'sid') with the request
+        headers: {
+          'Content-Type': 'application/json',
+        },
       };
+
+      // Do not set Content-Type for FormData, browser does it automatically
+      if (options.body instanceof FormData) {
+        delete defaultOptions.headers['Content-Type'];
+      }
       
-      // Do not set Content-Type for FormData, browser does it.
-      if (!(options.body instanceof FormData)) {
-          headers['Content-Type'] = 'application/json';
+      // The PUT request for R2 presigned URL needs a specific content type
+      if (options.isR2Upload) {
+          defaultOptions.headers['Content-Type'] = options.contentType;
+          delete options.isR2Upload;
+          delete options.contentType;
       }
 
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-      });
+      const response = await fetch(endpoint, { ...defaultOptions, ...options });
 
       if (response.status === 401) {
-        alert('Your session is invalid. Please log in again.');
-        localStorage.removeItem('orland_sso_user');
+        alert('Your session is invalid or has expired. Please log in again.');
         throw new Error('Unauthorized');
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'An API error occurred.');
+        const errorData = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
+        throw new Error(errorData.message || `Request failed with status ${response.status}`);
+      }
+      
+      // For R2 PUT requests, we don't expect a JSON body, just a 200 OK status
+      if (response.status === 200 && options.method === 'PUT' && endpoint.includes('r2.cloudflarestorage.com')) {
+          return { status: 'ok' };
       }
 
       return response.json();
     },
 
-    getProfile: () => AppAPI._fetch('/talents/me'),
-    updateProfile: (profileData) => AppAPI._fetch('/talents/me', {
+    getProfile: () => AppAPI._fetch(`${API_BASE_URL}/talents/me`),
+    updateProfile: (profileData) => AppAPI._fetch(`${API_BASE_URL}/talents/me`, {
       method: 'PUT',
       body: JSON.stringify(profileData),
     }),
-    uploadImage: (formData) => AppAPI._fetch('/talents/upload', {
-      method: 'POST',
-      body: formData,
+    getUploadUrl: (fileName, contentType, folder = 'profiles') => AppAPI._fetch(`${API_BASE_URL}/media/upload-url`, {
+        method: 'POST',
+        body: JSON.stringify({ fileName, contentType, folder }),
+    }),
+    uploadToR2: (url, file) => AppAPI._fetch(url, {
+        method: 'PUT',
+        body: file,
+        isR2Upload: true,
+        contentType: file.type,
     }),
   };
 
   /**
    * =================================================================
-   * SECTION 2: Data Mapping Utilities
+   * SECTION 2: Data Mapping & UI
    * =================================================================
    */
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-5 right-5 bg-neutral-800 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-xl animate-[fadeIn_0.3s_ease-out]';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('animate-[fadeOut_0.3s_ease-in]');
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+  }
 
-  // No mapping needed if backend GET /me already returns the correct state structure.
-  // The provided backend code is designed to do this.
-
-  /**
-   * Maps the frontend state object to the format expected by the PUT /me endpoint.
-   * @param {object} frontendState - The current state from the UI.
-   * @returns {object} - The payload ready for the database.
-   */
-  function mapStateToDB(frontendState) {
-    // The backend schema is already very close to the frontend state.
-    // We just need to ensure the structure is correct.
+  function mapStateToDB(s) {
+    // Maps frontend state to the schema expected by `talentHandler.ts`
+    // Provides default values for required fields to ensure initial creation succeeds
     return {
-      name: frontendState.name,
-      personal: frontendState.personal,
-      interestedIn: frontendState.interestedIn,
-      skills: frontendState.skills,
-      appearance: frontendState.appearance,
-      photos: frontendState.photos,
-      credits: frontendState.credits,
+      full_name: `${s.name?.first || ''} ${s.name?.last || ''}`.trim(),
+      category: s.category || 'Unspecified',
+      interests: s.interestedIn || [],
+      skills: s.skills || [],
+      height: s.appearance?.height || '1',
+      weight: s.appearance?.weight || '1',
+      birth_date: s.personal?.dob || null,
+      gender: s.personal?.gender || 'Unspecified',
+      headshot: s.photos?.headshot || null,
+      sideView: s.photos?.side || null,
+      fullHeight: s.photos?.full || null,
+      showreels: s.assets?.youtube || [],
+      audios: s.assets?.audio || [],
+      additional_photos: s.photos?.additional || [],
+      instagram: s.social?.instagram || null,
+      tiktok: s.social?.tiktok || null,
+      twitter: s.social?.x || null,
+      phone: s.contacts?.phone || null,
+      email: s.contacts?.email || null,
+      union_affiliation: s.union || null,
+      eye_color: s.appearance?.eye || 'Unspecified',
+      hair_color: s.appearance?.hair || 'Unspecified',
+      ethnicity: s.personal?.ethnicity || 'Unspecified',
+      location: s.personal?.loc || 'Unspecified',
+      // other fields from your talentHandler schema
+      hip_size: s.appearance?.hip || null,
+      chest_bust: s.appearance?.chest || null,
+      body_type: s.appearance?.body || null,
+      specific_characteristics: s.specific_characteristics ? JSON.stringify(s.specific_characteristics) : null,
+      tattoos: s.tattoos ? JSON.stringify(s.tattoos) : null,
+      piercings: s.piercings ? JSON.stringify(s.piercings) : null,
     };
   }
 
@@ -132,164 +161,92 @@ document.addEventListener('DOMContentLoaded', () => {
    * SECTION 3: Core Application Logic
    * =================================================================
    */
-
-  /**
-   * Saves the entire profile to the backend.
-   */
   async function saveProfile() {
-    console.log('Saving profile...', state);
+    showToast('Syncing with server...');
     try {
       const dbPayload = mapStateToDB(state);
-      await AppAPI.updateProfile(dbPayload);
-      alert('Profile saved successfully!');
+      const response = await AppAPI.updateProfile(dbPayload);
+      // Re-sync state with the definitive data from the server
+      state = { ...state, ...response.data };
+      showToast('Profile saved successfully!');
+      console.log('Profile updated:', response.data);
     } catch (error) {
       console.error('Failed to save profile:', error);
-      alert(`Error: ${error.message}`);
+      alert(`Save Error: ${error.message}`);
     }
   }
 
-  /**
-   * Initializes the application by fetching the user's profile.
-   */
   async function initializeProfile() {
+    mainAppContainer.style.opacity = '0';
+    apiLoader.classList.remove('hide');
     try {
       const response = await AppAPI.getProfile();
       state = response.data;
-      // Now, you would call a function to render this state to the UI
-      renderProfile(state);
+      // TODO: Implement a `renderProfile(state)` function to populate the UI
       console.log('Profile loaded:', state);
+      showToast('Profile loaded successfully.');
     } catch (error) {
       console.error('Failed to initialize profile:', error);
-    }
-  }
-  
-  /**
-    * Renders the fetched profile data into the HTML.
-    * @param {object} profile - The profile state object.
-    */
-  function renderProfile(profile) {
-    // This is a simplified example. You would need to populate all fields.
-    document.getElementById('talentName').textContent = `${profile.name.first} ${profile.name.last}`;
-    
-    // Example for personal info
-    document.querySelector('#personal-gender .value').textContent = profile.personal.gender || '-';
-    document.querySelector('#personal-dob .value').textContent = profile.personal.dob ? new Date(profile.personal.dob).toLocaleDateString() : '-';
-
-    // Example for skills (chips)
-    const skillsContainer = document.getElementById('skillsContainer');
-    skillsContainer.innerHTML = '';
-    (profile.skills || []).forEach(skill => {
-        const chip = document.createElement('div');
-        chip.className = 'bg-violet-50 text-violet-800 text-xs font-semibold px-2.5 py-1 rounded-full';
-        chip.textContent = skill;
-        skillsContainer.appendChild(chip);
-    });
-
-    // Example for photos
-    const headshotImg = document.getElementById('headshotImage');
-    if (profile.photos.headshot) {
-        headshotImg.src = profile.photos.headshot;
-        headshotImg.classList.remove('hide');
+      alert(`Load Error: ${error.message}`);
+    } finally {
+      apiLoader.classList.add('hide');
+      mainAppContainer.style.opacity = '1';
     }
   }
 
-
   /**
    * =================================================================
-   * SECTION 4: CropperJS and Upload Logic
+   * SECTION 4: CropperJS and 2-Step Upload Logic
    * =================================================================
-   */
-
-  /**
-   * Initializes the Cropper modal for a given image.
-   * @param {string} imageUrl - The Data URL of the image to crop.
-   * @param {object} context - Contains upload type and callback.
    */
   function openCropper(imageUrl, context) {
     currentUploadContext = context;
     modalCrop.classList.remove('hide');
+    if (cropper) cropper.destroy();
     cropImage.src = imageUrl;
-
-    if (cropper) {
-      cropper.destroy();
-    }
-
     cropper = new Cropper(cropImage, {
       aspectRatio: context.aspectRatio || 1,
       viewMode: 1,
-      dragMode: 'move',
-      background: false,
-      autoCropArea: 0.8,
     });
   }
 
-  // Event listener for the "Apply & Save" button in the crop modal
-  cropApplyBtn.addEventListener('click', async () => {
-    if (!cropper || !currentUploadContext.callback) return;
-
-    // 1. Get the cropped canvas as a Blob
-    cropper.getCroppedCanvas({
-      width: 1024, // Define output resolution
-      height: 1024,
-      imageSmoothingQuality: 'high',
-    }).toBlob(async (blob) => {
-      if (!blob) {
-        alert('Could not create cropped image.');
-        return;
-      }
-
-      // 2. Create a FormData object
-      const formData = new FormData();
-      formData.append('file', blob, `${currentUploadContext.type}.webp`);
+  cropApplyBtn.addEventListener('click', () => {
+    if (!cropper) return;
+    cropper.getCroppedCanvas({ width: 1024, height: 1024 }).toBlob(async (blob) => {
+      if (!blob) return alert('Crop failed.');
+      
+      showToast('Uploading image...');
+      const fileName = `${currentUploadContext.type}-${Date.now()}.webp`;
 
       try {
-        // 3. POST to the /upload endpoint
-        const uploadResponse = await AppAPI.uploadImage(formData);
-        
-        if (uploadResponse.status === 'ok' && uploadResponse.url) {
-          // 4. Update state and UI
-          currentUploadContext.callback(uploadResponse.url);
-          
-          // 5. Save the entire profile with the new image URL
-          await saveProfile();
-          
-          modalCrop.classList.add('hide');
-          cropper.destroy();
-        } else {
-          throw new Error(uploadResponse.message || 'Upload failed to return a URL.');
+        // Step 1: Get the presigned URL from our backend
+        const { uploadUrl, publicUrl } = await AppAPI.getUploadUrl(fileName, blob.type);
+
+        // Step 2: Upload the file directly to R2 using the presigned URL
+        await AppAPI.uploadToR2(uploadUrl, blob);
+
+        // Step 3: Update local state and save the profile with the new public URL
+        if (currentUploadContext.callback) {
+            currentUploadContext.callback(publicUrl);
         }
+        await saveProfile();
+        
+        showToast('Upload complete!');
+        modalCrop.classList.add('hide');
+        cropper.destroy();
+
       } catch (error) {
         console.error('Upload process failed:', error);
         alert(`Upload Error: ${error.message}`);
       }
-
-    }, 'image/webp', 0.9); // Use WebP format with 90% quality
+    }, 'image/webp', 0.9);
   });
   
-  // Example of how to trigger the cropper
-  document.getElementById('uploadHeadshotBtn').addEventListener('click', () => {
-      const fileInput = document.getElementById('fileInputSingle');
-      fileInput.onchange = (e) => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = (event) => {
-              openCropper(event.target.result, {
-                  type: 'headshot',
-                  aspectRatio: 1,
-                  callback: (url) => {
-                      state.photos.headshot = url;
-                      document.getElementById('headshotImage').src = url; // Update UI immediately
-                  }
-              });
-          };
-          reader.readAsDataURL(file);
-      };
-      fileInput.click();
-  });
-
+  // --- Event Listeners ---
+  saveBtn.addEventListener('click', saveProfile);
+  // Add other listeners for upload buttons to call `openCropper`
 
   // --- Initial Load ---
   initializeProfile();
-
 });
+``

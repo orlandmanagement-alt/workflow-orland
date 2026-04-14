@@ -51,7 +51,6 @@ import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
 import recommendationsRouter from './functions/casting/recommendationsHandler'
 import leaderboardRouter from './functions/stats/leaderboardHandler'
-import talentRoutes from './routes/talentRoutes';
 import publicTalentApiRoute from './routes/publicTalentsRoute';
 
 /**
@@ -238,8 +237,6 @@ app.route('/api/v1/public', availabilityRouter)
 app.route('/api/v1/ai', recommendationsRouter)
 app.route('/api/v1/recommendations', recommendationsRouter)
 app.route('/api/v1/leaderboard', leaderboardRouter)
-app.route('/api/v1/talents', talentRoutes);
-app.route('/api/v1/public/talents', publicTalentApiRoute);
 
 /**
  * 4. PUBLIC R2 MEDIA ACCESS

@@ -47,6 +47,8 @@ router.get('/invites/:token', async (c) => {
       WHERE tr.invite_token = ?
       LIMIT 1
     `).bind(token).first<any>();
+
+    if (!invite) {
       return c.json({ error: 'Invite not found' }, 404);
     }
 
@@ -430,8 +432,7 @@ router.post('/match-recommendation', requireRole(['client', 'admin']), async (c)
             category: talent.category,
             rating: talent.rating,
             match_score: Math.round(result.match_percentage),
-            match_reason:
-              generateMatchReason(result, talent, req)|| `Strong match for ${req.role_id}`,
+            match_reason: generateMatchReason(result, talent, req) || `Strong match for ${req.role_id}`,
             booking_count: talent.booking_count,
             completion_rate: talent.completion_rate,
             score_breakdown: result.score_breakdown,

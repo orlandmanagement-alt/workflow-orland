@@ -51,6 +51,8 @@ import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
 import recommendationsRouter from './functions/casting/recommendationsHandler'
 import leaderboardRouter from './functions/stats/leaderboardHandler'
+import talentRoutes from './routes/talentRoutes';
+import publicTalentApiRoute from './routes/publicTalentsRoute';
 
 /**
  * TYPE DEFINITIONS
@@ -236,7 +238,8 @@ app.route('/api/v1/public', availabilityRouter)
 app.route('/api/v1/ai', recommendationsRouter)
 app.route('/api/v1/recommendations', recommendationsRouter)
 app.route('/api/v1/leaderboard', leaderboardRouter)
-app.route('/api/v1/public', recommendationsRouter)
+app.route('/api/v1/talents', talentRoutes);
+app.route('/api/v1/public/talents', publicTalentApiRoute);
 
 /**
  * 4. PUBLIC R2 MEDIA ACCESS
@@ -254,6 +257,12 @@ app.get("/api/v1/public/media/:key", async (c) => {
   
   return new Response(object.body as any, { headers: headers as any });
 });
+
+/**
+ * 4. ERROR HANDLING & NOT FOUND
+ */
+app.notFound((c) => c.json({ status: 'error', message: 'Route not found' }, 404))
+app.onError((c) => c.json({ status: 'error', message: 'Internal Server Error' }, 500))
 
 export { ChatRoom } from './functions/messages/ChatRoom';
 export default app

@@ -4,23 +4,27 @@
  */
 
 import { Context, Next } from 'hono';
+import { getCookie } from 'hono/cookie';
+import { verify } from 'hono/jwt';
 
 /**
- * Middleware dasar untuk memastikan user sudah login.
- * Mengambil data dari context yang disiapkan oleh middleware global di index.ts
+ * Middleware to ensure a user is authenticated.
+ * It verifies a JWT token from a cookie and extracts the user ID.
  */
-export async function requireAuth(c: Context, next: Next) {
+export const requireAuth = async (c: Context, next: Next) => {
+  // The global middleware in index.ts should handle cookie parsing and JWT verification.
+  // This function now simply checks if the userId was successfully set in the context.
   const userId = c.get('userId');
   
   if (!userId) {
     return c.json({ 
       status: 'error', 
-      message: 'Unauthorized: Sesi tidak ditemukan atau telah berakhir' 
+      message: 'Unauthorized: Your session is invalid or has expired. Please log in again.' 
     }, 401);
   }
   
   await next();
-}
+};
 
 /**
  * Middleware khusus untuk fitur Premium

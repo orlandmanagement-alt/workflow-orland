@@ -89,18 +89,30 @@
     .float-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.15); background: #fff; }
 
     /* Global API Loader */
-    #apiLoader { position: fixed; inset: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index: 999999; display: flex; flex-col; justify-content: center; items-center; }
+    #apiLoader { position: fixed; inset: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
     .spinner { width: 40px; height: 40px; border: 4px solid rgba(139, 92, 246, 0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Sticky Save Toast */
+    .toast-enter { transform: translateY(0); opacity: 1; }
+    .toast-leave { transform: translateY(20px); opacity: 0; }
   </style>
 </head>
 
 <body class="h-full antialiased pb-20 relative">
 
-  <!-- Global API Loader (Hidden by default) -->
+  <!-- Sticky Save Toast -->
+  <div id="syncToast" class="fixed bottom-5 right-5 md:bottom-8 md:right-8 bg-slate-900/90 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 z-[999999] no-invert border border-slate-700">
+      <span id="syncToastSpinner" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+      <span id="syncToastIcon" class="text-emerald-400 font-black text-lg hide">✓</span>
+      <span id="syncToastErr" class="text-red-400 font-black text-lg hide">✖</span>
+      <span id="syncToastText" class="text-[13px] font-black tracking-wide">Syncing with server...</span>
+  </div>
+
+  <!-- Global API Loader -->
   <div id="apiLoader" class="hide flex-col items-center justify-center">
     <div class="spinner mb-3"></div>
-    <div class="font-black text-violet-700 tracking-widest text-sm" id="apiLoaderText">SYNCING DATA...</div>
+    <div class="font-black text-violet-700 tracking-widest text-sm" id="apiLoaderText">SYNCING PROFILE...</div>
   </div>
 
   <!-- Main Container -->
@@ -200,7 +212,6 @@
             </div>
           </div>
           
-          <!-- Download Compcard Button Desktop -->
           <div class="mt-4 pt-4 border-t border-slate-100">
             <button class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md border-none px-4 py-3 rounded-xl font-black text-[13px] hover-lift flex justify-center items-center gap-2" type="button"><span>⬇️</span> Download Comp Card (PDF)</button>
           </div>
@@ -216,7 +227,6 @@
             <div class="flex justify-between items-center p-2.5 border border-transparent rounded-xl hover:bg-slate-50 transition-colors"><span class="text-xl drop-shadow-sm">📱</span><span id="txtPhone" class="font-black text-slate-700">-</span></div>
             <div class="flex justify-between items-center p-2.5 border border-transparent rounded-xl hover:bg-slate-50 transition-colors"><span class="text-xl drop-shadow-sm">✉️</span><span id="txtEmail" class="font-black text-slate-700 truncate max-w-[180px]">-</span></div>
           </div>
-          <!-- Edit Contact -->
           <div id="contactEdit" class="grid gap-2.5 text-[13px] hide">
             <div class="flex flex-col gap-1"><label class="text-[10px] font-black text-violet-500 uppercase">Phone</label><input id="inpPhone" class="border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-violet-400 font-bold text-slate-700 w-full"></div>
             <div class="flex flex-col gap-1"><label class="text-[10px] font-black text-violet-500 uppercase">Email</label><input id="inpEmail" type="email" class="border-2 border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-violet-400 font-bold text-slate-700 w-full"></div>
@@ -275,7 +285,7 @@
           </div>
         </div>
 
-        <!-- TABS (No scrollbar, tighter spacing) -->
+        <!-- TABS -->
         <div class="flex gap-6 mt-4 border-b-2 border-slate-100 pb-1 overflow-x-auto no-scrollbar" id="tabs">
           <div class="font-bold text-slate-400 text-[14px] relative pb-2 cursor-pointer hover:text-violet-500 transition-colors tab-active whitespace-nowrap" data-tab="info">Info</div>
           <div class="font-bold text-slate-400 text-[14px] relative pb-2 cursor-pointer hover:text-fuchsia-500 transition-colors whitespace-nowrap" data-tab="photos">Photos</div>
@@ -339,7 +349,6 @@
               <div class="border border-slate-50 bg-slate-50 rounded-xl p-3"><div class="text-[11px] text-slate-400 font-black uppercase">Ethnicity</div><div class="text-[14px] font-black text-slate-800" id="txtEthnicity">-</div></div>
             </div>
 
-            <!-- Edit 2 Kolom -->
             <div class="p-4 grid grid-cols-2 gap-4 hide bg-emerald-50/10" id="persEdit">
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-emerald-700 font-black uppercase truncate">Gender</label><select class="border-2 border-emerald-100 rounded-xl px-2 py-2 text-[12px] outline-none font-semibold bg-white" id="inpGender"><option>Male</option><option>Female</option><option>Non-Binary</option><option>Other</option></select></div>
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-emerald-700 font-black uppercase truncate">DOB</label><input type="date" class="border-2 border-emerald-100 rounded-xl px-2 py-2 text-[12px] outline-none font-semibold bg-white" id="inpDob"></div>
@@ -360,7 +369,6 @@
               <div class="border border-slate-50 bg-slate-50 rounded-xl p-3"><div class="text-[11px] text-slate-400 font-black uppercase mb-1">Eye Color</div><div class="text-[14px] font-black text-rose-600" id="apv_eye">n/a</div></div>
               <div class="border border-slate-50 bg-slate-50 rounded-xl p-3"><div class="text-[11px] text-slate-400 font-black uppercase mb-1">Hair Color</div><div class="text-[14px] font-black text-rose-600" id="apv_hair">n/a</div></div>
             </div>
-            <!-- Edit 2 Kolom -->
             <div class="p-4 hide bg-rose-50/10 grid grid-cols-2 gap-4" id="apEdit">
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-rose-700 font-black uppercase truncate">Height</label><select class="border-2 border-rose-100 rounded-xl px-2 py-2 text-[12px] font-semibold bg-white outline-none" id="ap_height"></select></div>
               <div class="flex flex-col gap-1.5"><label class="text-[10px] text-rose-700 font-black uppercase truncate">Weight</label><select class="border-2 border-rose-100 rounded-xl px-2 py-2 text-[12px] font-semibold bg-white outline-none" id="ap_weight"></select></div>
@@ -373,17 +381,15 @@
         <!-- ===== PANEL: PHOTOS ===== -->
         <section class="panel hide animate-[fadeIn_0.4s_ease-out]" id="panel-photos">
           <div class="mt-5">
-            <!-- Main Photos -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <!-- HEADSHOT -->
               <div class="border border-slate-100 rounded-[20px] overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white relative">
                 <div class="bg-gradient-to-r from-fuchsia-50 to-pink-50 border-b border-fuchsia-100 p-2.5 text-center text-[11px] font-black text-fuchsia-700 tracking-widest">HEADSHOT</div>
-                <div class="relative h-[240px] bg-white cursor-pointer group">
+                <div class="relative h-[240px] bg-white cursor-pointer group" data-upload="headshot">
                   <img id="ph_headshot" src="" class="w-full h-full object-cover hide transition-transform duration-500 group-hover:scale-105">
-                  <div class="absolute inset-2 border-2 border-dashed border-fuchsia-200 rounded-xl flex flex-col items-center justify-center bg-fuchsia-50/50 gap-1.5 transition-colors group-hover:bg-fuchsia-100/50" id="ph_headshot_empty" data-upload="headshot">
+                  <div class="absolute inset-2 border-2 border-dashed border-fuchsia-200 rounded-xl flex flex-col items-center justify-center bg-fuchsia-50/50 gap-1.5 transition-colors group-hover:bg-fuchsia-100/50" id="ph_headshot_empty">
                     <span class="text-fuchsia-600 font-black">📷 Upload</span>
                   </div>
-                  <!-- Edit/Delete Hover Action -->
                   <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                     <button class="w-7 h-7 rounded-full bg-white/90 text-blue-500 font-black shadow-sm hide edit-photo-btn" data-upload="headshot" title="Edit/Replace">✎</button>
                     <button class="w-7 h-7 rounded-full bg-white/90 text-red-500 font-black shadow-sm hide rm-photo-btn" data-remove-photo="headshot" title="Remove">×</button>
@@ -394,9 +400,9 @@
               <!-- SIDE VIEW -->
               <div class="border border-slate-100 rounded-[20px] overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white relative">
                 <div class="bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-100 p-2.5 text-center text-[11px] font-black text-sky-700 tracking-widest">SIDE VIEW</div>
-                <div class="relative h-[240px] bg-white cursor-pointer group">
+                <div class="relative h-[240px] bg-white cursor-pointer group" data-upload="side">
                   <img id="ph_side" src="" class="w-full h-full object-cover hide transition-transform duration-500 group-hover:scale-105">
-                  <div class="absolute inset-2 border-2 border-dashed border-sky-200 rounded-xl flex flex-col items-center justify-center bg-sky-50/50 gap-1.5 transition-colors group-hover:bg-sky-100/50" id="ph_side_empty" data-upload="side">
+                  <div class="absolute inset-2 border-2 border-dashed border-sky-200 rounded-xl flex flex-col items-center justify-center bg-sky-50/50 gap-1.5 transition-colors group-hover:bg-sky-100/50" id="ph_side_empty">
                     <span class="text-sky-600 font-black">👤 Upload</span>
                   </div>
                   <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -409,7 +415,7 @@
               <!-- FULL HEIGHT -->
               <div class="border border-slate-100 rounded-[20px] overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white relative">
                 <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100 p-2.5 text-center text-[11px] font-black text-emerald-700 tracking-widest">FULL HEIGHT</div>
-                <div class="relative h-[240px] bg-white cursor-pointer group">
+                <div class="relative h-[240px] bg-white cursor-pointer group" data-upload="full">
                   <img id="ph_full" src="" class="w-full h-full object-cover hide transition-transform duration-500 group-hover:scale-105">
                   <div class="absolute inset-2 border-2 border-dashed border-emerald-200 rounded-xl flex flex-col items-center justify-center bg-emerald-50/50 gap-1.5 transition-colors group-hover:bg-emerald-100/50" id="ph_full_empty" data-upload="full">
                     <span class="text-emerald-600 font-black">🧍 Upload</span>
@@ -435,8 +441,7 @@
 
         <!-- ===== PANEL: ASSETS ===== -->
         <section class="panel hide animate-[fadeIn_0.4s_ease-out]" id="panel-assets">
-          <div class="flex flex-col gap-5 mt-5">
-            <!-- VIDEO BLOCK -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
             <div class="border border-slate-100 rounded-[20px] p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-3">
                 <div class="font-black text-slate-800 text-[12px] tracking-widest">▶ VIDEOS <span class="text-slate-400 font-bold lowercase tracking-normal text-[11px]">(youtube)</span></div>
@@ -445,10 +450,9 @@
                 <input class="border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none text-[13px] flex-1 focus:border-red-300 font-semibold" id="inpYt" placeholder="Paste YouTube URL...">
                 <button class="bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 rounded-xl font-black text-[13px] hover:bg-red-100 shadow-sm" type="button" id="btnAddYt">Add</button>
               </div>
-              <div id="listYt" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4"></div>
+              <div id="listYt" class="grid gap-3 mt-4"></div>
             </div>
 
-            <!-- AUDIO BLOCK -->
             <div class="border border-slate-100 rounded-[20px] p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-3">
                 <div class="font-black text-slate-800 text-[12px] tracking-widest">🎵 AUDIO <span class="text-slate-400 font-bold lowercase tracking-normal text-[11px]">(mp3/wav)</span></div>
@@ -457,7 +461,7 @@
                 <input class="border-2 border-slate-100 rounded-xl px-4 py-2.5 outline-none text-[13px] flex-1 focus:border-purple-300 font-semibold" id="inpAudio" placeholder="Paste Audio URL...">
                 <button class="bg-purple-50 text-purple-600 border border-purple-200 px-4 py-2.5 rounded-xl font-black text-[13px] hover:bg-purple-100 shadow-sm" type="button" id="btnAddAudio">Add</button>
               </div>
-              <div id="listAudio" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4"></div>
+              <div id="listAudio" class="grid gap-3 mt-4"></div>
             </div>
           </div>
         </section>
@@ -524,9 +528,8 @@
     </div>
   </div>
 
-  <!-- Multi File Input (Hidden) -->
+  <!-- Hidden Inputs -->
   <input type="file" id="fileInputMulti" accept="image/*" multiple class="hide">
-  <!-- Single File Input (Hidden) -->
   <input type="file" id="fileInputSingle" accept="image/*" class="hide">
 
   <!-- MODAL: CROP -->
@@ -576,45 +579,30 @@
         <button class="w-8 h-8 rounded-full bg-white hover:bg-red-100 text-slate-500 border flex items-center justify-center font-bold text-xl cursor-pointer" data-close="modal">×</button>
       </div>
       <div class="p-6 flex flex-col md:flex-row gap-8 items-center md:items-start bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-orange-50/40 to-white">
-        
-        <div class="w-[160px] h-[160px] shrink-0 relative rounded-full flex items-center justify-center progress-circle shadow-lg" id="modalChartCircle" style="--pct: 0deg;">
+        <div class="w-[160px] h-[160px] shrink-0 relative rounded-full flex items-center justify-center progress-circle shadow-lg" id="modalChartCircle" style="--pct: 0deg; background: conic-gradient(#f59e0b var(--pct), #fef3c7 0);">
           <div class="absolute inset-2.5 bg-white rounded-full shadow-inner overflow-hidden flex items-center justify-center">
              <img id="progressAvatar" src="" class="w-full h-full object-cover hide">
              <div id="progressAvatarEmpty" class="text-amber-500 font-black text-3xl">★</div>
           </div>
           <div class="absolute -bottom-4 bg-white border border-amber-200 px-4 py-1 rounded-full shadow-md text-slate-800 font-black text-lg" id="modalChartRating">0%</div>
         </div>
-        
         <div class="flex-1 flex flex-col gap-4 w-full">
-          <!-- Info Progress -->
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm relative group cursor-pointer btnGoTo" data-goto="info">
-            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center">
-              <span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-blue-100 text-blue-600 grid place-items-center">📝</span> Info</span>
-              <span class="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full" id="progPctInfo">0%</span>
-            </div>
+            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center"><span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-blue-100 text-blue-600 grid place-items-center">📝</span> Info</span><span class="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full" id="progPctInfo">0%</span></div>
             <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-1"><div class="h-full bg-gradient-to-r from-blue-400 to-indigo-500 transition-all duration-700" id="progBarInfo" style="width:0%"></div></div>
             <div class="text-[10px] text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity text-right">Click to Complete Info →</div>
           </div>
-          <!-- Photos Progress -->
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm relative group cursor-pointer btnGoTo" data-goto="photos">
-            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center">
-              <span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-fuchsia-100 text-fuchsia-600 grid place-items-center">📸</span> Photos</span>
-              <span class="bg-fuchsia-50 text-fuchsia-700 px-2.5 py-0.5 rounded-full" id="progPctPhotos">0%</span>
-            </div>
+            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center"><span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-fuchsia-100 text-fuchsia-600 grid place-items-center">📸</span> Photos</span><span class="bg-fuchsia-50 text-fuchsia-700 px-2.5 py-0.5 rounded-full" id="progPctPhotos">0%</span></div>
             <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-1"><div class="h-full bg-gradient-to-r from-fuchsia-400 to-pink-500 transition-all duration-700" id="progBarPhotos" style="width:0%"></div></div>
             <div class="text-[10px] text-fuchsia-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity text-right">Click to Add Photos →</div>
           </div>
-          <!-- Assets/Media Progress -->
           <div class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm relative group cursor-pointer btnGoTo" data-goto="assets">
-            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center">
-              <span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-emerald-100 text-emerald-600 grid place-items-center">🎵</span> Media (Video/Audio)</span>
-              <span class="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full" id="progPctMedia">0%</span>
-            </div>
+            <div class="flex justify-between text-[13px] font-black text-slate-700 mb-2 items-center"><span class="flex items-center gap-2"><span class="w-6 h-6 rounded bg-emerald-100 text-emerald-600 grid place-items-center">🎵</span> Media (Video/Audio)</span><span class="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full" id="progPctMedia">0%</span></div>
             <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden mb-1"><div class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-700" id="progBarMedia" style="width:0%"></div></div>
             <div class="text-[10px] text-emerald-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity text-right">Click to Add Media →</div>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -624,13 +612,13 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 
-  <!-- SCRIPT JS: AppAPI Integration & Full Logic -->
+  <!-- SCRIPT JS: FULL APPAPI INTEGRATION & AUTO SYNC -->
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-      // Configuration
+      // 1. CONFIGURATION API
       var API_CONFIG = {
-         BASE_URL: "https://api.orlandmanagement.com/api/v1/talents",
-         UPLOAD_URL: "https://api.orlandmanagement.com/api/v1/talents/upload"
+         BASE_URL: "https://api.orlandmanagement.com/api/profile", // Endpoint GET /me dan PUT /update
+         UPLOAD_URL: "https://api.orlandmanagement.com/api/v1/talents/upload" // Endpoint POST upload foto
       };
 
       var qs = function(s, p) { return (p || document).querySelector(s); };
@@ -648,157 +636,134 @@
         assets: { youtube:[], audio:[] }, credits: []
       };
 
-      // AppAPI Communication Object
+      // 2. TOAST NOTIFICATION (STICKY SYNC STATUS)
+      var toastTimeout;
+      function showSyncToast(message, isSpinning, isError = false) {
+          var toast = qs("#syncToast");
+          var spinner = qs("#syncToastSpinner");
+          var iconOk = qs("#syncToastIcon");
+          var iconErr = qs("#syncToastErr");
+          var text = qs("#syncToastText");
+
+          if(!toast) return;
+          clearTimeout(toastTimeout);
+          
+          text.textContent = message;
+          toast.classList.remove("opacity-0", "translate-y-20");
+          
+          if(isSpinning) {
+              spinner.classList.remove("hide"); iconOk.classList.add("hide"); iconErr.classList.add("hide");
+              toast.classList.replace("border-slate-700", "border-blue-500/50");
+          } else if(isError) {
+              spinner.classList.add("hide"); iconOk.classList.add("hide"); iconErr.classList.remove("hide");
+              toast.classList.replace("border-blue-500/50", "border-red-500/50");
+              toastTimeout = setTimeout(function(){ toast.classList.add("opacity-0", "translate-y-20"); }, 4000);
+          } else {
+              spinner.classList.add("hide"); iconOk.classList.remove("hide"); iconErr.classList.add("hide");
+              toast.classList.replace("border-blue-500/50", "border-emerald-500/50");
+              toastTimeout = setTimeout(function(){ toast.classList.add("opacity-0", "translate-y-20"); }, 3000);
+          }
+      }
+
+      // 3. API COMMUNICATION OBJECT (AppAPI)
       var AppAPI = {
          getToken: function() {
-             var ssoData = localStorage.getItem('orland_sso_user');
-             if(ssoData) {
-                 try { return JSON.parse(ssoData).token || ""; } catch(e){}
-             }
-             return ""; // or read from cookie if API requires cookie auth
+             try { var sso = JSON.parse(localStorage.getItem('orland_sso_user')); return sso?.token || ""; } 
+             catch(e) { return ""; }
          },
          fetchProfile: async function() {
              try {
-                // Tampilkan loader saat sync pertama
                 qs("#apiLoader")?.classList.remove("hide");
-                
                 var res = await fetch(API_CONFIG.BASE_URL + "/me", {
-                   method: "GET",
-                   // credentials: "include", // Aktifkan jika menggunakan SSO Cookie Auth
-                   headers: { "Authorization": "Bearer " + this.getToken() }
+                   method: "GET", headers: { "Authorization": "Bearer " + this.getToken() }
                 });
-                
                 var data = await res.json();
-                if(data && data.status === 'ok' && data.data) {
-                   this.mapDBToState(data.data);
-                } else {
-                   this.fallbackToSSO(); // Fallback jika API gagal/kosong
-                }
-             } catch(e) {
-                console.warn("API Fetch Failed. Loading from SSO fallback.", e);
-                this.fallbackToSSO();
-             } finally {
-                qs("#apiLoader")?.classList.add("hide");
-                qs("#mainAppContainer").style.opacity = "1";
-             }
+                if(data && (data.status === 'ok' || data.data)) { this.mapDBToState(data.data); } 
+                else { this.fallbackToSSO(); }
+             } catch(e) { console.warn("API Fetch Failed.", e); this.fallbackToSSO(); } 
+             finally { qs("#apiLoader")?.classList.add("hide"); qs("#mainAppContainer").style.opacity = "1"; }
          },
          saveProfile: async function() {
              try {
                 var payload = this.mapStateToDB();
-                var res = await fetch(API_CONFIG.BASE_URL + "/me", { // Sesuaikan endpoint PUT (misal /update)
+                var res = await fetch(API_CONFIG.BASE_URL + "/update", {
                    method: "PUT",
-                   // credentials: "include",
-                   headers: { 
-                       "Authorization": "Bearer " + this.getToken(),
-                       "Content-Type": "application/json" 
-                   },
+                   headers: { "Authorization": "Bearer " + this.getToken(), "Content-Type": "application/json" },
                    body: JSON.stringify(payload)
                 });
-                var data = await res.json();
-                if(!res.ok) throw new Error(data.error || "Gagal menyimpan");
-             } catch(e) {
-                console.error("API Save Failed", e);
-                // alert("Background Sync Failed: " + e.message); // Opsional
-             }
+                if(!res.ok) throw new Error("API Update Failed");
+             } catch(e) { throw e; }
          },
          uploadMedia: async function(blob, photoType) {
-             var formData = new FormData();
-             formData.append("file", blob, photoType + "_" + Date.now() + ".jpg");
-             
+             var fd = new FormData();
+             fd.append("file", blob, photoType + "_" + Date.now() + ".jpg");
              var res = await fetch(API_CONFIG.UPLOAD_URL, {
-                 method: "POST",
-                 // credentials: "include",
-                 headers: { "Authorization": "Bearer " + this.getToken() },
-                 body: formData
+                 method: "POST", headers: { "Authorization": "Bearer " + this.getToken() }, body: fd
              });
-             
              if(!res.ok) throw new Error("Upload Failed");
              var data = await res.json();
-             return data.url || data.data.url; // Asumsi response mereturn URL publik R2
+             return data.url || data.data?.url || ""; 
          },
          fallbackToSSO: function() {
-             var ssoData = localStorage.getItem('orland_sso_user');
-             if(ssoData) {
-                 try {
-                     var u = JSON.parse(ssoData);
-                     if(u.first_name || u.last_name || u.full_name) {
-                         if(u.full_name) {
-                             var pts = u.full_name.split(" ");
-                             state.name.first = pts[0]; state.name.last = pts.slice(1).join(" ");
-                         } else {
-                             state.name.first = u.first_name||""; state.name.last = u.last_name||"";
-                         }
-                     }
-                     state.contacts.email = u.email || "";
-                     state.contacts.phone = u.phone || "";
-                 } catch(e){}
-             }
+             try {
+                 var sso = JSON.parse(localStorage.getItem('orland_sso_user'));
+                 if(sso) {
+                     if(sso.full_name) { var p = sso.full_name.split(" "); state.name.first = p[0]; state.name.last = p.slice(1).join(" "); }
+                     else { state.name.first = sso.first_name||""; state.name.last = sso.last_name||""; }
+                     state.contacts.email = sso.email || ""; state.contacts.phone = sso.phone || "";
+                 }
+             } catch(e){}
          },
          mapDBToState: function(db) {
-             state.personal.gender = db.gender || "-";
-             state.personal.dob = db.dob || "";
-             state.personal.loc = db.domicile || "";
-             state.personal.ethnicity = db.skin_tone || "-";
-             
-             state.contacts.phone = db.phone || "";
-             state.contacts.email = db.email || "";
-             
+             if(!db) return;
+             state.personal.gender = db.gender || "-"; state.personal.dob = db.dob || "";
+             state.personal.loc = db.domicile || ""; state.personal.ethnicity = db.skin_tone || "-";
+             state.contacts.phone = db.phone || state.contacts.phone; state.contacts.email = db.email || state.contacts.email;
              state.appearance.height = db.height_cm ? db.height_cm + " cm" : "N/A";
              state.appearance.weight = db.weight_kg ? db.weight_kg + " kg" : "N/A";
-             state.appearance.eye = db.eye_color || "N/A";
-             state.appearance.hair = db.hair_color || "N/A";
-             
-             state.photos.headshot = db.headshot_url || "";
-             state.photos.side = db.side_view_url || ""; // Asumsi di DB namanya side_view_url
-             state.photos.full = db.full_body_url || "";
-             state.photos.additional = db.portfolio_photos || []; // Asumsi array dari JSON.parse backend
-             
-             state.skills = db.skills || []; // Asumsi array
-             state.interestedIn = db.interested_in || []; // Asumsi array dari JSON
-             state.social = db.social_media || state.social; // Asumsi object dari JSON
-             state.assets = db.assets || state.assets; // Asumsi object {youtube:[], audio:[]}
-             state.credits = db.credits || []; // Relasi credits
+             state.appearance.eye = db.eye_color || "N/A"; state.appearance.hair = db.hair_color || "N/A";
+             state.photos.headshot = db.headshot_url || ""; state.photos.side = db.side_view_url || ""; state.photos.full = db.full_body_url || "";
+             state.photos.additional = db.portfolio_photos || []; 
+             state.skills = db.skills || db.skills_json || []; state.interestedIn = db.interested_in || db.interested_in_json || [];
+             state.social = db.social_media || db.social_media_json || state.social;
+             state.assets = db.assets || db.assets_json || state.assets;
+             state.credits = db.credits || []; 
          },
          mapStateToDB: function() {
              return {
-                 gender: state.personal.gender,
-                 dob: state.personal.dob,
-                 domicile: state.personal.loc,
-                 skin_tone: state.personal.ethnicity,
-                 phone: state.contacts.phone,
-                 email: state.contacts.email,
-                 height_cm: parseInt(state.appearance.height) || null,
-                 weight_kg: parseFloat(state.appearance.weight) || null,
-                 eye_color: state.appearance.eye,
-                 hair_color: state.appearance.hair,
-                 headshot_url: state.photos.headshot,
-                 side_view_url: state.photos.side,
-                 full_body_url: state.photos.full,
+                 age: state.personal.dob ? new Date().getFullYear() - new Date(state.personal.dob).getFullYear() : null,
+                 gender: state.personal.gender, domicile: state.personal.loc, skin_tone: state.personal.ethnicity,
+                 phone: state.contacts.phone, email: state.contacts.email,
+                 height_cm: parseInt(state.appearance.height) || null, weight_kg: parseFloat(state.appearance.weight) || null,
+                 eye_color: state.appearance.eye, hair_color: state.appearance.hair, face_type: "N/A",
+                 headshot_url: state.photos.headshot, side_view_url: state.photos.side, full_body_url: state.photos.full,
                  portfolio_photos: state.photos.additional,
-                 skills_json: state.skills,
-                 interested_in_json: state.interestedIn,
-                 social_media_json: state.social,
-                 assets_json: state.assets,
-                 credits: state.credits // Backend harus handle bulk insert/update relasi ini
+                 skills_json: state.skills, interested_in_json: state.interestedIn,
+                 social_media_json: state.social, assets_json: state.assets, credits: state.credits
              };
          }
       };
 
-      // Wrapper untuk save lokal + save ke API
-      function saveState() { 
-          updateProgress(); 
-          MHS.update(); 
-          AppAPI.saveProfile(); // Background Sync ke Database
+      // 4. AUTO-SYNC WRAPPER (Save to Local + Cloud)
+      async function saveState() {
+          try {
+              localStorage.setItem(KEY, JSON.stringify(state)); // Backup Local
+              updateProgress(); MHS.update();
+              
+              showSyncToast("Syncing with server...", true); // Tampilkan Loading
+              await AppAPI.saveProfile(); // API Request PUT
+              showSyncToast("All changes saved!", false); // Tampilkan Success
+          } catch(e) {
+              console.error(e);
+              showSyncToast("Failed to sync. Saved locally.", false, true); // Tampilkan Error
+          }
       }
 
-      // Action Handlers
+      // 5. EVENT LISTENERS (UI)
       var toggleDark = function() { document.documentElement.classList.toggle("dark"); };
       var shareProfile = function() { navigator.clipboard.writeText(window.location.href).then(function(){alert("Profile Link Copied to Clipboard!");}).catch(function(){alert("Failed to copy link.");}); };
-      
-      qs("#btnToggleDarkDesktop")?.addEventListener("click", toggleDark);
-      qs("#mhsToggleDark")?.addEventListener("click", toggleDark);
-      qs("#btnShareDesktop")?.addEventListener("click", shareProfile);
-      qs("#mhsShare")?.addEventListener("click", shareProfile);
+      qs("#btnToggleDarkDesktop")?.addEventListener("click", toggleDark); qs("#mhsToggleDark")?.addEventListener("click", toggleDark);
+      qs("#btnShareDesktop")?.addEventListener("click", shareProfile); qs("#mhsShare")?.addEventListener("click", shareProfile);
 
       var V = {
         phone: function(v) { var p=(v||"").replace(/\s|[-()]/g,"").trim(); return /^\d+$/.test(p) && (p.startsWith("08")||p.startsWith("62")); },
@@ -824,72 +789,40 @@
 
       // Mobile Hero Slider
       var MHS = {
-        idx: 0,
-        total: 0,
+        idx: 0, total: 0,
         update: function() {
           var t = qs("#mhsTrack"), n = qs("#mhsNameOverlay");
           if(n) n.textContent = ((state.name.first||"")+" "+(state.name.last||"")).trim()||"Name";
           if(t) {
-            t.innerHTML = "";
-            var keys = ["headshot", "side", "full"];
-            var allPhotos = [];
+            t.innerHTML = ""; var keys = ["headshot", "side", "full"]; var allPhotos = [];
             keys.forEach(function(k){ if(state.photos[k]) allPhotos.push({k:k, u:state.photos[k]}); else allPhotos.push({k:k, u:null}); });
             state.photos.additional.forEach(function(u){ allPhotos.push({k:"additional", u:u}); });
-            
             allPhotos.forEach(function(p) {
               var d = document.createElement("div"); d.className = "flex-[0_0_100%] h-full flex items-center justify-center bg-slate-800 relative";
-              if(p.u) d.innerHTML = "<img src='"+p.u+"' class='w-full h-full object-cover'>";
-              else d.innerHTML = "<span class='text-white/40 font-black uppercase tracking-widest text-lg'>No " + p.k + "</span>";
-              t.appendChild(d);
+              if(p.u) d.innerHTML = "<img src='"+p.u+"' class='w-full h-full object-cover'>"; else d.innerHTML = "<span class='text-white/40 font-black uppercase tracking-widest text-lg'>No " + p.k + "</span>"; t.appendChild(d);
             });
-            this.total = allPhotos.length;
-            if(this.idx >= this.total) this.idx = 0;
-            this.go(this.idx);
+            this.total = allPhotos.length; if(this.idx >= this.total) this.idx = 0; this.go(this.idx);
           }
         },
         go: function(i) {
-          if(this.total === 0) return;
-          if(i < 0) i = this.total - 1; if(i >= this.total) i = 0; this.idx = i;
-          var t = qs("#mhsTrack"), d = qs("#mhsDots");
-          if(t) t.style.transform = "translateX(-" + (this.idx * 100) + "%)";
-          if(d) {
-            d.innerHTML = "";
-            for(var x=0; x<this.total; x++){
-              var s = document.createElement("span");
-              s.className = "w-2 h-2 rounded-full transition-all " + (x===this.idx ? "bg-white scale-125" : "bg-white/40");
-              d.appendChild(s);
-            }
-          }
+          if(this.total === 0) return; if(i < 0) i = this.total - 1; if(i >= this.total) i = 0; this.idx = i;
+          var t = qs("#mhsTrack"), d = qs("#mhsDots"); if(t) t.style.transform = "translateX(-" + (this.idx * 100) + "%)";
+          if(d) { d.innerHTML = ""; for(var x=0; x<this.total; x++){ var s = document.createElement("span"); s.className = "w-2 h-2 rounded-full transition-all " + (x===this.idx ? "bg-white scale-125" : "bg-white/40"); d.appendChild(s); } }
         },
         init: function() {
-          var _this = this;
-          qs("#mhsPrev")?.addEventListener("click", function(){ _this.go(_this.idx-1); });
-          qs("#mhsNext")?.addEventListener("click", function(){ _this.go(_this.idx+1); });
+          var _this = this; qs("#mhsPrev")?.addEventListener("click", function(){ _this.go(_this.idx-1); }); qs("#mhsNext")?.addEventListener("click", function(){ _this.go(_this.idx+1); });
           qs("#mhsEditName")?.addEventListener("click", function(){ qs("#headerName").click(); });
-          qs("#mhsEditPhoto")?.addEventListener("click", function(){ 
-            var keys = ["headshot", "side", "full"];
-            currPhoto = _this.idx < 3 ? keys[_this.idx] : "additional"; qs("#fileInputSingle").click(); 
-          });
-          
+          qs("#mhsEditPhoto")?.addEventListener("click", function(){ var keys = ["headshot", "side", "full"]; currPhoto = _this.idx < 3 ? keys[_this.idx] : "additional"; qs("#fileInputSingle").click(); });
           var sx=0, dx=0, tch=false, el=qs("#mhsContainer");
-          if(el){
-            el.addEventListener("touchstart", function(e){if(e.touches.length===1){tch=true;sx=e.touches[0].clientX;dx=0;}},{passive:true});
-            el.addEventListener("touchmove", function(e){if(tch){dx=e.touches[0].clientX-sx;}},{passive:true});
-            el.addEventListener("touchend", function(){if(tch){tch=false;if(Math.abs(dx)>40){if(dx<0)_this.go(_this.idx+1);else _this.go(_this.idx-1);}}},{passive:true});
-          }
+          if(el){ el.addEventListener("touchstart", function(e){if(e.touches.length===1){tch=true;sx=e.touches[0].clientX;dx=0;}},{passive:true}); el.addEventListener("touchmove", function(e){if(tch){dx=e.touches[0].clientX-sx;}},{passive:true}); el.addEventListener("touchend", function(){if(tch){tch=false;if(Math.abs(dx)>40){if(dx<0)_this.go(_this.idx+1);else _this.go(_this.idx-1);}}},{passive:true}); }
         }
       };
 
-      function renderHeader() { 
-        var nm = ((state.name.first||"")+" "+(state.name.last||"")).trim()||"Name";
-        qs("#headerName").textContent = nm; 
-        MHS.update();
-      }
+      function renderHeader() { qs("#headerName").textContent = ((state.name.first||"")+" "+(state.name.last||"")).trim()||"Name"; MHS.update(); }
       qs("#headerName").addEventListener("click", function(){qs("#nameFirst").value=state.name.first; qs("#nameLast").value=state.name.last; Modals.open("modalName");});
       qs("#btnHeaderEditIcon").addEventListener("click", function(){qs("#headerName").click();});
       qs("#btnNameSave").addEventListener("click", function(){state.name.first=qs("#nameFirst").value.trim(); state.name.last=qs("#nameLast").value.trim(); saveState(); renderHeader(); Modals.close("modalName");});
 
-      // Unified Toggle Edit/Save
       function toggleSec(btnId, viewId, editId, onSaveStr) {
         var btn=qs("#"+btnId), v=qs("#"+viewId), e=qs("#"+editId); if(!btn||!v||!e)return;
         btn.addEventListener("click", function() {
@@ -917,361 +850,180 @@
           }
         });
       }
-      toggleSec("btnEditContacts", "contactView", "contactEdit", "contacts");
-      toggleSec("btnEditPL", "plView", "plEdit", "pl");
-      toggleSec("btnEditPers", "persView", "persEdit", "pers");
-      toggleSec("btnEditAp", "apView", "apEdit", "ap");
+      toggleSec("btnEditContacts", "contactView", "contactEdit", "contacts"); toggleSec("btnEditPL", "plView", "plEdit", "pl"); toggleSec("btnEditPers", "persView", "persEdit", "pers"); toggleSec("btnEditAp", "apView", "apEdit", "ap");
 
-      // Custom Social Toggle Logic
-      var socKeys = ["facebook","instagram","tiktok","youtube","website"];
-      var isSocDirty = false;
+      var socKeys = ["facebook","instagram","tiktok","youtube","website"]; var isSocDirty = false;
       var renderSoc = function() {
         var list=qs("#socialList"), emp=qs("#socialEmpty"); list.innerHTML=""; var has=false;
-        socKeys.forEach(function(k){
-          var u=state.social[k]; if(u){ has=true; var d=document.createElement("div"); d.className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-violet-200 transition-colors"; d.innerHTML="<span class='font-black text-slate-600 text-[11px] uppercase tracking-widest'>"+k+"</span><a href='"+u+"' target='_blank' class='text-violet-600 font-bold text-[12px] hover:underline truncate max-w-[60%] text-right'>"+u+"</a>"; list.appendChild(d); }
-        });
+        socKeys.forEach(function(k){ var u=state.social[k]; if(u){ has=true; var d=document.createElement("div"); d.className="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border border-slate-100 hover:border-violet-200 transition-colors"; d.innerHTML="<span class='font-black text-slate-600 text-[11px] uppercase tracking-widest'>"+k+"</span><a href='"+u+"' target='_blank' class='text-violet-600 font-bold text-[12px] hover:underline truncate max-w-[60%] text-right'>"+u+"</a>"; list.appendChild(d); } });
         if(has){emp.classList.add("hide"); list.classList.remove("hide");} else {emp.classList.remove("hide"); list.classList.add("hide");}
       };
-
       var btnEditSocial = qs("#btnEditSocial");
-      var updateSocialBtnText = function() {
-        isSocDirty = false; socKeys.forEach(function(k){ if(qs("#sm_"+k).value.trim() !== "") isSocDirty = true; });
-        if(btnEditSocial) btnEditSocial.innerHTML = isSocDirty ? "💾 Save" : "✖ Close";
-      };
+      var updateSocialBtnText = function() { isSocDirty = false; socKeys.forEach(function(k){ if(qs("#sm_"+k).value.trim() !== "") isSocDirty = true; }); if(btnEditSocial) btnEditSocial.innerHTML = isSocDirty ? "💾 Save" : "✖ Close"; };
       qsa(".social-input").forEach(function(inp){ inp.addEventListener("input", updateSocialBtnText); });
-
       btnEditSocial?.addEventListener("click", function() {
         var v=qs("#socialView"), e=qs("#socialEdit");
         if(!e.classList.contains("hide")) {
-          if(isSocDirty) {
-             var hasErr = false;
-             socKeys.forEach(function(k){ var val = qs("#sm_"+k).value.trim(); if(val && !V.url(val)){alert("Link "+k+" tidak valid."); hasErr=true;} });
-             if(hasErr) return;
-             socKeys.forEach(function(k){ state.social[k] = qs("#sm_"+k).value.trim(); }); saveState(); renderSoc();
-          }
+          if(isSocDirty) { var hasErr = false; socKeys.forEach(function(k){ var val = qs("#sm_"+k).value.trim(); if(val && !V.url(val)){alert("Link "+k+" tidak valid."); hasErr=true;} }); if(hasErr) return; socKeys.forEach(function(k){ state.social[k] = qs("#sm_"+k).value.trim(); }); saveState(); renderSoc(); }
           e.classList.add("hide"); v.classList.remove("hide"); this.innerHTML="✎ Edit";
-        } else {
-          socKeys.forEach(function(k){ qs("#sm_"+k).value = state.social[k] || ""; });
-          v.classList.add("hide"); e.classList.remove("hide"); updateSocialBtnText();
-        }
+        } else { socKeys.forEach(function(k){ qs("#sm_"+k).value = state.social[k] || ""; }); v.classList.add("hide"); e.classList.remove("hide"); updateSocialBtnText(); }
       });
 
-      // Dropdowns
+      // Chips
       var activePan=null;
       document.addEventListener("click", function(e){
         var b=e.target.closest("[data-dd]");
         if(b){ var p=qs("#"+b.dataset.dd); if(p){ var isOp=!p.classList.contains("hide"); qsa(".dd-panel").forEach(function(x){x.classList.add("hide");}); if(!isOp){p.classList.remove("hide"); activePan=p;}else{activePan=null;} return;} }
         if(!e.target.closest(".dropdown")){ qsa(".dd-panel").forEach(function(x){x.classList.add("hide");}); activePan=null; }
       });
-      
       var chipColors = ["bg-violet-100 text-violet-800 border-violet-200", "bg-rose-100 text-rose-800 border-rose-200", "bg-emerald-100 text-emerald-800 border-emerald-200", "bg-blue-100 text-blue-800 border-blue-200", "bg-amber-100 text-amber-800 border-amber-200"];
       function renderChips(containerId, arr, onRemove) {
         var c=qs("#"+containerId); if(!c)return; c.innerHTML="";
-        arr.forEach(function(lbl, i){
-          var col=chipColors[i%chipColors.length], d=document.createElement("div");
-          d.className="px-3 py-1.5 rounded-full text-[12px] font-black inline-flex items-center gap-2 shadow-sm border " + col;
-          d.innerHTML="<span>"+lbl+"</span><button class='w-4 h-4 rounded-full bg-black/10 hover:bg-black/20 border-none cursor-pointer flex items-center justify-center font-black transition-colors'>×</button>";
-          d.querySelector("button").addEventListener("click", function(){onRemove(lbl);}); c.appendChild(d);
-        });
+        arr.forEach(function(lbl, i){ var col=chipColors[i%chipColors.length], d=document.createElement("div"); d.className="px-3 py-1.5 rounded-full text-[12px] font-black inline-flex items-center gap-2 shadow-sm border " + col; d.innerHTML="<span>"+lbl+"</span><button class='w-4 h-4 rounded-full bg-black/10 hover:bg-black/20 border-none cursor-pointer flex items-center justify-center font-black transition-colors'>×</button>"; d.querySelector("button").addEventListener("click", function(){onRemove(lbl);}); c.appendChild(d); });
       }
 
       var intOpts=["Acting","Modeling","Reality TV","Theater","Music Videos","Singing","Dancing","Voice-Over","Extras","Commercials"];
       function initDropdowns() {
         var pInt=qs("#interestedDD"); if(pInt){
-          pInt.innerHTML = "";
-          intOpts.forEach(function(l){ var d=document.createElement("label"); d.className="flex items-center gap-3 p-2.5 hover:bg-slate-50 cursor-pointer rounded-xl"; d.innerHTML="<input type='checkbox' class='w-4 h-4 cursor-pointer accent-violet-600' "+(state.interestedIn.indexOf(l)>-1?"checked":"")+"><span class='font-bold text-[13px]'>"+l+"</span>"; d.querySelector("input").addEventListener("change", function(e){if(e.target.checked)state.interestedIn.push(l); else state.interestedIn.splice(state.interestedIn.indexOf(l),1); saveState(); rInt();}); pInt.appendChild(d); });
+          pInt.innerHTML = ""; intOpts.forEach(function(l){ var d=document.createElement("label"); d.className="flex items-center gap-3 p-2.5 hover:bg-slate-50 cursor-pointer rounded-xl"; d.innerHTML="<input type='checkbox' class='w-4 h-4 cursor-pointer accent-violet-600' "+(state.interestedIn.indexOf(l)>-1?"checked":"")+"><span class='font-bold text-[13px]'>"+l+"</span>"; d.querySelector("input").addEventListener("change", function(e){if(e.target.checked)state.interestedIn.push(l); else state.interestedIn.splice(state.interestedIn.indexOf(l),1); saveState(); rInt();}); pInt.appendChild(d); });
         }
       }
       var rInt=function(){ renderChips("interestedChips", state.interestedIn, function(l){state.interestedIn.splice(state.interestedIn.indexOf(l),1); saveState(); rInt(); qsa("input",qs("#interestedDD")).forEach(function(cb){if(cb.nextSibling.textContent===l)cb.checked=false;});}); };
 
       var rSk=function(){ renderChips("listSkills", state.skills, function(l){state.skills.splice(state.skills.indexOf(l),1); saveState(); rSk();}); };
       var iSk=qs("#inpSkill"), bSk=qs("#btnAddSkill"), cSk=qs("#skillCharCount");
-      if(iSk){
-        var addSk=function(){var v=iSk.value.trim().replace(/\s+/g," "); if(v&&v.length<=25&&state.skills.indexOf(v)===-1){state.skills.push(v); iSk.value=""; cSk.textContent="0"; saveState(); rSk();}};
-        iSk.addEventListener("input",function(){cSk.textContent=iSk.value.length;}); bSk.addEventListener("click",addSk); iSk.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addSk();}});
-      }
+      if(iSk){ var addSk=function(){var v=iSk.value.trim().replace(/\s+/g," "); if(v&&v.length<=25&&state.skills.indexOf(v)===-1){state.skills.push(v); iSk.value=""; cSk.textContent="0"; saveState(); rSk();}}; iSk.addEventListener("input",function(){cSk.textContent=iSk.value.length;}); bSk.addEventListener("click",addSk); iSk.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();addSk();}}); }
 
-      // Photos & Cropper Queue with AppAPI R2 Upload
+      // Photos
       var cropper=null, currPhoto="headshot", cropQueue=[], isCropping=false;
-      
       var renderPhotos=function(){
         ["headshot","side","full"].forEach(function(k){
-          var u=state.photos[k];
-          var sw=qs("#wrap"+k.charAt(0).toUpperCase()+k.slice(1)), imgSb=qs("#sb_"+k);
-          if(sw && imgSb){
-            var btns = sw.nextElementSibling;
-            if(u){sw.classList.add("has-photo"); imgSb.src=u; imgSb.classList.remove("hide"); if(btns) { qs("button[data-upload]", btns).classList.remove("hide"); qs("button[data-remove-photo]", btns).classList.remove("hide"); } }
-            else {sw.classList.remove("has-photo"); imgSb.src=""; imgSb.classList.add("hide"); if(btns) { qs("button[data-upload]", btns).classList.add("hide"); qs("button[data-remove-photo]", btns).classList.add("hide"); } }
-          }
+          var u=state.photos[k], sw=qs("#wrap"+k.charAt(0).toUpperCase()+k.slice(1)), imgSb=qs("#sb_"+k);
+          if(sw && imgSb){ var btns = sw.nextElementSibling; if(u){sw.classList.add("has-photo"); imgSb.src=u; imgSb.classList.remove("hide"); if(btns) { qs("button[data-upload]", btns).classList.remove("hide"); qs("button[data-remove-photo]", btns).classList.remove("hide"); } } else {sw.classList.remove("has-photo"); imgSb.src=""; imgSb.classList.add("hide"); if(btns) { qs("button[data-upload]", btns).classList.add("hide"); qs("button[data-remove-photo]", btns).classList.add("hide"); } } }
           var m=qs("#ph_"+k), e=qs("#ph_"+k+"_empty");
-          if(m&&e){
-            var pWrap = m.parentNode;
-            var edBtn = qs(".edit-photo-btn", pWrap), rmBtn = qs(".rm-photo-btn", pWrap);
-            if(u){m.src=u; m.classList.remove("hide"); e.classList.add("hide"); if(edBtn)edBtn.classList.remove("hide"); if(rmBtn)rmBtn.classList.remove("hide");}
-            else {m.classList.add("hide"); e.classList.remove("hide"); if(edBtn)edBtn.classList.add("hide"); if(rmBtn)rmBtn.classList.add("hide");}
-          }
+          if(m&&e){ var pWrap = m.parentNode, edBtn = qs(".edit-photo-btn", pWrap), rmBtn = qs(".rm-photo-btn", pWrap); if(u){m.src=u; m.classList.remove("hide"); e.classList.add("hide"); if(edBtn)edBtn.classList.remove("hide"); if(rmBtn)rmBtn.classList.remove("hide");} else {m.classList.add("hide"); e.classList.remove("hide"); if(edBtn)edBtn.classList.add("hide"); if(rmBtn)rmBtn.classList.add("hide");} }
         });
-        
-        var grd=qs("#additionalPhotosGrid"); if(grd){
-          grd.innerHTML=""; (state.photos.additional).forEach(function(u,i){
-            var d=document.createElement("div"); d.className="border border-slate-200 rounded-2xl bg-white overflow-hidden relative aspect-[3/4] shadow-sm group";
-            d.innerHTML="<button class='absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 x shadow-sm'>×</button><img src='"+u+"' class='w-full h-full object-cover group-hover:scale-105 transition-transform'>";
-            d.querySelector(".x").addEventListener("click",function(e){e.stopPropagation();if(confirm("Hapus foto?")){state.photos.additional.splice(i,1);saveState();renderPhotos();}}); grd.appendChild(d);
-          });
-        }
-        MHS.update();
+        var grd=qs("#additionalPhotosGrid"); if(grd){ grd.innerHTML=""; (state.photos.additional).forEach(function(u,i){ var d=document.createElement("div"); d.className="border border-slate-200 rounded-2xl bg-white overflow-hidden relative aspect-[3/4] shadow-sm group"; d.innerHTML="<button class='absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button><img src='"+u+"' class='w-full h-full object-cover group-hover:scale-105 transition-transform'>"; d.querySelector(".x").addEventListener("click",function(e){e.stopPropagation();if(confirm("Hapus foto?")){state.photos.additional.splice(i,1);saveState();renderPhotos();}}); grd.appendChild(d); }); } MHS.update();
       };
 
-      qsa("[data-remove-photo]").forEach(function(el){
-        el.addEventListener("click", function(e){
-          e.stopPropagation(); 
-          if(confirm("Hapus foto utama ini?")){ state.photos[el.getAttribute("data-remove-photo")]=""; saveState(); renderPhotos(); }
-        });
-      });
-
+      qsa("[data-remove-photo]").forEach(function(el){ el.addEventListener("click", function(e){ e.stopPropagation(); if(confirm("Hapus foto utama ini?")){ state.photos[el.getAttribute("data-remove-photo")]=""; saveState(); renderPhotos(); } }); });
       qsa("[data-upload]").forEach(function(el){el.addEventListener("click",function(e){e.stopPropagation();currPhoto=el.getAttribute("data-upload");qs("#fileInputSingle").click();});});
-      qs("#dropzoneAdditional")?.addEventListener("click", function(e){ if(e.target.id!=="btnAddAdditional") qs("#fileInputMulti").click(); });
-      qs("#btnAddAdditional")?.addEventListener("click", function(e){ e.stopPropagation(); qs("#fileInputMulti").click(); });
+      qs("#dropzoneAdditional")?.addEventListener("click", function(e){ if(e.target.id!=="btnAddAdditional") qs("#fileInputMulti").click(); }); qs("#btnAddAdditional")?.addEventListener("click", function(e){ e.stopPropagation(); qs("#fileInputMulti").click(); });
 
       function processNextCrop() {
         if(cropQueue.length === 0) { isCropping = false; Modals.close("modalCrop"); renderPhotos(); return; }
-        isCropping = true; Modals.open("modalCrop");
-        
-        var src = cropQueue[0];
-        var i = qs("#cropTarget");
-        qs("#cropModalTitle").textContent = "✂️ Crop Photo (" + cropQueue.length + " left)";
-        qs("#btnCropApply").textContent = cropQueue.length > 1 ? "Apply & Next" : "Apply & Save";
-        
-        i.onload = function() {
-          if(cropper) cropper.destroy();
-          cropper = new Cropper(i, { aspectRatio: 3/4, viewMode: 1, background: false });
-        };
-        i.src = src;
+        isCropping = true; Modals.open("modalCrop"); var src = cropQueue[0], i = qs("#cropTarget"); qs("#cropModalTitle").textContent = "✂️ Crop Photo (" + cropQueue.length + " left)"; qs("#btnCropApply").textContent = cropQueue.length > 1 ? "Apply & Next" : "Apply & Save";
+        i.onload = function() { if(cropper) cropper.destroy(); cropper = new Cropper(i, { aspectRatio: 3/4, viewMode: 1, background: false }); }; i.src = src;
       }
-
       function handleFilesToQueue(files) {
-        var arr = Array.from(files).filter(function(f){return f.type.startsWith("image/");});
-        if(!arr.length) return;
-        var readNext = function(idx) {
-          if(idx >= arr.length) { if(!isCropping) processNextCrop(); return; }
-          var rd = new FileReader(); rd.onload = function(ev) { cropQueue.push(ev.target.result); readNext(idx+1); }; rd.readAsDataURL(arr[idx]);
-        };
-        readNext(0);
+        var arr = Array.from(files).filter(function(f){return f.type.startsWith("image/");}); if(!arr.length) return;
+        var readNext = function(idx) { if(idx >= arr.length) { if(!isCropping) processNextCrop(); return; } var rd = new FileReader(); rd.onload = function(ev) { cropQueue.push(ev.target.result); readNext(idx+1); }; rd.readAsDataURL(arr[idx]); }; readNext(0);
       }
 
       qs("#fileInputSingle")?.addEventListener("change", function(e){ handleFilesToQueue(e.target.files); e.target.value=""; });
       qs("#fileInputMulti")?.addEventListener("change", function(e){ currPhoto="additional"; handleFilesToQueue(e.target.files); e.target.value=""; });
-      
-      var dropZone = qs("#dropzoneAdditional");
-      if(dropZone) {
-        dropZone.addEventListener("dragover", function(e){ e.preventDefault(); dropZone.classList.add("drag-over"); });
-        dropZone.addEventListener("dragleave", function(e){ e.preventDefault(); dropZone.classList.remove("drag-over"); });
-        dropZone.addEventListener("drop", function(e){
-          e.preventDefault(); dropZone.classList.remove("drag-over");
-          if(e.dataTransfer.files && e.dataTransfer.files.length > 0) { currPhoto = "additional"; handleFilesToQueue(e.dataTransfer.files); }
-        });
-      }
+      var dropZone = qs("#dropzoneAdditional"); if(dropZone) { dropZone.addEventListener("dragover", function(e){ e.preventDefault(); dropZone.classList.add("drag-over"); }); dropZone.addEventListener("dragleave", function(e){ e.preventDefault(); dropZone.classList.remove("drag-over"); }); dropZone.addEventListener("drop", function(e){ e.preventDefault(); dropZone.classList.remove("drag-over"); if(e.dataTransfer.files && e.dataTransfer.files.length > 0) { currPhoto = "additional"; handleFilesToQueue(e.dataTransfer.files); } }); }
 
       qs("#btnCropApply")?.addEventListener("click", function(){
         if(!cropper) return;
-        var btn = this; var oriText = btn.innerHTML;
-        btn.innerHTML = "⏳ Uploading..."; btn.disabled = true;
-
+        var btn = this; var oriText = btn.innerHTML; btn.innerHTML = "⏳ Uploading..."; btn.disabled = true;
+        
         cropper.getCroppedCanvas({maxWidth:1000,maxHeight:1333}).toBlob(async function(blob) {
             try {
-                // Upload ke AppAPI R2 Bucket
+                // Gunakan AppAPI untuk upload ke Cloudflare R2
                 var url = await AppAPI.uploadMedia(blob, currPhoto);
-                
                 if(currPhoto==="additional") state.photos.additional.push(url); else state.photos[currPhoto]=url; 
-                
-                if(cropper)cropper.destroy(); cropper=null; cropQueue.shift();
-                btn.innerHTML = oriText; btn.disabled = false;
-                
+                if(cropper)cropper.destroy(); cropper=null; cropQueue.shift(); btn.innerHTML = oriText; btn.disabled = false;
                 saveState(); processNextCrop();
             } catch(e) {
-                alert("Gagal mengunggah foto. Periksa koneksi Anda.");
+                alert("Gagal mengunggah foto. Pastikan API Upload berjalan.");
                 btn.innerHTML = oriText; btn.disabled = false;
             }
         }, "image/jpeg", 0.88);
       });
-      
-      qs("#btnCropCancel")?.addEventListener("click", function(){
-        if(cropper)cropper.destroy(); cropper=null; cropQueue=[]; isCropping=false; Modals.close("modalCrop");
-      });
+      qs("#btnCropCancel")?.addEventListener("click", function(){ if(cropper)cropper.destroy(); cropper=null; cropQueue=[]; isCropping=false; Modals.close("modalCrop"); });
 
       // Assets
       var rAss=function(){
-        var yL=qs("#listYt"); if(yL){
-          yL.innerHTML=""; state.assets.youtube.forEach(function(u,i){ var id=V.ytEx(u), d=document.createElement("div"); d.className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 relative group shadow-sm"; d.innerHTML="<button class='absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button>"+(id?"<iframe class='w-full aspect-video border-0 bg-slate-900' src='https://www.youtube.com/embed/"+id+"' allowfullscreen></iframe>":"<div class='p-4'><a class='text-blue-600 font-bold break-all hover:underline' href='"+u+"' target='_blank'>"+u+"</a></div>"); d.querySelector(".x").addEventListener("click",function(){state.assets.youtube.splice(i,1);saveState();rAss();}); yL.appendChild(d); });
-        }
-        var aL=qs("#listAudio"); if(aL){
-          aL.innerHTML=""; state.assets.audio.forEach(function(u,i){ var au=/\.(mp3|wav|ogg)(\?.*)?$/i.test(u), d=document.createElement("div"); d.className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 relative group p-4 shadow-sm flex flex-col justify-center min-h-[100px]"; d.innerHTML="<button class='absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button><div class='font-black text-slate-800 mb-2'>"+(au?"Audio File":"Audio Link")+"</div>"+(au?"<audio class='w-full' controls src='"+u+"'></audio>":"<a class='text-blue-600 font-bold break-all hover:underline' href='"+u+"' target='_blank'>"+u+"</a>"); d.querySelector(".x").addEventListener("click",function(){state.assets.audio.splice(i,1);saveState();rAss();}); aL.appendChild(d); });
-        }
+        var yL=qs("#listYt"); if(yL){ yL.innerHTML=""; state.assets.youtube.forEach(function(u,i){ var id=V.ytEx(u), d=document.createElement("div"); d.className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 relative group shadow-sm"; d.innerHTML="<button class='absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button>"+(id?"<iframe class='w-full aspect-video border-0 bg-slate-900' src='https://www.youtube.com/embed/"+id+"' allowfullscreen></iframe>":"<div class='p-4'><a class='text-blue-600 font-bold break-all hover:underline' href='"+u+"' target='_blank'>"+u+"</a></div>"); d.querySelector(".x").addEventListener("click",function(){state.assets.youtube.splice(i,1);saveState();rAss();}); yL.appendChild(d); }); }
+        var aL=qs("#listAudio"); if(aL){ aL.innerHTML=""; state.assets.audio.forEach(function(u,i){ var au=/\.(mp3|wav|ogg)(\?.*)?$/i.test(u), d=document.createElement("div"); d.className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50 relative group p-4 shadow-sm flex flex-col justify-center min-h-[100px]"; d.innerHTML="<button class='absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-red-500 font-black cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 z-10 x shadow-sm'>×</button><div class='font-black text-slate-800 mb-2'>"+(au?"Audio File":"Audio Link")+"</div>"+(au?"<audio class='w-full' controls src='"+u+"'></audio>":"<a class='text-blue-600 font-bold break-all hover:underline' href='"+u+"' target='_blank'>"+u+"</a>"); d.querySelector(".x").addEventListener("click",function(){state.assets.audio.splice(i,1);saveState();rAss();}); aL.appendChild(d); }); }
       };
       qs("#btnAddYt")?.addEventListener("click",function(){var u=qs("#inpYt").value.trim(); if(u){if(!V.ytEx(u))return alert("Invalid YouTube URL."); if(state.assets.youtube.indexOf(u)===-1)state.assets.youtube.push(u); qs("#inpYt").value=""; saveState(); rAss();} });
       qs("#btnAddAudio")?.addEventListener("click",function(){var u=qs("#inpAudio").value.trim(); if(u){if(state.assets.audio.indexOf(u)===-1)state.assets.audio.push(u); qs("#inpAudio").value=""; saveState(); rAss();} });
 
-      // Credits with Pagination
-      var crPage = 1;
-      var creditEditingId = null;
+      // Credits
+      var creditEditingId = null; var crPage = 1;
       var rCr=function(){
         var l=qs("#listCredits"), e=qs("#creditEmptyState"), p=qs("#creditsPagination"); if(!l||!e||!p)return;
         l.innerHTML=""; if(!state.credits.length){e.classList.remove("hide"); p.classList.add("hide"); return;} e.classList.add("hide");
-        
         state.credits.sort(function(a,b){ return parseInt(b.year||0) - parseInt(a.year||0); });
-        
-        var totalPages = Math.ceil(state.credits.length / 6);
-        if(crPage > totalPages) crPage = totalPages;
-        if(crPage < 1) crPage = 1;
-        
+        var totalPages = Math.ceil(state.credits.length / 6); if(crPage > totalPages) crPage = totalPages; if(crPage < 1) crPage = 1;
         var paginated = state.credits.slice((crPage-1)*6, crPage*6);
-        
         paginated.forEach(function(cr, rel_i){ 
-          var i = (crPage-1)*6 + rel_i;
-          var d=document.createElement("div"); d.className="border border-amber-100 bg-white p-4 rounded-[20px] relative shadow-sm hover:shadow-md group flex gap-4 transition-all"; 
-          var html = "<div class='flex-1'>";
-          html += "<div class='flex justify-between items-baseline mb-1 pr-16'><b class='text-[16px] text-amber-900 font-black'>"+(cr.title||"Untitled")+"</b><div class='text-[12px] font-black text-amber-600 px-2.5 py-0.5 bg-amber-100 rounded-full'>"+(cr.year||"")+"</div></div>";
-          html += "<div class='text-amber-700 font-black text-[12px] uppercase tracking-wide mb-2'>"+(cr.company||"")+"</div>";
-          html += "<div class='text-slate-600 text-[13px] leading-relaxed'>"+(cr.about||"").replace(/[<>]/g,"")+"</div></div>";
+          var i = (crPage-1)*6 + rel_i; var d=document.createElement("div"); d.className="border border-amber-100 bg-white p-4 rounded-[20px] relative shadow-sm hover:shadow-md group flex gap-4 transition-all"; 
+          var html = "<div class='flex-1'><div class='flex justify-between items-baseline mb-1 pr-16'><b class='text-[16px] text-amber-900 font-black'>"+(cr.title||"Untitled")+"</b><div class='text-[12px] font-black text-amber-600 px-2.5 py-0.5 bg-amber-100 rounded-full'>"+(cr.year||"")+"</div></div><div class='text-amber-700 font-black text-[12px] uppercase tracking-wide mb-2'>"+(cr.company||"")+"</div><div class='text-slate-600 text-[13px] leading-relaxed'>"+(cr.about||"").replace(/[<>]/g,"")+"</div></div>";
           if(cr.photo) html += "<div class='w-20 h-24 shrink-0 rounded-lg overflow-hidden border border-slate-200'><img src='"+cr.photo+"' class='w-full h-full object-cover'></div>";
-          
-          html += "<div class='absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>";
-          html += "<button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center font-bold btn-up' title='Move Up'>▲</button>";
-          html += "<button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center font-bold btn-dn' title='Move Down'>▼</button>";
-          html += "<button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-amber-500 hover:bg-amber-50 flex items-center justify-center font-bold btn-ed' title='Edit'>✎</button>";
-          html += "<button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-red-500 hover:bg-red-50 flex items-center justify-center font-bold btn-rm' title='Delete'>×</button>";
-          html += "</div>";
-          
+          html += "<div class='absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center font-bold btn-up' title='Move Up'>▲</button><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center font-bold btn-dn' title='Move Down'>▼</button><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-amber-500 hover:bg-amber-50 flex items-center justify-center font-bold btn-ed' title='Edit'>✎</button><button class='w-7 h-7 rounded-full bg-slate-50 text-slate-500 hover:text-red-500 hover:bg-red-50 flex items-center justify-center font-bold btn-rm' title='Delete'>×</button></div>";
           d.innerHTML = html;
           d.querySelector(".btn-rm").addEventListener("click",function(){if(confirm("Hapus Credit?")){state.credits.splice(i,1);saveState();rCr();}});
           d.querySelector(".btn-ed").addEventListener("click",function(){ openCreditForm(cr); });
           d.querySelector(".btn-up").addEventListener("click",function(){ if(i>0){ var tmp=state.credits[i]; state.credits[i]=state.credits[i-1]; state.credits[i-1]=tmp; saveState(); rCr();} });
-          d.querySelector(".btn-dn").addEventListener("click",function(){ if(i<state.credits.length-1){ var tmp=state.credits[i]; state.credits[i]=state.credits[i+1]; state.credits[i+1]=tmp; saveState(); rCr();} });
-          l.appendChild(d); 
+          d.querySelector(".btn-dn").addEventListener("click",function(){ if(i<state.credits.length-1){ var tmp=state.credits[i]; state.credits[i]=state.credits[i+1]; state.credits[i+1]=tmp; saveState(); rCr();} }); l.appendChild(d); 
         });
-        
-        if(totalPages > 1) {
-           p.classList.remove("hide"); qs("#crPageInfo").textContent = crPage + " / " + totalPages;
-           qs("#crPrev").disabled = crPage === 1; qs("#crNext").disabled = crPage === totalPages;
-           qs("#crPrev").style.opacity = crPage === 1 ? "0.5" : "1"; qs("#crNext").style.opacity = crPage === totalPages ? "0.5" : "1";
-        } else { p.classList.add("hide"); }
+        if(totalPages > 1) { p.classList.remove("hide"); qs("#crPageInfo").textContent = crPage + " / " + totalPages; qs("#crPrev").disabled = crPage === 1; qs("#crNext").disabled = crPage === totalPages; qs("#crPrev").style.opacity = crPage === 1 ? "0.5" : "1"; qs("#crNext").style.opacity = crPage === totalPages ? "0.5" : "1"; } else { p.classList.add("hide"); }
       };
-      
-      qs("#crPrev")?.addEventListener("click", function(){ if(crPage > 1) { crPage--; rCr(); } });
-      qs("#crNext")?.addEventListener("click", function(){ var tp = Math.ceil(state.credits.length / 6); if(crPage < tp) { crPage++; rCr(); } });
+      qs("#crPrev")?.addEventListener("click", function(){ if(crPage > 1) { crPage--; rCr(); } }); qs("#crNext")?.addEventListener("click", function(){ var tp = Math.ceil(state.credits.length / 6); if(crPage < tp) { crPage++; rCr(); } });
       
       var cy=qs("#cr_year"), yr=new Date().getFullYear(); if(cy){for(var y=yr+1;y>=yr-70;y--)cy.innerHTML+="<option value='"+y+"'>"+y+"</option>";}
-      
-      var creditPhotoUrl = "";
-      function updateCreditPhotoPreview() {
-        var img = qs("#imgCrPhoto"), btnRm = qs("#btnRmCrPhoto");
-        if(creditPhotoUrl) { img.src=creditPhotoUrl; img.classList.remove("hide"); btnRm.classList.remove("hide"); }
-        else { img.classList.add("hide"); btnRm.classList.add("hide"); }
-      }
-      
+      var creditPhotoUrl = ""; function updateCreditPhotoPreview() { var img = qs("#imgCrPhoto"), btnRm = qs("#btnRmCrPhoto"); if(creditPhotoUrl) { img.src=creditPhotoUrl; img.classList.remove("hide"); btnRm.classList.remove("hide"); } else { img.classList.add("hide"); btnRm.classList.add("hide"); } }
       qs("#wrapCrPhoto")?.addEventListener("click", function(){ qs("#inpCrPhoto").click(); });
       qs("#inpCrPhoto")?.addEventListener("change", async function(e){
         var f=e.target.files[0]; if(!f)return; 
-        
-        // Upload Credit Photo ke API R2
         qs("#cr_formTitle").textContent = "⏳ Uploading Photo...";
         try {
             var url = await AppAPI.uploadMedia(f, "credit");
             creditPhotoUrl = url; updateCreditPhotoPreview();
-            qs("#cr_formTitle").textContent = creditEditingId ? "Edit Credit" : "Add New Credit";
-        } catch(err) {
-            alert("Gagal mengunggah foto.");
-            qs("#cr_formTitle").textContent = creditEditingId ? "Edit Credit" : "Add New Credit";
-        }
-        e.target.value="";
+        } catch(err) { alert("Gagal mengunggah foto."); }
+        qs("#cr_formTitle").textContent = creditEditingId ? "Edit Credit" : "Add New Credit"; e.target.value="";
       });
       qs("#btnRmCrPhoto")?.addEventListener("click", function(e){ e.stopPropagation(); creditPhotoUrl=""; updateCreditPhotoPreview(); });
       
-      function openCreditForm(cr) {
-        creditEditingId = cr ? cr.id : null;
-        qs("#cr_formTitle").textContent = cr ? "Edit Credit" : "Add New Credit";
-        qs("#btnCreditSave").textContent = cr ? "Update" : "Save Credit";
-        qs("#cr_title").value = cr ? cr.title : ""; qs("#cr_year").value = cr ? cr.year : yr;
-        qs("#cr_company").value = cr ? cr.company : ""; qs("#cr_about").value = cr ? cr.about : "";
-        creditPhotoUrl = cr ? (cr.photo||"") : ""; updateCreditPhotoPreview();
-        qs("#creditFormWrapper").classList.remove("hide"); qs("#creditEmptyState").classList.add("hide");
-      }
-      
+      function openCreditForm(cr) { creditEditingId = cr ? cr.id : null; qs("#cr_formTitle").textContent = cr ? "Edit Credit" : "Add New Credit"; qs("#btnCreditSave").textContent = cr ? "Update" : "Save Credit"; qs("#cr_title").value = cr ? cr.title : ""; qs("#cr_year").value = cr ? cr.year : yr; qs("#cr_company").value = cr ? cr.company : ""; qs("#cr_about").value = cr ? cr.about : ""; creditPhotoUrl = cr ? (cr.photo||"") : ""; updateCreditPhotoPreview(); qs("#creditFormWrapper").classList.remove("hide"); qs("#creditEmptyState").classList.add("hide"); }
       ["btnCreditAdd","btnCreditAddEmpty"].forEach(function(id){qs("#"+id)?.addEventListener("click",function(){openCreditForm(null);});});
       qs("#btnCreditCancel")?.addEventListener("click",function(){qs("#creditFormWrapper").classList.add("hide");rCr();});
-      qs("#btnCreditSave")?.addEventListener("click",function(){
-        var t=qs("#cr_title").value.trim(), c=qs("#cr_company").value.trim(), a=qs("#cr_about").value.trim(), y=qs("#cr_year").value;
-        if(t.length<2)return alert("Title required."); 
-        if(creditEditingId) { var cr = state.credits.find(function(x){return x.id===creditEditingId;}); if(cr) { cr.title=t; cr.company=c; cr.about=a; cr.year=y; cr.photo=creditPhotoUrl; } } 
-        else { state.credits.unshift({id:genId(), title:t, company:c, about:a, year:y, photo:creditPhotoUrl}); crPage=1; }
-        saveState(); qs("#creditFormWrapper").classList.add("hide"); rCr();
-      });
+      qs("#btnCreditSave")?.addEventListener("click",function(){ var t=qs("#cr_title").value.trim(), c=qs("#cr_company").value.trim(), a=qs("#cr_about").value.trim(), y=qs("#cr_year").value; if(t.length<2)return alert("Title required."); if(creditEditingId) { var cr = state.credits.find(function(x){return x.id===creditEditingId;}); if(cr) { cr.title=t; cr.company=c; cr.about=a; cr.year=y; cr.photo=creditPhotoUrl; } } else { state.credits.unshift({id:genId(), title:t, company:c, about:a, year:y, photo:creditPhotoUrl}); crPage=1; } saveState(); qs("#creditFormWrapper").classList.add("hide"); rCr(); });
 
-      // Template CSV
-      qs("#btnTemplateCSV")?.addEventListener("click", function() {
-        var csv = "Title,Year,Company,About\nExample Lead Actor,2024,Netflix,Played the main character\nSupporting Role,2022,HBO,Appeared in 3 episodes";
-        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); var link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", "credits_template.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
-      });
-      var handleCSV = function(file) {
-        if(!file || !file.name.endsWith(".csv")) return alert("Please upload a .csv file.");
-        var rd = new FileReader();
-        rd.onload = function(e) {
-          var lines = e.target.result.split("\n");
-          if(lines.length>1) {
-            for(var i=1; i<lines.length; i++) {
-              var line = lines[i].trim(); if(!line) continue;
-              var parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-              if(parts.length >= 2) { var clean = function(s){return s?s.replace(/^"|"$/g,"").trim():"";}; state.credits.push({ id: genId(), title: clean(parts[0]), year: clean(parts[1]), company: clean(parts[2]), about: clean(parts[3]), photo: "" }); }
-            }
-            saveState(); crPage=1; rCr(); alert("CSV Imported Successfully!");
-          }
-        }; rd.readAsText(file);
-      };
-      qs("#inpCsv")?.addEventListener("change", function(e){ handleCSV(e.target.files[0]); e.target.value=""; });
-
-      // Progress Logic
+      // Progress
       function updateProgress() {
         var pi=0, pp=0, pm=0; 
         if(state.name.first)pi++; if(state.contacts.phone)pi++; if(state.personal.dob)pi++;
         if(state.photos.headshot)pp++; if(state.photos.side)pp++;
         if(state.assets.youtube.length>0 || state.assets.audio.length>0)pm++;
-        
-        var ptI=Math.round((pi/3)*100), ptP=Math.round((pp/2)*100), ptM=pm*100;
-        var t=Math.round((ptI*0.4) + (ptP*0.4) + (ptM*0.2));
-        
+        var ptI=Math.round((pi/3)*100), ptP=Math.round((pp/2)*100), ptM=pm*100; var t=Math.round((ptI*0.4) + (ptP*0.4) + (ptM*0.2));
         var w=function(id,v){var e=qs("#"+id);if(e)e.style.width=v+"%";}; w("progBarInfo",ptI); w("progBarPhotos",ptP); w("progBarMedia",ptM); w("progressBarFill",t);
         var x=function(id,v){var e=qs("#"+id);if(e)e.textContent=v;}; x("progPctInfo",ptI+"%"); x("progPctPhotos",ptP+"%"); x("progPctMedia",ptM+"%"); 
-        
-        qs("#mainProgressBadge").textContent = t + "%";
-        var mhsRat = qs("#mhsRatingText"); if(mhsRat) mhsRat.textContent = t + "%";
-        x("modalChartRating", t + "%");
-        
+        qs("#mainProgressBadge").textContent = t + "%"; var mhsRat = qs("#mhsRatingText"); if(mhsRat) mhsRat.textContent = t + "%"; x("modalChartRating", t + "%");
         var c=qs("#modalChartCircle"); if(c)c.style.setProperty("--pct",(t*3.6)+"deg");
         var al=qs("#topAlert"); if(al){if(state.photos.headshot)al.classList.add("hide");else al.classList.remove("hide");}
-        
-        var pImg=qs("#progressAvatar"), pEmp=qs("#progressAvatarEmpty");
-        if(pImg&&pEmp){ if(state.photos.headshot){pImg.src=state.photos.headshot; pImg.classList.remove("hide"); pEmp.classList.add("hide");}else{pImg.classList.add("hide"); pEmp.classList.remove("hide");} }
+        var pImg=qs("#progressAvatar"), pEmp=qs("#progressAvatarEmpty"); if(pImg&&pEmp){ if(state.photos.headshot){pImg.src=state.photos.headshot; pImg.classList.remove("hide"); pEmp.classList.add("hide");}else{pImg.classList.add("hide"); pEmp.classList.remove("hide");} }
       }
       qs("#btnProgressOpen")?.addEventListener("click",function(){Modals.open("modalProgress");});
 
-      // INITIALIZATION & API SYNC
+      // RENDER ALL DATA
       var fillSel = function(id, items, sel) { var e = qs("#"+id); if (e) { e.innerHTML = ""; items.forEach(function(v) { e.innerHTML += "<option value='"+v+"'>"+v+"</option>"; }); if(sel) e.value = sel; } };
       var hts=["N/A"]; for(var i=150;i<=210;i++)hts.push(i+" cm"); var wts=["N/A"]; for(var j=40;j<=150;j++)wts.push(j+" kg");
       var eyes=["N/A","Black","Blue","Brown","Green","Grey","Hazel","Other"]; var hairs=["N/A","Black","Blonde","Brown","Grey","Red","Other"];
       fillSel("ap_height", hts, state.appearance.height); fillSel("ap_weight", wts, state.appearance.weight); fillSel("ap_eye", eyes, state.appearance.eye); fillSel("ap_hair", hairs, state.appearance.hair);
 
       function renderAll() {
-          initDropdowns();
-          MHS.init();
-          renderHeader(); 
-          qs("#txtPhone").textContent=state.contacts.phone||"-"; qs("#txtEmail").textContent=state.contacts.email||"-";
-          qs("#txtPL").textContent=state.personalLink||"Add URL";
+          initDropdowns(); MHS.init(); renderHeader(); 
+          qs("#txtPhone").textContent=state.contacts.phone||"-"; qs("#txtEmail").textContent=state.contacts.email||"-"; qs("#txtPL").textContent=state.personalLink||"Add URL";
           qs("#txtGender").textContent=state.personal.gender||"-"; qs("#txtDob").textContent=state.personal.dob?state.personal.dob.split("-").reverse().join("/"):"-"; qs("#txtLoc").textContent=state.personal.loc||"-"; qs("#txtEthnicity").textContent=state.personal.ethnicity||"-";
           ["height","weight","eye","hair"].forEach(function(k){ var v = state.appearance[k]; qs("#apv_"+k).textContent=v; qs("#apv_"+k).className=(v!=="N/A"?"text-[14px] font-black text-rose-600":"text-[14px] font-black text-slate-400"); });
           rInt(); rSk(); renderSoc(); renderPhotos(); rAss(); rCr(); updateProgress();
       }
 
-      // Mulai dengan API Fetch
+      // START APP: Fetch API
       AppAPI.fetchProfile().then(function() {
           renderAll();
       });

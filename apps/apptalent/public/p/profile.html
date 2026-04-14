@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talent Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="profile-container" class="max-w-4xl mx-auto p-4">
+        <!-- Profile content will be injected here by JavaScript -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const profileContainer = document.getElementById('profile-container');
+            const params = new URLSearchParams(window.location.search);
+            const username = params.get('username'); // Changed from 'id' to 'username'
+
+            if (!username) {
+                profileContainer.innerHTML = '<p class="text-red-500">No talent username provided in the URL.</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.orlandmanagement.com/api/v1/public/talents/${username}`);
+                if (!response.ok) {
+                    throw new Error('Talent not found or an error occurred.');
+                }
+                const result = await response.json();
+                const profile = result.data;
+
+                renderProfile(profile);
+
+            } catch (error) {
+                profileContainer.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+
+            function renderProfile(profile) {
+                let creditsHtml = '<p>No credits available.</p>';
+                if (profile.credits && profile.credits.length > 0) {
+                    creditsHtml = profile.credits.map(credit => `
+                        <div class="border border-slate-50 bg-slate-50 rounded-xl p-3 flex gap-4 mb-4">
+                            ${credit.photo ? `<img src="${credit.photo}" alt="${credit.title}" class="w-24 h-24 rounded-lg object-cover">` : ''}
+                            <div>
+                                <div class="font-black text-slate-800">${credit.title} (${credit.year})</div>
+                                <div class="text-sm text-slate-600">${credit.company}</div>
+                                <p class="text-sm text-slate-500 mt-2">${credit.about}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                let photosHtml = '<p>No additional photos.</p>';
+                if(profile.photos.additional && profile.photos.additional.length > 0) {
+                    photosHtml = profile.photos.additional.map(photoUrl => `
+                        <img src="${photoUrl}" class="rounded-lg w-full object-cover">
+                    `).join('');
+                }
+
+                profileContainer.innerHTML = `
+                    <div class="bg-white shadow-md rounded-lg p-6">
+                        <div class="flex items-center gap-6 mb-6">
+                            <img src="${profile.photos.headshot || 'https://via.placeholder.com/150'}" alt="${profile.name}" class="w-32 h-32 rounded-full object-cover border-4 border-violet-500">
+                            <div>
+                                <h1 class="text-4xl font-black text-slate-800">${profile.name}</h1>
+                                <p class="text-slate-500 text-lg">@${profile.username}</p>
+                            </div>
+                        </div>
+
+                        <!-- Main Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Left Column -->
+                            <div class="md:col-span-1 space-y-6">
+                                <!-- Appearance -->
+                                <div class="border border-slate-100 rounded-[16px] bg-white shadow-sm">
+                                    <div class="p-3.5 bg-gradient-to-r from-rose-50 to-pink-50 border-b border-slate-100 border-l-4 border-l-rose-500">
+                                        <h2 class="font-black text-[12px] text-rose-800 tracking-widest">APPEARANCE</h2>
+                                    </div>
+                                    <div class="p-4 grid grid-cols-2 gap-4">
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Height</div><div class="text-[14px] font-black text-slate-800">${profile.appearance.height || '-'}</div></div>
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Weight</div><div class="text-[14px] font-black text-slate-800">${profile.appearance.weight || '-'}</div></div>
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Eye</div><div class="text-[14px] font-black text-slate-800">${profile.appearance.eye || '-'}</div></div>
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Hair</div><div class="text-[14px] font-black text-slate-800">${profile.appearance.hair || '-'}</div></div>
+                                    </div>
+                                </div>
+                                <!-- Personal -->
+                                <div class="border border-slate-100 rounded-[16px] bg-white shadow-sm">
+                                    <div class="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-slate-100 border-l-4 border-l-emerald-500">
+                                        <h2 class="font-black text-[12px] text-emerald-800 tracking-widest">PERSONAL</h2>
+                                    </div>
+                                    <div class="p-4 grid grid-cols-2 gap-4">
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Gender</div><div class="text-[14px] font-black text-slate-800">${profile.personal.gender || '-'}</div></div>
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Location</div><div class="text-[14px] font-black text-slate-800">${profile.personal.loc || '-'}</div></div>
+                                        <div class="col-span-2"><div class="text-[11px] text-slate-400 font-black uppercase">Ethnicity</div><div class="text-[14px] font-black text-slate-800">${profile.personal.ethnicity || '-'}</div></div>
+                                    </div>
+                                </div>
+                                <!-- Contact -->
+                                <div class="border border-slate-100 rounded-[16px] bg-white shadow-sm">
+                                    <div class="p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-100 border-l-4 border-l-blue-500">
+                                        <h2 class="font-black text-[12px] text-blue-800 tracking-widest">CONTACT (Masked)</h2>
+                                    </div>
+                                    <div class="p-4 space-y-2">
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Email</div><div class="text-[14px] font-black text-slate-800">${profile.contact.email}</div></div>
+                                        <div><div class="text-[11px] text-slate-400 font-black uppercase">Phone</div><div class="text-[14px] font-black text-slate-800">${profile.contact.phone}</div></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Right Column -->
+                            <div class="md:col-span-2 space-y-6">
+                                <!-- Photos -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <img src="${profile.photos.side || 'https://via.placeholder.com/300'}" class="rounded-lg w-full object-cover">
+                                    <img src="${profile.photos.full || 'https://via.placeholder.com/300'}" class="rounded-lg w-full object-cover">
+                                </div>
+                                <div class="grid grid-cols-3 gap-4">${photosHtml}</div>
+
+                                <!-- Skills -->
+                                <div class="border border-slate-100 rounded-[16px] bg-white shadow-sm">
+                                    <div class="p-3.5 bg-gradient-to-r from-violet-50 to-purple-50 border-b border-slate-100 border-l-4 border-l-violet-500">
+                                        <h2 class="font-black text-[12px] text-violet-800 tracking-widest">SKILLS</h2>
+                                    </div>
+                                    <div class="p-4 flex flex-wrap gap-2">
+                                        ${profile.skills.map(skill => `<div class="bg-violet-50 text-violet-800 text-xs font-semibold px-2.5 py-1 rounded-full">${skill}</div>`).join('')}
+                                    </div>
+                                </div>
+                                
+                                <!-- Credits -->
+                                <div class="border border-slate-100 rounded-[16px] bg-white shadow-sm">
+                                    <div class="p-3.5 bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-slate-100 border-l-4 border-l-amber-500">
+                                        <h2 class="font-black text-[12px] text-amber-800 tracking-widest">CREDITS</h2>
+                                    </div>
+                                    <div class="p-4">${creditsHtml}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

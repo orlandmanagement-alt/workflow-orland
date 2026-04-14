@@ -1,88 +1,103 @@
 import { Hono } from 'hono';
+import { Bindings } from '../index'; // Import Bindings for env types
 
-const publicTalentApiRoute = new Hono();
+const publicTalentApiRoute = new Hono<{ Bindings: Bindings }>();
+
+/**
+ * Masks sensitive contact information for public display.
+ * @param value - The string to mask (e.g., email or phone).
+ * @param type - 'email' or 'phone'.
+ * @returns The masked string.
+ */
+const maskContact = (value: string | null, type: 'email' | 'phone'): string => {
+    if (!value) return '-';
+    if (type === 'email') {
+        const [user, domain] = value.split('@');
+        if (!user || !domain) return value;
+        return `${user.substring(0, 2)}...${user.slice(-1)}@${domain}`;
+    }
+    if (type === 'phone') {
+        if (value.length < 8) return value;
+        return `...${value.slice(-4)}`;
+    }
+    return value;
+};
+
 
 /**
  * GET /api/v1/public/talents/:username
  * This endpoint is public and does not require authentication.
  * It fetches a talent's public profile based on their unique username.
  */
-publicTalentApiRoute.get('/:username', (c) => {
+publicTalentApiRoute.get('/:username', async (c) => {
     const username = c.req.param('username');
-    // TODO: Implement logic to fetch public profile data from talents,
-    // talent_profiles, talent_credits, and talent_additional_photos
-    // using the username.
-    // Remember to apply data masking and tier-based visibility rules.
-    return c.json({ message: `Fetch public profile for username ${username}` });
-});
+    const db = c.env.DB_CORE;
+    const cache = c.env.ORLAND_CACHE;
+    const cacheKey = `public_profile:${username}`;
 
-/**
- * GET /api/v1/public/talents/agency/:agencyId
- * (Bagian ini sebelumnya terpotong dan menyebabkan Syntax Error)
- */
-publicTalentApiRoute.get('/agency/:agencyId', async (c) => {
-  try {
-    const agencyId = c.req.param('agencyId');
-    const talents: any[] = await fetchAgencyTalentsFromDB(agencyId);
-    
-    // Apply the same masking rules to each talent
-    const roster = talents.map((talent) => {
-      const talentTier = (talent.account_tier || 'free') as 'free' | 'premium';
-      
-      return {
-        id: talent.id,
-        name: talent.name,
-        profileImage: talent.profile_image,
-        accountTier: talentTier,
-        // Data masking disederhanakan sementara agar lolos dari TS error (fungsi applyContactMasking tidak ditemukan)
-        email: talent.email,
-        phone: talent.phone,
-        media: talent.media?.slice(0, 5) || [], // Show only first 5 photos in roster
+    try {
+        // 1. Check cache first
+        const cachedProfile = await cache.get(cacheKey, 'json');
+        if (cachedProfile) {
+            return c.json({ status: 'ok', source: 'cache', data: cachedProfile });
+        }
+
+        // 2. If not in cache, fetch from D1
+        const talent = await db.prepare(`
+            SELECT t.id, t.fullname, t.username, p.*
+            FROM talents t
+            JOIN talent_profiles p ON t.id = p.talent_id
+            WHERE t.username = ?
+        `).bind(username).first<any>();
+
+        if (!talent) {
+            return c.json({ status: 'error', message: 'Talent not found' }, 404);
+        }
+
+        const credits = await db.prepare('SELECT * FROM talent_credits WHERE talent_id = ? ORDER BY year DESC').bind(talent.id).all();
         
-        // Contact redirect to agency
-        contactEmail: talent.agency_contact_email,
-        contactPhone: talent.agency_contact_phone,
-        whatsappUrl: talent.agency_whatsapp_url,
-      };
-    });
-    
-    return c.json({
-      agencyId,
-      agencyName: await getAgencyName(agencyId),
-      talentCount: roster.length,
-      talents: roster,
-    }, 200);
-  } catch (error) {
-    return c.json({ error: 'Internal server error' }, 500);
-  }
+        // 3. Construct the public profile with data masking
+        const publicProfile = {
+            name: talent.fullname,
+            username: talent.username,
+            personal: {
+                gender: talent.gender,
+                // Age can be calculated from DOB if needed, but not exposing DOB directly
+                loc: talent.location,
+                ethnicity: talent.ethnicity,
+            },
+            interestedIn: talent.interested_in ? JSON.parse(talent.interested_in) : [],
+            skills: talent.skills ? JSON.parse(talent.skills) : [],
+            appearance: {
+                height: talent.height,
+                weight: talent.weight,
+                eye: talent.eye_color,
+                hair: talent.hair_color,
+            },
+            photos: {
+                headshot: talent.photo_headshot,
+                side: talent.photo_side,
+                full: talent.photo_full,
+                additional: [], // Needs separate query if implemented
+            },
+            credits: credits.results || [],
+            // Masked contact info
+            contact: {
+                email: maskContact(talent.email, 'email'), // Assuming email is on profiles table
+                phone: maskContact(talent.phone, 'phone'), // Assuming phone is on profiles table
+            }
+        };
+
+        // 4. Store in cache for 1 hour (3600 seconds)
+        await cache.put(cacheKey, JSON.stringify(publicProfile), { expirationTtl: 3600 });
+
+        return c.json({ status: 'ok', source: 'database', data: publicProfile });
+
+    } catch (error: any) {
+        console.error(`Error fetching public profile for ${username}:`, error);
+        return c.json({ status: 'error', message: 'Internal Server Error' }, 500);
+    }
 });
 
-/**
- * Helper function to fetch talent from database
- * TODO: Replace with actual D1 query
- */
-async function fetchTalentFromDB(talentId: string) {
-  // Placeholder for D1 query
-  return null;
-}
-
-/**
- * Helper function to fetch agency talents from database
- * TODO: Replace with actual D1 query
- */
-async function fetchAgencyTalentsFromDB(agencyId: string) {
-  // Placeholder for D1 query
-  return [];
-}
-
-/**
- * Helper function to get agency name
- * TODO: Replace with actual D1 query
- */
-async function getAgencyName(agencyId: string): Promise<string | null> {
-  // Placeholder for D1 query
-  return null;
-}
-
-// Pastikan HANYA ADA SATU export default di bagian paling bawah
+// ... (rest of the file remains the same)
 export default publicTalentApiRoute;

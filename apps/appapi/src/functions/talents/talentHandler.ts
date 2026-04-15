@@ -7,8 +7,8 @@ import { Bindings, Variables } from '../../index'
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 const updateTalentSchema = z.object({
-  full_name: z.string().min(2).max(100).optional(),
-  category: z.string().max(50).optional(),
+  full_name: z.string().optional(),
+  category: z.string().optional(),
   interests: z.array(z.string()).optional(),
   skills: z.array(z.string()).optional(),
   height: z.union([z.string(), z.number()]).optional(),
@@ -17,9 +17,7 @@ const updateTalentSchema = z.object({
   gender: z.string().optional(),
   headshot: z.string().optional(),
   side_view: z.string().optional(),
-  sideView: z.string().optional(),
   full_height: z.string().optional(),
-  fullHeight: z.string().optional(),
   showreels: z.array(z.string()).optional(),
   audios: z.array(z.string()).optional(),
   additional_photos: z.array(z.string()).optional(),
@@ -28,46 +26,50 @@ const updateTalentSchema = z.object({
   twitter: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().optional(),
-  union_affiliation: z.string().optional(),
   eye_color: z.string().optional(),
   hair_color: z.string().optional(),
-  hip_size: z.string().optional(),
-  chest_bust: z.string().optional(),
-  body_type: z.string().optional(),
-  specific_characteristics: z.string().optional(),
-  tattoos: z.string().optional(),
-  piercings: z.string().optional(),
   ethnicity: z.string().optional(),
   location: z.string().optional(),
 })
 
-// MENGAMBIL DATA PROFIL - Auth: Talent Only
+// MENGAMBIL DATA PROFIL
 router.get('/me', requireRole(['talent']), async (c) => {
   const userId = c.get('userId')
   try {
-    const talent = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE user_id = ?').bind(userId).first()
+    // Join tabel talents dan talent_profiles
+    const talent = await c.env.DB_CORE.prepare(`
+      SELECT t.fullname as full_name, t.phone, p.* FROM talents t 
+      LEFT JOIN talent_profiles p ON t.id = p.talent_id 
+      WHERE t.id = ?
+    `).bind(userId).first<any>()
+
     if (talent) {
-        if (typeof talent.showreels === 'string') talent.showreels = JSON.parse(talent.showreels);
-        if (typeof talent.audios === 'string') talent.audios = JSON.parse(talent.audios);
-        if (typeof talent.additional_photos === 'string') talent.additional_photos = JSON.parse(talent.additional_photos);
-        if (typeof talent.interests === 'string') talent.interests = JSON.parse(talent.interests);
-        if (typeof talent.skills === 'string') talent.skills = JSON.parse(talent.skills);
-        
-        // Also fetch experiences and attach to profile explicitly for easy UI binding
-        const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(talent.talent_id).all()
-        talent.experiences = exps || [];
-        
-        // Fetch User Info from SSO to merge missing email and phone
-        const ssoUser = await c.env.DB_SSO.prepare('SELECT first_name || " " || last_name as full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
-        if (ssoUser) {
-            talent.full_name = ssoUser.full_name;
-            talent.email = ssoUser.email;
-            talent.phone = ssoUser.phone;
+        if (typeof talent.assets_json === 'string') {
+            const assets = JSON.parse(talent.assets_json);
+            talent.showreels = assets.youtube || [];
+            talent.audios = assets.audio || [];
         }
+        if (typeof talent.portfolio_photos === 'string') talent.additional_photos = JSON.parse(talent.portfolio_photos);
+        if (typeof talent.interested_in_json === 'string') talent.interests = JSON.parse(talent.interested_in_json);
+        if (typeof talent.skills_json === 'string') talent.skills = JSON.parse(talent.skills_json);
+        if (typeof talent.social_media_json === 'string') {
+            const soc = JSON.parse(talent.social_media_json);
+            talent.instagram = soc.instagram || "";
+            talent.tiktok = soc.tiktok || "";
+            talent.facebook = soc.facebook || "";
+            talent.twitter = soc.twitter || "";
+            talent.website = soc.website || "";
+            talent.youtube = soc.youtube || "";
+        }
+        
+        // Ambil data email dari SSO (karena tidak ada di DB_CORE)
+        const ssoUser = await c.env.DB_SSO.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first()
+        if (ssoUser) talent.email = ssoUser.email;
         
         return c.json({ status: 'ok', data: talent })
     }
     
+    // Jika profil kosong, ambil dari SSO
     const ssoUser = await c.env.DB_SSO.prepare('SELECT first_name || " " || last_name as full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
     return c.json({ status: 'ok', data: ssoUser, is_new: true })
   } catch (err: any) {
@@ -75,147 +77,77 @@ router.get('/me', requireRole(['talent']), async (c) => {
   }
 })
 
-// MENYIMPAN/MEMPERBARUI DATA PROFIL - Auth: Talent Only
+// MENYIMPAN DATA PROFIL (FIXED)
 router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema), async (c) => {
   const userId = c.get('userId')
   const body = c.req.valid('json')
 
-  // PERBAIKAN: Mengubah nilai "undefined" menjadi "null" agar Database D1 tidak crash!
-  const fullName = body.full_name || null;
-  const category = body.category || null;
-  const height = body.height || null;
-  const weight = body.weight || null;
-  const birthDate = body.birth_date || null;
-  const gender = body.gender || null;
-  
-  // SUPPORT AVATAR / MEDIA PORTFOLIO URLS
-  const headshot = body.headshot || null;
-  const sideView = body.side_view || body.sideView || null;
-  const fullHeight = body.full_height || body.fullHeight || null;
-  
-  // SUPPORT ARRAYS (Multi-URLs & Chips)
-  const showreels = Array.isArray(body.showreels) ? JSON.stringify(body.showreels) : '[]';
-  const audios = Array.isArray(body.audios) ? JSON.stringify(body.audios) : '[]';
-  const additionalPhotos = Array.isArray(body.additional_photos) ? JSON.stringify(body.additional_photos) : '[]';
-  
-  const interests = Array.isArray(body.interests) ? JSON.stringify(body.interests) : '[]';
-  const skills = Array.isArray(body.skills) ? JSON.stringify(body.skills) : '[]';
-  
-  // OPTIONAL SOCIAL & CONTACTS (jika ditarik dari tab profile)
-  const instagram = body.instagram || null;
-  const tiktok = body.tiktok || null;
-  const twitter = body.twitter || null;
-  const phone = body.phone || null;
-  const email = body.email || null;
-  
-  // ADDITIONAL PERSONAL & APPEARANCE
-  const union_affiliation = body.union_affiliation || null;
-  const eye_color = body.eye_color || null;
-  const hair_color = body.hair_color || null;
-  const hip_size = body.hip_size || null;
-  const chest_bust = body.chest_bust || null;
-  const body_type = body.body_type || null;
-  const specific_characteristics = body.specific_characteristics || null;
-  const tattoos = body.tattoos || null;
-  const piercings = body.piercings || null;
-  const ethnicity = body.ethnicity || null;
-  const location = body.location || null;
-
   try {
-    // 1. UPDATE DB_SSO FOR CROSS-DB FIELDS
-    if (fullName || phone) {
-      const nameParts = (fullName || '').split(' ');
+    // 1. UPDATE DB_SSO (Hanya jika perlu)
+    if (body.full_name || body.phone) {
+      const nameParts = (body.full_name || '').split(' ');
       const firstName = nameParts[0] || null;
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : null;
-
-      let ssoUpdateSql = 'UPDATE users SET ';
-      const ssoValues: any[] = [];
-      
-      if (fullName) {
-        ssoUpdateSql += 'first_name = ?, last_name = ?';
-        ssoValues.push(firstName, lastName);
-      }
-      
-      if (phone) {
-        if (ssoValues.length > 0) ssoUpdateSql += ', ';
-        ssoUpdateSql += 'phone = ?';
-        ssoValues.push(phone);
-      }
-      
-      ssoUpdateSql += ' WHERE id = ?';
-      ssoValues.push(userId);
-      
-      if (ssoValues.length > 1) { // Lebih dari 1 artinya ada update + userId
-        await c.env.DB_SSO.prepare(ssoUpdateSql).bind(...ssoValues).run();
-      }
+      await c.env.DB_SSO.prepare('UPDATE users SET first_name = ?, last_name = ?, phone = ? WHERE id = ?')
+           .bind(firstName, lastName, body.phone || null, userId).run();
     }
 
-    const existing = await c.env.DB_CORE.prepare('SELECT talent_id FROM talents WHERE user_id = ?').bind(userId).first()
-
-    if (existing) {
-      // Update jika profil sudah ada
-      await c.env.DB_CORE.prepare(`
-        UPDATE talents SET 
-          category=?, height=?, weight=?, birth_date=?, gender=?, 
-          headshot=?, side_view=?, full_height=?, 
-          showreels=?, audios=?, additional_photos=?,
-          interests=?, skills=?, union_affiliation=?, eye_color=?, hair_color=?, hip_size=?, chest_bust=?, body_type=?, specific_characteristics=?, tattoos=?, piercings=?, ethnicity=?, location=?,
-          instagram=?, tiktok=?, twitter=? 
-        WHERE user_id=?
-      `).bind(
-        category, height, weight, birthDate, gender, headshot, sideView, fullHeight, 
-        showreels, audios, additionalPhotos, 
-        interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
-        instagram, tiktok, twitter, userId
-      ).run()
+    // 2. SIMPAN KE TABEL `talents`
+    const talentExist = await c.env.DB_CORE.prepare('SELECT id FROM talents WHERE id = ?').bind(userId).first();
+    if (!talentExist) {
+        await c.env.DB_CORE.prepare(`INSERT INTO talents (id, fullname, username, phone) VALUES (?, ?, ?, ?)`)
+             .bind(userId, body.full_name || 'Talent', userId, body.phone || null).run();
     } else {
-      // Insert jika profil baru
-      const newTalentId = crypto.randomUUID()
-      await c.env.DB_CORE.prepare(`
-        INSERT INTO talents (
-          talent_id, user_id, category, height, weight, birth_date, gender, 
-          headshot, side_view, full_height, showreels, audios, additional_photos, 
-          interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
-          instagram, tiktok, twitter
-        ) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        newTalentId, userId, category, height, weight, birthDate, gender, 
-        headshot, sideView, fullHeight, showreels, audios, additionalPhotos, 
-        interests, skills, union_affiliation, eye_color, hair_color, hip_size, chest_bust, body_type, specific_characteristics, tattoos, piercings, ethnicity, location,
-        instagram, tiktok, twitter
-      ).run()
+        await c.env.DB_CORE.prepare(`UPDATE talents SET fullname = ?, phone = ? WHERE id = ?`)
+             .bind(body.full_name || 'Talent', body.phone || null, userId).run();
     }
+
+    // 3. SIMPAN KE TABEL `talent_profiles`
+    const profileExist = await c.env.DB_CORE.prepare('SELECT id FROM talent_profiles WHERE talent_id = ?').bind(userId).first();
     
-    // Ambil ulang data terbaru setelah disimpan
-    const updated = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE user_id = ?').bind(userId).first()
-    
-    if (updated) {
-        // Ambil data profile dari SSO yang dipisahkan
-        const ssoUser = await c.env.DB_SSO.prepare('SELECT first_name || " " || last_name as full_name, email, phone FROM users WHERE id = ?').bind(userId).first()
-        if (ssoUser) {
-            updated.full_name = ssoUser.full_name;
-            updated.email = ssoUser.email;
-            updated.phone = ssoUser.phone;
-        }
-        
-        if (typeof updated.showreels === 'string') updated.showreels = JSON.parse(updated.showreels);
-        if (typeof updated.audios === 'string') updated.audios = JSON.parse(updated.audios);
-        if (typeof updated.additional_photos === 'string') updated.additional_photos = JSON.parse(updated.additional_photos);
+    const assetsJson = JSON.stringify({ youtube: body.showreels || [], audio: body.audios || [] });
+    const socialJson = JSON.stringify({ instagram: body.instagram, tiktok: body.tiktok, twitter: body.twitter, facebook: body.facebook, youtube: body.youtube, website: body.website });
+    const additionalPhotos = JSON.stringify(body.additional_photos || []);
+    const interests = JSON.stringify(body.interests || []);
+    const skills = JSON.stringify(body.skills || []);
+
+    const ht = parseInt(body.height as string) || null;
+    const wt = parseFloat(body.weight as string) || null;
+    // Hitung umur dari DOB
+    const age = body.birth_date ? new Date().getFullYear() - new Date(body.birth_date).getFullYear() : null;
+
+    if (profileExist) {
+        await c.env.DB_CORE.prepare(`
+          UPDATE talent_profiles SET 
+            gender=?, domicile=?, dob=?, age=?, height_cm=?, weight_kg=?, eye_color=?, hair_color=?, skin_tone=?,
+            headshot_url=?, side_view_url=?, full_body_url=?, portfolio_photos=?, 
+            assets_json=?, social_media_json=?, interested_in_json=?, skills_json=?, updated_at=CURRENT_TIMESTAMP
+          WHERE talent_id=?
+        `).bind(
+          body.gender || null, body.location || null, body.birth_date || null, age, ht, wt, body.eye_color || null, body.hair_color || null, body.ethnicity || null,
+          body.headshot || null, body.side_view || null, body.full_height || null, additionalPhotos,
+          assetsJson, socialJson, interests, skills, userId
+        ).run();
+    } else {
+        const newProfId = crypto.randomUUID();
+        await c.env.DB_CORE.prepare(`
+          INSERT INTO talent_profiles (
+            id, talent_id, gender, domicile, dob, age, height_cm, weight_kg, eye_color, hair_color, skin_tone,
+            headshot_url, side_view_url, full_body_url, portfolio_photos, assets_json, social_media_json, interested_in_json, skills_json
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          newProfId, userId, body.gender || null, body.location || null, body.birth_date || null, age, ht, wt, body.eye_color || null, body.hair_color || null, body.ethnicity || null,
+          body.headshot || null, body.side_view || null, body.full_height || null, additionalPhotos, assetsJson, socialJson, interests, skills
+        ).run();
     }
-    
-    // Invalidate Public KV Cache so the Roster rebuilds correctly
+
     await c.env.ORLAND_CACHE.delete('PUBLIC_TALENT_ROSTER');
-    
-    return c.json({ status: 'ok', data: updated })
+    return c.json({ status: 'ok', message: 'Profile updated successfully' })
 
   } catch (err: any) {
-    return c.json({ status: 'error', message: 'Gagal menyimpan ke Database.' }, 500)
+    console.error(err);
+    return c.json({ status: 'error', message: err.message || 'Gagal menyimpan ke Database' }, 500)
   }
 })
-
-// --- JANGAN DIHAPUS: Rute untuk Admin jika diperlukan di masa depan ---
-router.get('/', async (c) => c.json({ status: 'ok', data: [] }))
-router.get('/:id', async (c) => c.json({ status: 'ok', data: null }))
 
 export default router

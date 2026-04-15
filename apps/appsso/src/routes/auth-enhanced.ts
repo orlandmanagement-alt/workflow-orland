@@ -88,7 +88,8 @@ async function getPortalUrl(env: Bindings, user: any, sid: string) {
     role: safeRole, 
     user_id: user.id, 
     name: `${user.first_name} ${user.last_name || ''}`.trim(), 
-    email: user.email 
+    email: user.email,
+	phone: user.phone || '' // <--- TAMBAHKAN BARIS INI	
   });
   
   return `${baseUrl}/auth/callback?${params.toString()}`;
@@ -329,8 +330,8 @@ auth.get('/me', async (c) => {
   if (!session) return c.json({ status: 'error', message: 'Sesi telah kadaluarsa.' }, 401)
 
   const user = await c.env.DB_SSO.prepare(
-    "SELECT id, email, first_name, last_name, user_type, is_active FROM users WHERE id = ?"
-  ).bind(session.user_id).first<any>()
+    "SELECT id, email, phone, first_name, last_name, user_type, is_active FROM users WHERE id = ?"
+  ).bind(session.user_id).first<any>() // <--- TAMBAHKAN 'phone' di SELECT
   
   if (!user || user.is_active === 0) return c.json({ status: 'error', message: 'Akun dinonaktifkan.' }, 401)
 

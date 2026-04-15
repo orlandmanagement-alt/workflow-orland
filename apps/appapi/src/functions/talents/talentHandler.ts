@@ -116,30 +116,32 @@ router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema
     // Hitung umur dari DOB
     const age = body.birth_date ? new Date().getFullYear() - new Date(body.birth_date).getFullYear() : null;
 
-    if (profileExist) {
-        await c.env.DB_CORE.prepare(`
-          UPDATE talent_profiles SET 
-            gender=?, domicile=?, dob=?, age=?, height_cm=?, weight_kg=?, eye_color=?, hair_color=?, skin_tone=?,
-            headshot_url=?, side_view_url=?, full_body_url=?, portfolio_photos=?, 
-            assets_json=?, social_media_json=?, interested_in_json=?, skills_json=?, updated_at=CURRENT_TIMESTAMP
-          WHERE talent_id=?
-        `).bind(
-          body.gender || null, body.location || null, body.birth_date || null, age, ht, wt, body.eye_color || null, body.hair_color || null, body.ethnicity || null,
-          body.headshot || null, body.side_view || null, body.full_height || null, additionalPhotos,
-          assetsJson, socialJson, interests, skills, userId
-        ).run();
-    } else {
-        const newProfId = crypto.randomUUID();
-        await c.env.DB_CORE.prepare(`
-          INSERT INTO talent_profiles (
-            id, talent_id, gender, domicile, dob, age, height_cm, weight_kg, eye_color, hair_color, skin_tone,
-            headshot_url, side_view_url, full_body_url, portfolio_photos, assets_json, social_media_json, interested_in_json, skills_json
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          newProfId, userId, body.gender || null, body.location || null, body.birth_date || null, age, ht, wt, body.eye_color || null, body.hair_color || null, body.ethnicity || null,
-          body.headshot || null, body.side_view || null, body.full_height || null, additionalPhotos, assetsJson, socialJson, interests, skills
-        ).run();
-    }
+    // Bagian query UPDATE di dalam router.put('/me')
+if (profileExist) {
+    await c.env.DB_CORE.prepare(`
+      UPDATE talent_profiles SET 
+        gender=?, domicile=?, age=?, height_cm=?, weight_kg=?, eye_color=?, hair_color=?, skin_tone=?,
+        headshot_url=?, full_body_url=?, portfolio_photos=?, 
+        assets_json=?, social_media_json=?, interested_in_json=?, skills_json=?, updated_at=CURRENT_TIMESTAMP
+      WHERE talent_id=?
+    `).bind(
+      body.gender || null, body.location || null, age, ht, wt, body.eye_color || null, body.hair_color || null, body.ethnicity || null,
+      body.headshot || null, body.full_height || null, additionalPhotos,
+      assetsJson, socialJson, interests, skills, userId
+    ).run();
+} // Bagian query INSERT di dalam router.put('/me')
+} else {
+    const newProfId = crypto.randomUUID();
+    await c.env.DB_CORE.prepare(`
+      INSERT INTO talent_profiles (
+        id, talent_id, gender, domicile, age, height_cm, weight_kg, eye_color, hair_color, skin_tone,
+        headshot_url, full_body_url, portfolio_photos, assets_json, social_media_json, interested_in_json, skills_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      newProfId, userId, body.gender || null, body.location || null, age, ht, wt, body.eye_color || null, body.hair_color || null, body.ethnicity || null,
+      body.headshot || null, body.full_height || null, additionalPhotos, assetsJson, socialJson, interests, skills
+    ).run();
+}
 
     await c.env.ORLAND_CACHE.delete('PUBLIC_TALENT_ROSTER');
     return c.json({ status: 'ok', message: 'Profile updated successfully' })

@@ -1,120 +1,67 @@
-# ============================================================
-# ENVIRONMENT VARIABLES & SECRETS (CRITICAL - NEVER COMMIT)
-# ============================================================
-.env
-.env.local
-.env.*.local
-.env.production
-.env.staging
-.env.development
-.dev.vars
-.dev.vars.toml
-wrangler.toml.local
-.wrangler/
-credentials.json
-service-account-key.json
-firebase-key.json
-secrets.json
-
-# ============================================================
-# DEPENDENCIES
-# ============================================================
+# =========================================
+# 1. DEPENDENCIES & PACKAGES
+# =========================================
 node_modules/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+# (Catatan: bun.lockb tidak di-ignore karena Anda menggunakan Bun, lockfile ini penting untuk dicommit)
 
-# ============================================================
-# BUILD OUTPUTS
-# ============================================================
+# =========================================
+# 2. ENVIRONMENT VARIABLES (SANGAT KRITIS)
+# Mencegah kebocoran API Key dan Secret
+# =========================================
+.env
+.env.*
+!.env.example
+!.env.template
+
+# =========================================
+# 3. CLOUDFLARE WORKERS & WRANGLER
+# Mencegah file cache lokal Cloudflare masuk ke GitHub
+# =========================================
+.wrangler/
 dist/
-out/
 build/
-.next/
-.cache
+.dev.vars
+
+# =========================================
+# 4. FRAMEWORKS & MONOREPO (Sesuai aslinya)
+# =========================================
 .turbo/
+.next/
+out/
+.output/
 
-# ============================================================
-# IDE & EDITOR
-# ============================================================
-.idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-*.sublime-project
-*.sublime-workspace
-.iml
-
-# ============================================================
-# OS FILES
-# ============================================================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# ============================================================
-# LOGS
-# ============================================================
+# =========================================
+# 5. LOGS & DEBUGGING
+# File sampah hasil error atau log terminal
+# =========================================
 *.log
-logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+bun-error.log*
 
-# ============================================================
-# TESTING
-# ============================================================
+# =========================================
+# 6. OS & IDE (Editor Sampah)
+# File sampah bawaan Mac/Windows dan VSCode
+# =========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =========================================
+# 7. TESTING & COVERAGE
+# =========================================
 coverage/
 .nyc_output/
-*.lcov
-
-# ============================================================
-# LOCAL DATABASE FILES
-# ============================================================
-*.sqlite
-*.sqlite3
-*.db
-db.sqlite
-backup-*.sql
-export-*.json
-
-# ============================================================
-# TEMPORARY FILES
-# ============================================================
-tmp/
-temp/
-*.tmp
-*.bak
-
-# ============================================================
-# APPLICATION SPECIFIC
-# ============================================================
-apps/apptalent/.next
-apps/apptalent/dist
-apps/apptalent/.wrangler
-apps/appclient/.next
-apps/appclient/dist
-apps/appclient/.wrangler
-apps/appadmin/.next
-apps/appadmin/dist
-apps/appadmin/.wrangler
-apps/appapi/.wrangler
-apps/appapi/dist
-apps/appsso/.wrangler
-apps/appsso/dist
-apps/appcdn/.wrangler
-apps/appcdn/dist
-
-# ============================================================
-# OPTIONAL BUT RECOMMENDED
-# ============================================================
-.vercel/
-.turbo/
-out/
-*.tsbuildinfo

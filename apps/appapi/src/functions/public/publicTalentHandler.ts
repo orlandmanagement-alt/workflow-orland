@@ -12,9 +12,9 @@ router.get('/', async (c) => {
     if (cached) return c.json({ status: 'ok', data: JSON.parse(cached), source: 'kv' });
 
     const { results: coreTalents } = await c.env.DB_CORE.prepare(`
-      SELECT t.id, t.fullname, p.gender, p.height_cm, p.dob, p.domicile, p.headshot_url, p.interested_in_json, p.skills_json 
-      FROM talents t
-      INNER JOIN talent_profiles p ON t.id = p.talent_id
+      SELECT p.talent_id as id, t.fullname, p.gender, p.height_cm, p.dob, p.domicile, p.headshot_url, p.interested_in_json, p.skills_json 
+      FROM talent_profiles p
+      LEFT JOIN talents t ON p.talent_id = t.id
       WHERE p.headshot_url IS NOT NULL AND p.headshot_url != ''
     `).all<any>();
 
@@ -22,7 +22,7 @@ router.get('/', async (c) => {
     let ssoUsersMap: Record<string, string> = {};
     if (userIds.length > 0) {
       const { results: users } = await c.env.DB_SSO.prepare(`
-        SELECT id, first_name || " " || COALESCE(last_name, "") as full_name FROM users WHERE id IN (${userIds})
+        SELECT id, first_name || ' ' || COALESCE(last_name, '') as full_name FROM users WHERE id IN (${userIds})
       `).all<any>();
       ssoUsersMap = (users || []).reduce((acc, user) => ({ ...acc, [user.id]: user.full_name }), {});
     }
@@ -61,6 +61,7 @@ router.get('/', async (c) => {
 
     return c.json({ status: 'ok', data: roster, source: 'd1_rebuilt' });
   } catch (err: any) {
+    console.error("Roster Error:", err);
     return c.json({ status: 'error', message: 'Gagal memuat direktori talent', detail: err.message }, 500);
   }
 });
@@ -69,25 +70,26 @@ router.get('/', async (c) => {
 router.get('/:id', async (c) => {
   const id = c.req.param('id');
   try {
-    // PERBAIKAN: Join tabel agar tidak Error 404
+    // Cari berdasarkan talent_profiles.talent_id
     const talent = await c.env.DB_CORE.prepare(`
-      SELECT t.id as talent_id, t.fullname as full_name, p.* FROM talents t 
-      LEFT JOIN talent_profiles p ON t.id = p.talent_id 
-      WHERE t.id = ?
+      SELECT p.*, t.fullname as full_name, p.talent_id as id
+      FROM talent_profiles p
+      LEFT JOIN talents t ON p.talent_id = t.id
+      WHERE p.talent_id = ?
     `).bind(id).first<any>();
     
     if (!talent) return c.json({ status: 'error', message: 'Profil talent tidak ditemukan' }, 404);
 
-    // PERBAIKAN: Ambil nama asli dari DB_SSO
+    // Ambil nama asli dari SSO
     const ssoUser = await c.env.DB_SSO.prepare(
-      'SELECT first_name || " " || COALESCE(last_name, "") as sso_name FROM users WHERE id = ?'
+      "SELECT first_name || ' ' || COALESCE(last_name, '') as sso_name FROM users WHERE id = ?"
     ).bind(id).first<any>();
     
     if (ssoUser && ssoUser.sso_name) {
       talent.full_name = ssoUser.sso_name.trim();
     }
 
-    // Parsing JSON Data
+    // Parsing Data JSON
     try { 
       if (typeof talent.assets_json === 'string') {
         const assets = JSON.parse(talent.assets_json);
@@ -107,11 +109,11 @@ router.get('/:id', async (c) => {
       }
     } catch(e){}
 
-    // PERBAIKAN: Ambil data Pengalaman
+    // Ambil pengalaman kerja
     const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(id).all();
     talent.experiences = exps || [];
 
-    // Hapus data rahasia
+    // Hapus nomor telepon demi privasi
     delete talent.phone;
     delete talent.wa_phone;
 

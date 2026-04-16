@@ -11,11 +11,11 @@ router.get('/', async (c) => {
     const cached = await c.env.ORLAND_CACHE.get(CACHE_KEY);
     if (cached) return c.json({ status: 'ok', data: JSON.parse(cached), source: 'kv' });
 
+    // AMAN: Hanya query ke talent_profiles, hindari JOIN tabel talents yang bermasalah
     const { results: coreTalents } = await c.env.DB_CORE.prepare(`
-      SELECT p.talent_id as id, t.fullname, p.gender, p.height_cm, p.dob, p.domicile, p.headshot_url, p.interested_in_json, p.skills_json 
-      FROM talent_profiles p
-      LEFT JOIN talents t ON p.talent_id = t.id
-      WHERE p.headshot_url IS NOT NULL AND p.headshot_url != ''
+      SELECT talent_id as id, gender, height_cm, dob, domicile, headshot_url, interested_in_json, skills_json 
+      FROM talent_profiles
+      WHERE headshot_url IS NOT NULL AND headshot_url != ''
     `).all<any>();
 
     const userIds = (coreTalents || []).map(t => `'${t.id}'`).join(',');
@@ -44,7 +44,7 @@ router.get('/', async (c) => {
 
       return {
         id: t.id,
-        name: ssoUsersMap[t.id] ? ssoUsersMap[t.id].trim() : (t.fullname || 'Unknown'),
+        name: ssoUsersMap[t.id] ? ssoUsersMap[t.id].trim() : 'Unknown Talent',
         category: category,
         gender: t.gender,
         height: t.height_cm,
@@ -70,26 +70,27 @@ router.get('/', async (c) => {
 router.get('/:id', async (c) => {
   const id = c.req.param('id');
   try {
-    // Cari berdasarkan talent_profiles.talent_id
+    // AMAN: Langsung ambil data dari talent_profiles tanpa join
     const talent = await c.env.DB_CORE.prepare(`
-      SELECT p.*, t.fullname as full_name, p.talent_id as id
-      FROM talent_profiles p
-      LEFT JOIN talents t ON p.talent_id = t.id
-      WHERE p.talent_id = ?
+      SELECT * FROM talent_profiles WHERE talent_id = ?
     `).bind(id).first<any>();
     
     if (!talent) return c.json({ status: 'error', message: 'Profil talent tidak ditemukan' }, 404);
 
-    // Ambil nama asli dari SSO
+    talent.id = talent.talent_id; // Samakan format ID
+
+    // AMBIL NAMA ASLI DARI SSO
     const ssoUser = await c.env.DB_SSO.prepare(
       "SELECT first_name || ' ' || COALESCE(last_name, '') as sso_name FROM users WHERE id = ?"
     ).bind(id).first<any>();
     
     if (ssoUser && ssoUser.sso_name) {
       talent.full_name = ssoUser.sso_name.trim();
+    } else {
+      talent.full_name = "Unknown Talent";
     }
 
-    // Parsing Data JSON
+    // Parsing JSON Data
     try { 
       if (typeof talent.assets_json === 'string') {
         const assets = JSON.parse(talent.assets_json);
@@ -109,11 +110,11 @@ router.get('/:id', async (c) => {
       }
     } catch(e){}
 
-    // Ambil pengalaman kerja
+    // Ambil data Pengalaman
     const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(id).all();
     talent.experiences = exps || [];
 
-    // Hapus nomor telepon demi privasi
+    // Hapus data rahasia
     delete talent.phone;
     delete talent.wa_phone;
 

@@ -5,123 +5,98 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 const CACHE_KEY = 'PUBLIC_TALENT_ROSTER';
 
-// --- GET ALL (ROSTER) ---
+// --- GET ALL TALENTS (ROSTER) ---
 router.get('/', async (c) => {
   try {
     const cached = await c.env.ORLAND_CACHE.get(CACHE_KEY);
     if (cached) return c.json({ status: 'ok', data: JSON.parse(cached), source: 'kv' });
 
-    // AMAN: Hanya query ke talent_profiles, hindari JOIN tabel talents yang bermasalah
-    const { results: coreTalents } = await c.env.DB_CORE.prepare(`
-      SELECT talent_id as id, gender, height_cm, dob, domicile, headshot_url, interested_in_json, skills_json 
+    // Ambil data dasar dari profile saja untuk menghindari join yang berat/error
+    const { results: profiles } = await c.env.DB_CORE.prepare(`
+      SELECT talent_id as id, gender, height_cm, dob, domicile, headshot_url, interested_in_json 
       FROM talent_profiles
       WHERE headshot_url IS NOT NULL AND headshot_url != ''
     `).all<any>();
 
-    const userIds = (coreTalents || []).map(t => `'${t.id}'`).join(',');
-    let ssoUsersMap: Record<string, string> = {};
+    const userIds = (profiles || []).map(p => `'${p.id}'`).join(',');
+    let ssoNamesMap: Record<string, string> = {};
+    
     if (userIds.length > 0) {
+      // Worker diizinkan akses DB_SSO secara internal untuk mengambil Nama
       const { results: users } = await c.env.DB_SSO.prepare(`
         SELECT id, first_name || ' ' || COALESCE(last_name, '') as full_name FROM users WHERE id IN (${userIds})
       `).all<any>();
-      ssoUsersMap = (users || []).reduce((acc, user) => ({ ...acc, [user.id]: user.full_name }), {});
+      ssoNamesMap = (users || []).reduce((acc, user) => ({ ...acc, [user.id]: user.full_name }), {});
     }
 
-    const roster = (coreTalents || []).map(t => {
+    const roster = (profiles || []).map(p => {
       let age = null;
-      if (t.dob) {
-        const diffMs = Date.now() - new Date(t.dob).getTime();
+      if (p.dob) {
+        const diffMs = Date.now() - new Date(p.dob).getTime();
         age = Math.abs(new Date(diffMs).getUTCFullYear() - 1970);
       }
 
-      let parsedInterests = [];
-      let parsedSkills = [];
-      try { if (t.interested_in_json) parsedInterests = JSON.parse(t.interested_in_json); } catch(e){}
-      try { if (t.skills_json) parsedSkills = JSON.parse(t.skills_json); } catch(e){}
-
-      let category = 'Talent';
-      if (parsedInterests.length > 0) category = parsedInterests[0];
-
       return {
-        id: t.id,
-        name: ssoUsersMap[t.id] ? ssoUsersMap[t.id].trim() : 'Unknown Talent',
-        category: category,
-        gender: t.gender,
-        height: t.height_cm,
+        id: p.id,
+        name: ssoNamesMap[p.id] || 'Unknown Talent',
+        gender: p.gender,
+        height: p.height_cm,
         age: age,
-        location: t.domicile,
-        headshot: t.headshot_url,
-        interests: parsedInterests,
-        skills: parsedSkills
+        location: p.domicile,
+        headshot: p.headshot_url,
+        category: p.interested_in_json ? JSON.parse(p.interested_in_json)[0] : 'Talent'
       };
     });
 
-    roster.sort((a, b) => a.name.localeCompare(b.name));
     c.executionCtx.waitUntil(c.env.ORLAND_CACHE.put(CACHE_KEY, JSON.stringify(roster), { expirationTtl: 3600 }));
-
-    return c.json({ status: 'ok', data: roster, source: 'd1_rebuilt' });
+    return c.json({ status: 'ok', data: roster });
   } catch (err: any) {
-    console.error("Roster Error:", err);
-    return c.json({ status: 'error', message: 'Gagal memuat direktori talent', detail: err.message }, 500);
+    return c.json({ status: 'error', message: err.message }, 500);
   }
 });
 
-// --- GET DETAIL BY ID ---
+// --- GET DETAIL BY ID (Anti-Error 404) ---
 router.get('/:id', async (c) => {
   const id = c.req.param('id');
   try {
-    // AMAN: Langsung ambil data dari talent_profiles tanpa join
-    const talent = await c.env.DB_CORE.prepare(`
+    // 1. Ambil data dari profile (sumber utama data fisik)
+    const profile = await c.env.DB_CORE.prepare(`
       SELECT * FROM talent_profiles WHERE talent_id = ?
     `).bind(id).first<any>();
     
-    if (!talent) return c.json({ status: 'error', message: 'Profil talent tidak ditemukan' }, 404);
+    if (!profile) return c.json({ status: 'error', message: 'Profil tidak ditemukan' }, 404);
 
-    talent.id = talent.talent_id; // Samakan format ID
-
-    // AMBIL NAMA ASLI DARI SSO
+    // 2. Ambil Nama secara aman dari DB_SSO
     const ssoUser = await c.env.DB_SSO.prepare(
       "SELECT first_name || ' ' || COALESCE(last_name, '') as sso_name FROM users WHERE id = ?"
     ).bind(id).first<any>();
-    
-    if (ssoUser && ssoUser.sso_name) {
-      talent.full_name = ssoUser.sso_name.trim();
-    } else {
-      talent.full_name = "Unknown Talent";
-    }
 
-    // Parsing JSON Data
-    try { 
-      if (typeof talent.assets_json === 'string') {
-        const assets = JSON.parse(talent.assets_json);
-        talent.showreels = assets.youtube || [];
-        talent.audios = assets.audio || [];
-      }
-    } catch(e){}
-    try { if (typeof talent.portfolio_photos === 'string') talent.additional_photos = JSON.parse(talent.portfolio_photos); } catch(e){}
-    try { if (typeof talent.interested_in_json === 'string') talent.interests = JSON.parse(talent.interested_in_json); } catch(e){}
-    try { if (typeof talent.skills_json === 'string') talent.skills = JSON.parse(talent.skills_json); } catch(e){}
-    try { 
-      if (typeof talent.social_media_json === 'string') {
-        const soc = JSON.parse(talent.social_media_json);
-        talent.instagram = soc.instagram || "";
-        talent.tiktok = soc.tiktok || "";
-        talent.twitter = soc.twitter || "";
-      }
-    } catch(e){}
+    // Gabungkan data
+    const talentData = {
+      ...profile,
+      fullname: ssoUser?.sso_name || "Unknown Talent",
+      talent_id: profile.talent_id // Samakan key dengan kebutuhan frontend
+    };
 
-    // Ambil data Pengalaman
+    // 3. Parsing JSON Fields
+    const jsonFields = ['assets_json', 'portfolio_photos', 'interested_in_json', 'skills_json', 'social_media_json'];
+    jsonFields.forEach(field => {
+      if (typeof talentData[field] === 'string') {
+        try { talentData[field.replace('_json', '').replace('portfolio_photos', 'additional_photos')] = JSON.parse(talentData[field]); } catch(e){}
+      }
+    });
+
+    // 4. Ambil Pengalaman
     const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(id).all();
-    talent.experiences = exps || [];
+    talentData.experiences = exps || [];
 
-    // Hapus data rahasia
-    delete talent.phone;
-    delete talent.wa_phone;
+    // PRIVASI: Jangan kirim phone/email SSO ke halaman publik
+    delete talentData.phone;
+    delete talentData.wa_phone;
 
-    return c.json({ status: 'ok', data: talent });
+    return c.json({ status: 'ok', data: talentData });
   } catch (err: any) {
-    console.error("Detail Error:", err);
-    return c.json({ status: 'error', message: 'Database error', detail: err.message }, 500);
+    return c.json({ status: 'error', message: 'Database Error', detail: err.message }, 500);
   }
 });
 

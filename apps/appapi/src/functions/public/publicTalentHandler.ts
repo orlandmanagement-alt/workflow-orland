@@ -5,6 +5,7 @@ const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 const CACHE_KEY = 'PUBLIC_TALENT_ROSTER';
 
+// --- GET ALL (ROSTER) ---
 router.get('/', async (c) => {
   try {
     const cached = await c.env.ORLAND_CACHE.get(CACHE_KEY);
@@ -17,12 +18,11 @@ router.get('/', async (c) => {
       WHERE p.headshot_url IS NOT NULL AND p.headshot_url != ''
     `).all<any>();
 
-    // AMBIL NAMA ASLI DARI SSO
     const userIds = (coreTalents || []).map(t => `'${t.id}'`).join(',');
     let ssoUsersMap: Record<string, string> = {};
     if (userIds.length > 0) {
       const { results: users } = await c.env.DB_SSO.prepare(`
-        SELECT id, first_name || " " || last_name as full_name FROM users WHERE id IN (${userIds})
+        SELECT id, first_name || " " || COALESCE(last_name, "") as full_name FROM users WHERE id IN (${userIds})
       `).all<any>();
       ssoUsersMap = (users || []).reduce((acc, user) => ({ ...acc, [user.id]: user.full_name }), {});
     }
@@ -65,18 +65,20 @@ router.get('/', async (c) => {
   }
 });
 
+// --- GET DETAIL BY ID ---
 router.get('/:id', async (c) => {
   const id = c.req.param('id');
   try {
+    // PERBAIKAN: Join tabel agar tidak Error 404
     const talent = await c.env.DB_CORE.prepare(`
-      SELECT t.id as talent_id, t.fullname as full_name, t.phone, p.* FROM talents t 
+      SELECT t.id as talent_id, t.fullname as full_name, p.* FROM talents t 
       LEFT JOIN talent_profiles p ON t.id = p.talent_id 
       WHERE t.id = ?
-    `).bind(id).first<any>()
+    `).bind(id).first<any>();
     
     if (!talent) return c.json({ status: 'error', message: 'Profil talent tidak ditemukan' }, 404);
 
-    // --- [PERBAIKAN: SINKRON NAMA DARI SSO] ---
+    // PERBAIKAN: Ambil nama asli dari DB_SSO
     const ssoUser = await c.env.DB_SSO.prepare(
       'SELECT first_name || " " || COALESCE(last_name, "") as sso_name FROM users WHERE id = ?'
     ).bind(id).first<any>();
@@ -85,32 +87,39 @@ router.get('/:id', async (c) => {
       talent.full_name = ssoUser.sso_name.trim();
     }
 
-    if (typeof talent.assets_json === 'string') {
+    // Parsing JSON Data
+    try { 
+      if (typeof talent.assets_json === 'string') {
         const assets = JSON.parse(talent.assets_json);
         talent.showreels = assets.youtube || [];
         talent.audios = assets.audio || [];
-    }
-    if (typeof talent.portfolio_photos === 'string') talent.additional_photos = JSON.parse(talent.portfolio_photos);
-    if (typeof talent.interested_in_json === 'string') talent.interests = JSON.parse(talent.interested_in_json);
-    if (typeof talent.skills_json === 'string') talent.skills = JSON.parse(talent.skills_json);
-    if (typeof talent.social_media_json === 'string') {
+      }
+    } catch(e){}
+    try { if (typeof talent.portfolio_photos === 'string') talent.additional_photos = JSON.parse(talent.portfolio_photos); } catch(e){}
+    try { if (typeof talent.interested_in_json === 'string') talent.interests = JSON.parse(talent.interested_in_json); } catch(e){}
+    try { if (typeof talent.skills_json === 'string') talent.skills = JSON.parse(talent.skills_json); } catch(e){}
+    try { 
+      if (typeof talent.social_media_json === 'string') {
         const soc = JSON.parse(talent.social_media_json);
         talent.instagram = soc.instagram || "";
         talent.tiktok = soc.tiktok || "";
         talent.twitter = soc.twitter || "";
-    }
+      }
+    } catch(e){}
 
-    // --- [PERBAIKAN: TARIK PENGALAMAN/EXPERIENCES] ---
-    const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(id).all()
+    // PERBAIKAN: Ambil data Pengalaman
+    const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(id).all();
     talent.experiences = exps || [];
 
+    // Hapus data rahasia
     delete talent.phone;
     delete talent.wa_phone;
 
-    return c.json({ status: 'ok', data: talent })
+    return c.json({ status: 'ok', data: talent });
   } catch (err: any) {
-    return c.json({ status: 'error', message: 'Database error', detail: err.message }, 500)
+    console.error("Detail Error:", err);
+    return c.json({ status: 'error', message: 'Database error', detail: err.message }, 500);
   }
-})
+});
 
-export default router
+export default router;

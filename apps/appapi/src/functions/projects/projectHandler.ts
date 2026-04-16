@@ -79,31 +79,85 @@ router.get('/me', requireRole(['admin', 'client']), zValidator('query', projectQ
   return c.json({ status: 'ok', data: rows.results || [] })
 })
 
-// GET: Detail project + roles
+
+// GET: Detail project + roles (DENGAN KV CACHE)
 router.get('/:project_id', requireRole(['admin', 'client']), async (c) => {
   const projectId = c.req.param('project_id') || ''
   const userRole = c.get('userRole') as string | undefined
   const userId = c.get('userId') as string | undefined
 
-  const project = await getProjectOwnedBy(c as any, projectId, userRole as any, userId as any)
-  if (!project) return c.json({ status: 'error', message: 'Project not found' }, 404)
+  const cacheKey = `project:detail:${projectId}`;
 
-  const roles = await c.env.DB_CORE.prepare(
-    'SELECT role_id as id, role_name, quantity_needed, budget_per_talent FROM project_roles WHERE project_id = ? ORDER BY role_name ASC'
-  ).bind(projectId).all<any>()
+  try {
+    // 1. CEK CACHE
+    const cached = await c.env.ORLAND_CACHE.get(cacheKey);
+    if (cached) {
+      return c.json({ status: 'ok', data: JSON.parse(cached), source: 'cache' });
+    }
 
-  const talents = await c.env.DB_CORE.prepare(
-    'SELECT booking_id, talent_id, status FROM project_talents WHERE project_id = ? ORDER BY booking_id DESC LIMIT 200'
-  ).bind(projectId).all<any>()
+    // 2. QUERY KE D1
+    const project = await getProjectOwnedBy(c as any, projectId, userRole as any, userId as any)
+    if (!project) return c.json({ status: 'error', message: 'Project not found' }, 404)
 
-  return c.json({
-    status: 'ok',
-    data: {
+    const roles = await c.env.DB_CORE.prepare(
+      'SELECT role_id as id, role_name, quantity_needed, budget_per_talent FROM project_roles WHERE project_id = ? ORDER BY role_name ASC'
+    ).bind(projectId).all<any>()
+
+    const talents = await c.env.DB_CORE.prepare(
+      'SELECT booking_id, talent_id, status FROM project_talents WHERE project_id = ? ORDER BY booking_id DESC LIMIT 200'
+    ).bind(projectId).all<any>()
+
+    const finalData = {
       ...project,
       roles: roles.results || [],
       talents: talents.results || [],
-    },
-  })
+    };
+
+    // 3. SIMPAN CACHE
+    c.executionCtx.waitUntil(
+      c.env.ORLAND_CACHE.put(cacheKey, JSON.stringify(finalData), { expirationTtl: 3600 })
+    );
+
+    return c.json({ status: 'ok', data: finalData, source: 'database' })
+  } catch (err: any) {
+    return c.json({ status: 'error', message: err.message }, 500)
+  }
+})
+
+// PUT: Mendukung Moodboard & Update Detail (DENGAN INVALIDATE CACHE)
+router.put('/:project_id', requireRole(['admin', 'client']), zValidator('json', updateProjectSchema), async (c) => {
+  const body = c.req.valid('json')
+  const id = c.req.param('project_id')
+  const userRole = c.get('userRole') as string | undefined
+  const userId = c.get('userId') as string | undefined
+
+  if (!userRole || !userId) return c.json({ status: 'error', message: 'Unauthorized' }, 401)
+
+  const project = await getProjectOwnedBy(c, id, userRole, userId)
+  if (!project) return c.json({ status: 'error', message: 'Project not found' }, 404)
+  
+  const result = await c.env.DB_CORE.prepare(
+    'UPDATE projects SET title = COALESCE(?, title), description = COALESCE(?, description), status = COALESCE(?, status), moodboards = COALESCE(?, moodboards), budget_total = COALESCE(?, budget_total), casting_form_fields = COALESCE(?, casting_form_fields), is_casting_open = COALESCE(?, is_casting_open), updated_at = ? WHERE project_id = ?'
+  ).bind(
+    body.title ?? null,
+    body.description ?? null,
+    body.status ?? null,
+    body.moodboards ? JSON.stringify(body.moodboards) : null,
+    body.budget_total ?? null,
+    body.category_specific_data ? JSON.stringify(body.category_specific_data) : null,
+    typeof body.is_casting_open === 'boolean' ? (body.is_casting_open ? 1 : 0) : null,
+    new Date().toISOString(),
+    id,
+  ).run()
+  
+  if (result.meta.changes === 0) return c.json({ status: 'error', message: 'Project not found' }, 404)
+  
+  // HAPUS CACHE AGAR TER-REFRESH
+  c.executionCtx.waitUntil(
+    c.env.ORLAND_CACHE.delete(`project:detail:${id}`)
+  );
+
+  return c.json({ status: 'ok', message: 'Project updated and cache cleared' })
 })
 
 // POST: Mendukung "Quick Create Project"

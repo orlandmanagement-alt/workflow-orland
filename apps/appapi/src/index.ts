@@ -41,6 +41,7 @@ import commsRouter from './functions/comms/commsHandler'
 import systemToolsRouter from './functions/system/systemToolsHandler'
 import miscToolsRouter from './functions/tools/miscToolsHandler'
 import publicTalentRouter from './functions/public/publicTalentHandler'
+import publicProjectRouter from './functions/public/publicProjectHandler' // <--- IMPORT BARU
 import agencyRouter from './functions/agency/agencyHandler'
 import adminCrudRouter from './functions/admin/adminCrudHandler'
 import adminChatRouter from './functions/admin/adminChatHandler'
@@ -51,7 +52,6 @@ import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
 import recommendationsRouter from './functions/casting/recommendationsHandler'
 import leaderboardRouter from './functions/stats/leaderboardHandler'
-import publicTalentApiRoute from './routes/publicTalentsRoute';
 
 /**
  * TYPE DEFINITIONS
@@ -82,7 +82,6 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 /**
  * 1. KONFIGURASI CORS PRO (Multi-Domain & Credentials)
- * Mengizinkan akses dari seluruh ekosistem Orland Management.
  */
 app.use('*', cors({ 
   origin: (origin) => {
@@ -106,41 +105,35 @@ app.use('*', cors({
 
 /**
  * 2. GLOBAL GATEKEEPER MIDDLEWARE (Sync dengan DB_SSO Skema 027)
- * Memvalidasi sesi pengguna secara real-time terhadap Database SSO.
  */
 app.use('/api/v1/*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return await next()
-  if (c.req.path.startsWith('/api/v1/public/')) return await next()
+  if (c.req.path.startsWith('/api/v1/public/')) return await next() // RUTE PUBLIK (AMAN DARI BLOKIR)
   
   let sid = null;
 
-  // JALUR 1: Ekstrak SID dari JWT (Header Authorization)
   const authHeader = c.req.header('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      // Decode JWT menggunakan Secret terpusat
       const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
-      sid = payload.sid; // Mendapatkan session_id (UUID) asli
+      sid = payload.sid; 
     } catch (e) { 
       console.warn("JWT Verification Failed atau Kadaluarsa"); 
     }
   }
 
-  // JALUR 2: Cek Cookie 'sid' jika jalur 1 gagal (Silent Auth)
   if (!sid) sid = getCookie(c, 'sid');
 
   if (!sid) return c.json({ status: "error", message: "Unauthorized: Sesi tidak ditemukan" }, 401);
 
   try {
-    // QUERY SESI: Menggunakan kolom session_id & is_active sesuai Skema 027
     const session = await c.env.DB_SSO.prepare(
       "SELECT user_id FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
     ).bind(sid).first<{ user_id: string }>();
 
     if (!session) return c.json({ status: "error", message: "Unauthorized: Sesi tidak valid atau telah berakhir" }, 401);
 
-    // VALIDASI USER: Menggunakan kolom id, user_type, dan is_active sesuai Skema 027
     const user = await c.env.DB_SSO.prepare(
       "SELECT id, user_type, is_active FROM users WHERE id = ?"
     ).bind(session.user_id).first<{ id: string, user_type: string, is_active: number }>();
@@ -149,10 +142,9 @@ app.use('/api/v1/*', async (c, next) => {
       return c.json({ status: "error", message: "Unauthorized: Akun ditangguhkan atau tidak ditemukan" }, 401);
     }
 
-    // Set variabel context untuk digunakan oleh router internal
     c.set('userId', user.id);
-    c.set('userRole', user.user_type); // Memetakan user_type ke role
-    c.set('userTier', 'free'); // Default tier (bisa ditambahkan ke skema users jika diperlukan)
+    c.set('userRole', user.user_type);
+    c.set('userTier', 'free');
     
     await next();
   } catch (err) {
@@ -164,7 +156,7 @@ app.use('/api/v1/*', async (c, next) => {
 /**
  * 3. ROUTING PORTAL ORLAND
  */
-app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 42 }))
+app.get('/health', (c) => c.json({ status: 'Online', modules_loaded: 43 }))
 app.get('/api/v1/auth/verify-session', (c) => c.json({ 
   status: 'ok', 
   userId: c.get('userId'), 
@@ -221,7 +213,11 @@ app.route('/api/v1/webhooks', webhookRouter)
 app.route('/api/v1/tools/comms', commsRouter)
 app.route('/api/v1/system', systemToolsRouter)
 app.route('/api/v1/tools', miscToolsRouter)
+
+// MOUNTING RUTE PUBLIK (DENGAN CACHE)
 app.route('/api/v1/public/talents', publicTalentRouter)
+app.route('/api/v1/public/projects', publicProjectRouter) // <--- RUTE BARU DITAMBAHKAN DI SINI
+
 app.route('/api/v1/agency', agencyRouter)
 app.route('/api/v1/admin', adminCrudRouter)
 app.route('/api/v1/admin', adminChatRouter)
@@ -240,7 +236,6 @@ app.route('/api/v1/leaderboard', leaderboardRouter)
 
 /**
  * 4. PUBLIC R2 MEDIA ACCESS
- * Menyediakan akses langsung ke file media di Cloudflare R2 secara publik.
  */
 app.get("/api/v1/public/media/:key", async (c) => {
   const key = c.req.param("key");
@@ -255,9 +250,6 @@ app.get("/api/v1/public/media/:key", async (c) => {
   return new Response(object.body as any, { headers: headers as any });
 });
 
-/**
- * 4. ERROR HANDLING & NOT FOUND
- */
 app.notFound((c) => c.json({ status: 'error', message: 'Route not found' }, 404))
 app.onError((c) => c.json({ status: 'error', message: 'Internal Server Error' }, 500))
 

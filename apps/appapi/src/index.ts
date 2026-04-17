@@ -87,15 +87,15 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 app.use('*', cors({ 
   origin: (origin) => {
     const allowedDomains = [
-//      'https://www.orlandmanagement.com',
+      'https://www.orlandmanagement.com',
 //      'https://sso.orlandmanagement.com',
 //      'https://admin.orlandmanagement.com',
 //      'https://agency.orlandmanagement.com',
-      'https://talent.orlandmanagement.com',
-      'https://client.orlandmanagement.com',
-      'http://localhost:8787',
-      'http://localhost:5173',
-      'http://localhost:3000'
+//      'https://talent.orlandmanagement.com',
+//      'https://client.orlandmanagement.com',
+//      'http://localhost:8787',
+//      'http://localhost:5173',
+//      'http://localhost:3000'
     ];
     return allowedDomains.includes(origin) ? origin : null;
   },

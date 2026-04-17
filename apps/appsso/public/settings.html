@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keamanan Akun - Orland SSO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { 
+            theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }, colors: { primary: '#4f46e5' } } } 
+        }
+    </script>
+    <style>
+        body { background-color: #f8fafc; color: #1e293b; }
+        .hide { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-active { background-color: #eef2ff; color: #4f46e5; font-weight: 700; border-right: 3px solid #4f46e5; }
+        .input-focus:focus-within { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center text-xl shadow-md"><i class="fa-solid fa-shield-halved"></i></div>
+                <div>
+                    <h1 class="font-extrabold text-lg leading-none">Orland SSO</h1>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Security Center</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="backToDashboard()" class="text-sm font-bold text-slate-500 hover:text-primary transition-colors">Kembali ke Dashboard</button>
+                <img id="navAvatar" src="" class="w-10 h-10 rounded-full bg-slate-200 border border-slate-300">
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 md:px-8 py-8 flex flex-col md:flex-row gap-8">
+        
+        <aside class="w-full md:w-64 shrink-0">
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <button onclick="switchTab('profile', this)" class="w-full text-left px-6 py-4 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors nav-active tab-btn flex items-center gap-3">
+                    <i class="fa-regular fa-id-card w-5 text-center"></i> Identitas Dasar
+                </button>
+                <button onclick="switchTab('security', this)" class="w-full text-left px-6 py-4 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors tab-btn flex items-center gap-3 border-t border-slate-100">
+                    <i class="fa-solid fa-lock w-5 text-center"></i> Sandi & Keamanan
+                </button>
+                <button onclick="switchTab('pin', this)" class="w-full text-left px-6 py-4 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors tab-btn flex items-center gap-3 border-t border-slate-100">
+                    <i class="fa-solid fa-th w-5 text-center"></i> PIN Akses Cepat
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1">
+            
+            <section id="tab-profile" class="tab-content fade-in">
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm">
+                    <h2 class="text-xl font-extrabold mb-1">Identitas Dasar</h2>
+                    <p class="text-sm text-slate-500 mb-8">Ubah nama dan nomor kontak Anda. Data ini akan tersinkronisasi ke seluruh aplikasi Orland.</p>
+                    
+                    <form onsubmit="handleUpdateProfile(event)" class="space-y-5 max-w-lg">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nama Depan</label>
+                                <input type="text" id="inpFirstName" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none input-focus transition-all" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nama Belakang</label>
+                                <input type="text" id="inpLastName" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none input-focus transition-all">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nomor WhatsApp</label>
+                            <input type="tel" id="inpPhone" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none input-focus transition-all">
+                        </div>
+                        <button type="submit" id="btnSaveProfile" class="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-md w-full md:w-auto">Simpan Perubahan</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="tab-security" class="tab-content hide fade-in">
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm mb-6">
+                    <h2 class="text-xl font-extrabold mb-1">Ubah Email</h2>
+                    <p class="text-sm text-slate-500 mb-6">Sistem akan mengirimkan OTP ke email LAMA Anda untuk memverifikasi perubahan ini.</p>
+                    
+                    <form onsubmit="handleUpdateEmail(event)" class="space-y-4 max-w-lg">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Email Baru</label>
+                            <input type="email" id="inpNewEmail" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none input-focus transition-all" required>
+                        </div>
+                        <button type="submit" id="btnSaveEmail" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-md w-full md:w-auto">Minta Perubahan Email</button>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm">
+                    <h2 class="text-xl font-extrabold mb-1">Ganti Kata Sandi</h2>
+                    <p class="text-sm text-slate-500 mb-6">Pastikan Anda menggunakan kata sandi yang kuat (min. 8 karakter).</p>
+                    
+                    <form onsubmit="handleChangePassword(event)" class="space-y-4 max-w-lg">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Sandi Saat Ini</label>
+                            <input type="password" id="inpOldPass" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none input-focus transition-all" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Sandi Baru</label>
+                            <input type="password" id="inpNewPass" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none input-focus transition-all" required minlength="8">
+                        </div>
+                        <button type="submit" id="btnSavePass" class="bg-rose-500 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-rose-600 transition-colors shadow-md w-full md:w-auto">Perbarui Sandi</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="tab-pin" class="tab-content hide fade-in">
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm">
+                    <h2 class="text-xl font-extrabold mb-1">PIN Akses Cepat</h2>
+                    <p class="text-sm text-slate-500 mb-8">Buat atau ubah PIN 6 digit Anda untuk mempermudah login tanpa perlu memasukkan password berulang kali.</p>
+                    
+                    <form onsubmit="handleSetupPin(event)" class="space-y-5 max-w-sm">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Buat 6 Digit PIN</label>
+                            <input type="password" id="inpPin1" inputmode="numeric" maxlength="6" pattern="[0-9]*" class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-center text-xl tracking-[0.5em] font-bold outline-none input-focus transition-all" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Ulangi PIN</label>
+                            <input type="password" id="inpPin2" inputmode="numeric" maxlength="6" pattern="[0-9]*" class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-center text-xl tracking-[0.5em] font-bold outline-none input-focus transition-all" required>
+                        </div>
+                        <button type="submit" id="btnSavePin" class="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-md w-full">Setel PIN</button>
+                    </form>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <div id="modalOtp" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div class="w-16 h-16 bg-indigo-50 text-primary rounded-full flex items-center justify-center text-2xl mx-auto mb-4"><i class="fa-solid fa-envelope-open-text"></i></div>
+            <h3 class="text-xl font-bold mb-2">Verifikasi OTP</h3>
+            <p class="text-sm text-slate-500 mb-6">Kami telah mengirim kode 6 digit ke email lama Anda demi keamanan.</p>
+            <input type="text" id="inpOtp" maxlength="6" class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.5em] font-bold outline-none input-focus mb-4">
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('modalOtp').classList.add('hidden')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold">Batal</button>
+                <button onclick="verifyEmailOtp()" id="btnVerifyOtp" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold shadow-md">Verifikasi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "https://sso.orlandmanagement.com/api/auth";
+        let currentUser = null;
+        let newEmailDraft = "";
+
+        // 1. Inisialisasi
+        document.addEventListener('DOMContentLoaded', async () => {
+            const ssoUserStr = localStorage.getItem('orland_sso_user');
+            if(!ssoUserStr) return window.location.href = "/";
+            currentUser = JSON.parse(ssoUserStr);
+            
+            // Set Avatar
+            const name = currentUser.full_name || currentUser.first_name || 'User';
+            document.getElementById('navAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4f46e5&color=fff`;
+
+            // Isi Form Profile
+            if(currentUser.first_name) document.getElementById('inpFirstName').value = currentUser.first_name;
+            if(currentUser.last_name) document.getElementById('inpLastName').value = currentUser.last_name;
+            if(currentUser.phone) document.getElementById('inpPhone').value = currentUser.phone;
+        });
+
+        function backToDashboard() {
+            const role = (currentUser.role || currentUser.user_type || 'talent').toLowerCase();
+            if (role === 'agency') window.location.href = "https://www.orlandmanagement.com/p/agency-dashboard.html";
+            else if (role === 'client') window.location.href = "https://www.orlandmanagement.com/p/client-dashboard.html";
+            else if (role === 'admin') window.location.href = "https://www.orlandmanagement.com/p/admin-dashboard.html";
+            else window.location.href = "https://www.orlandmanagement.com/p/profile.html";
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hide'));
+            document.getElementById('tab-' + tabId).classList.remove('hide');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('nav-active'));
+            btn.classList.add('nav-active');
+        }
+
+        async function apiCall(endpoint, method, body) {
+            try {
+                const res = await fetch(`${API_BASE}${endpoint}`, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentUser.token}` },
+                    body: JSON.stringify(body)
+                });
+                return await res.json();
+            } catch(e) { return { status: 'error', message: 'Koneksi terputus.' }; }
+        }
+
+        // 2. UPDATE PROFIL NAMA & HP
+        async function handleUpdateProfile(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSaveProfile'); btn.innerText = "Menyimpan..."; btn.disabled = true;
+            
+            const fn = document.getElementById('inpFirstName').value;
+            const ln = document.getElementById('inpLastName').value;
+            const ph = document.getElementById('inpPhone').value;
+
+            const res = await apiCall('/update-sso', 'PUT', { first_name: fn, last_name: ln, phone: ph });
+            
+            if(res.status === 'ok') {
+                alert("Profil berhasil diperbarui!");
+                // Update Cache Lokal
+                currentUser.first_name = fn; currentUser.last_name = ln; currentUser.phone = ph;
+                currentUser.full_name = `${fn} ${ln}`.trim();
+                localStorage.setItem('orland_sso_user', JSON.stringify(currentUser));
+            } else alert("Gagal: " + res.message);
+            
+            btn.innerText = "Simpan Perubahan"; btn.disabled = false;
+        }
+
+        // 3. MINTA GANTI EMAIL (TRIGGER OTP)
+        async function handleUpdateEmail(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSaveEmail'); btn.innerText = "Meminta OTP..."; btn.disabled = true;
+            newEmailDraft = document.getElementById('inpNewEmail').value.trim();
+
+            // Kita tembak ke endpoint update-sso, backend akan otomatis mendeteksi email berbeda dan mengirim OTP
+            const res = await apiCall('/update-sso', 'PUT', { email: newEmailDraft });
+            
+            if(res.status === 'requires_verification') {
+                document.getElementById('modalOtp').classList.remove('hidden');
+            } else if(res.status === 'error') {
+                alert("Gagal: " + res.message);
+            }
+            btn.innerText = "Minta Perubahan Email"; btn.disabled = false;
+        }
+
+        // 4. VERIFIKASI OTP GANTI EMAIL
+        async function verifyEmailOtp() {
+            const btn = document.getElementById('btnVerifyOtp'); btn.innerText = "Cek..."; btn.disabled = true;
+            const otp = document.getElementById('inpOtp').value.trim();
+
+            const res = await apiCall('/verify-email-change', 'POST', { otp: otp, new_email: newEmailDraft });
+            
+            if(res.status === 'ok') {
+                alert("Email berhasil diubah! Silakan login ulang dengan email baru Anda.");
+                localStorage.removeItem('orland_sso_user');
+                window.location.href = "/"; // Tendang ke login page SSO
+            } else alert("Gagal: " + res.message);
+            
+            btn.innerText = "Verifikasi"; btn.disabled = false;
+        }
+
+        // 5. GANTI PASSWORD
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            const oldP = document.getElementById('inpOldPass').value;
+            const newP = document.getElementById('inpNewPass').value;
+            
+            if(newP.length < 8) return alert("Sandi baru minimal 8 karakter");
+            
+            const btn = document.getElementById('btnSavePass'); btn.innerText = "Memproses..."; btn.disabled = true;
+            
+            const res = await apiCall('/change-password', 'POST', { old_password: oldP, new_password: newP });
+            if(res.status === 'ok') {
+                alert("Kata sandi berhasil diubah!");
+                e.target.reset();
+            } else alert("Gagal: " + res.message);
+            
+            btn.innerText = "Perbarui Sandi"; btn.disabled = false;
+        }
+
+        // 6. SETUP PIN
+        async function handleSetupPin(e) {
+            e.preventDefault();
+            const p1 = document.getElementById('inpPin1').value;
+            const p2 = document.getElementById('inpPin2').value;
+            
+            if(p1 !== p2) return alert("PIN tidak cocok!");
+            if(p1.length !== 6) return alert("PIN harus 6 angka!");
+            
+            const btn = document.getElementById('btnSavePin'); btn.innerText = "Menyimpan..."; btn.disabled = true;
+            
+            const res = await apiCall('/setup-pin-logged-in', 'POST', { pin: p1 });
+            if(res.status === 'ok') {
+                alert("PIN Berhasil diatur! Anda dapat menggunakannya untuk login cepat.");
+                e.target.reset();
+            } else alert("Gagal: " + res.message);
+            
+            btn.innerText = "Setel PIN"; btn.disabled = false;
+        }
+    </script>
+</body>
+</html>

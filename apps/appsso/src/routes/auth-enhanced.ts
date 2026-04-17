@@ -387,4 +387,90 @@ auth.put('/update-sso', async (c) => {
   }
 });
 
+/**
+ * ========================================
+ * 5. ENDPOINT KEAMANAN & PENGATURAN AKUN
+ * ========================================
+ */
+
+// Helper untuk mengambil userId dari Token Bearer yang dikirim oleh sso-settings.html
+async function getUserIdFromBearer(c: Context) {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  try {
+    const token = authHeader.split(' ')[1];
+    const payloadStr = atob(token.split('.')[1]);
+    const payload = JSON.parse(payloadStr);
+    return payload.sub; // user ID
+  } catch(e) { return null; }
+}
+
+// A. Verifikasi OTP untuk Perubahan Email
+auth.post('/verify-email-change', async (c) => {
+  try {
+    const userId = await getUserIdFromBearer(c);
+    if (!userId) return c.json({ status: 'error', message: 'Sesi tidak valid.' }, 401);
+
+    const body = await c.req.json<any>();
+    
+    // Cek OTP yang valid
+    const otpRow = await c.env.DB_SSO.prepare(
+      "SELECT * FROM otp_codes WHERE user_id = ? AND code = ? AND method = 'email' AND expires_at > datetime('now')"
+    ).bind(userId, body.otp).first<any>();
+
+    if (!otpRow) return c.json({ status: 'error', message: 'OTP salah atau sudah kedaluwarsa.' }, 400);
+
+    // Update Email
+    await c.env.DB_SSO.prepare("UPDATE users SET email = ? WHERE id = ?").bind(body.new_email, userId).run();
+    await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id = ?").bind(otpRow.otp_id).run();
+
+    return c.json({ status: 'ok', message: 'Email berhasil diubah.' });
+  } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
+});
+
+// B. Ganti Password Saat Sedang Login
+auth.post('/change-password', async (c) => {
+  try {
+    const userId = await getUserIdFromBearer(c);
+    if (!userId) return c.json({ status: 'error', message: 'Sesi tidak valid.' }, 401);
+
+    const body = await c.req.json<any>();
+    const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first<any>();
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    
+    // Verifikasi Password Lama
+    const oldValid = await verifyPasswordPBKDF2(body.old_password, user.password_hash, user.password_salt, cryptoCfg.pepper, cryptoCfg.iter);
+    if (!oldValid) return c.json({ status: 'error', message: 'Kata sandi saat ini salah.' }, 400);
+
+    // Hash Password Baru
+    const { salt, hash } = await hashPasswordPBKDF2(body.new_password, cryptoCfg.pepper, cryptoCfg.iter);
+
+    // Update ke Database
+    await c.env.DB_SSO.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, userId).run();
+
+    return c.json({ status: 'ok', message: 'Kata sandi berhasil diperbarui.' });
+  } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
+});
+
+// C. Atur/Ubah PIN Login 6 Digit
+auth.post('/setup-pin-logged-in', async (c) => {
+  try {
+    const userId = await getUserIdFromBearer(c);
+    if (!userId) return c.json({ status: 'error', message: 'Sesi tidak valid.' }, 401);
+
+    const body = await c.req.json<any>();
+    if (!body.pin || body.pin.length !== 6) return c.json({ status: 'error', message: 'PIN harus 6 digit.' }, 400);
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    
+    // Hash PIN (menggunakan algoritma yang sama dengan password untuk keamanan)
+    const { salt, hash } = await hashPasswordPBKDF2(body.pin, cryptoCfg.pepper, cryptoCfg.iter);
+
+    await c.env.DB_SSO.prepare("UPDATE users SET pin_hash = ?, pin_salt = ?, pin_required = 1 WHERE id = ?").bind(hash, salt, userId).run();
+
+    return c.json({ status: 'ok', message: 'PIN berhasil disetel.' });
+  } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
+});
+
 export default auth

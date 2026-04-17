@@ -18,10 +18,11 @@
                         primary: '#4f46e5', 
                         primaryHover: '#4338ca',
                         secondary: '#f8fafc', 
+                        accent: '#c5a059', /* Gold Enterprise */
                         error: '#ef4444' 
                     },
                     boxShadow: {
-                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                        'glass': '0 20px 40px -10px rgba(0, 0, 0, 0.15)',
                         'input': '0 2px 10px rgba(0, 0, 0, 0.02) inset'
                     }
                 } 
@@ -30,236 +31,290 @@
     </script>
     <style>
         body { 
-            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            background: #0f172a; /* Latar belakang gelap elegan */
             display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Plus Jakarta Sans', sans-serif;
             overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(197, 160, 89, 0.1) 0px, transparent 50%);
         }
-        
-        /* Animasi Latar Belakang (Blob) */
-        .bg-blob { position: absolute; filter: blur(80px); z-index: -1; opacity: 0.6; animation: float 10s infinite ease-in-out alternate; }
-        .blob-1 { top: -10%; left: -10%; width: 400px; height: 400px; background: #c7d2fe; animation-delay: 0s; }
-        .blob-2 { bottom: -10%; right: -10%; width: 500px; height: 500px; background: #fbcfe8; animation-delay: 2s; }
-        @keyframes float { 0% { transform: translateY(0px) scale(1); } 100% { transform: translateY(20px) scale(1.05); } }
 
         /* Container Utama Glassmorphism */
         #main-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
         }
 
-        /* Interaksi Input */
+        /* Interaksi Input Kelas Enterprise */
         .input-group { transition: all 0.3s ease; border: 2px solid transparent; background: #f8fafc; }
-        .input-group:focus-within { border-color: #818cf8; background: #ffffff; box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.1); transform: translateY(-2px); }
+        .input-group:focus-within { border-color: #818cf8; background: #ffffff; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); transform: translateY(-2px); }
         .input-group input:focus { outline: none; }
         
-        /* Animasi Perpindahan Tampilan */
+        /* Animasi Transisi Halus */
         .fade-in { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
         
-        /* Sistem Toast / Notifikasi */
+        /* Sistem Toast (Pesan Notifikasi) */
         #toast-container { position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; }
-        .toast { background: white; border-left: 4px solid #4f46e5; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); padding: 1rem 1.25rem; border-radius: 0.75rem; transform: translateX(150%); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; align-items: center; gap: 12px; min-width: 320px; font-weight: 600; font-size: 0.875rem; color: #1e293b; }
-        .toast.error { border-left-color: #ef4444; } .toast.info { border-left-color: #3b82f6; }
+        .toast { background: white; border-left: 4px solid #4f46e5; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); padding: 1rem 1.25rem; border-radius: 12px; transform: translateX(150%); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; align-items: center; gap: 12px; min-width: 320px; font-weight: 700; font-size: 0.875rem; color: #1e293b; }
+        .toast.error { border-left-color: #ef4444; } .toast.info { border-left-color: #3b82f6; } .toast.success { border-left-color: #10b981; }
         .toast.show { transform: translateX(0); }
 
-        /* Panel Samping (Branding) */
-        .panel-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); position: relative; overflow: hidden; }
-        .panel-brand::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xNSkiLz48L3N2Zz4='); opacity: 0.5; z-index: 0; }
-        .panel-content { z-index: 1; position: relative; }
+        /* Panel Samping (Branding Animasi) */
+        .panel-brand { 
+            background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%); 
+            position: relative; overflow: hidden; 
+        }
+        .panel-brand::before { 
+            content: ''; position: absolute; inset: -50%; 
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%); 
+            animation: spinBg 20s linear infinite;
+        }
+        @keyframes spinBg { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         @media (min-width: 768px) { 
-            .panel-brand { border-radius: 1.5rem 80px 80px 1.5rem; } 
-            .panel-brand.reverse { border-radius: 80px 1.5rem 1.5rem 80px; } 
+            .panel-brand { border-radius: 24px 100px 100px 24px; } 
+            .panel-brand.reverse { border-radius: 100px 24px 24px 100px; } 
         }
         @media (max-width: 767px) { 
-            .panel-brand { border-radius: 0 0 40px 40px; padding: 3rem 2rem; } 
-            #main-container { min-height: auto; border-radius: 0; box-shadow: none; background: transparent; }
-            .bg-blob { display: none; }
+            .panel-brand { border-radius: 0 0 50px 50px; padding: 3rem 2rem; } 
+            #main-container { min-height: auto; border-radius: 20px; margin: 16px; }
         }
 
-        /* Custom Radio Buttons for Roles */
+        /* Custom Radio Buttons */
         .role-radio:checked + div { border-color: #4f46e5; background-color: #eef2ff; color: #4f46e5; box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.15); transform: translateY(-2px); }
-        .client-type-radio:checked + div { border-color: #ec4899; background-color: #fce7f3; color: #db2777; }
+        .client-type-radio:checked + div { border-color: #c5a059; background-color: #fefce8; color: #b45309; box-shadow: 0 2px 10px 0 rgba(197, 160, 89, 0.2); }
 
-        /* Loading State pada Tombol */
-        .btn-loading { position: relative; color: transparent !important; pointer-events: none; }
-        .btn-loading::after { content: ''; position: absolute; width: 20px; height: 20px; top: 50%; left: 50%; margin-top: -10px; margin-left: -10px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: button-spin 0.8s linear infinite; }
-        @keyframes button-spin { to { transform: rotate(360deg); } }
+        .hide { display: none !important; }
+        
+        /* Loader Spinner Button */
+        .spinner-btn { display: inline-block; width: 1rem; height: 1rem; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="bg-blob blob-1"></div>
-    <div class="bg-blob blob-2"></div>
-
     <div id="toast-container"></div>
     
-    <div id="main-container" class="w-full max-w-[1000px] flex flex-col md:flex-row relative min-h-[700px] z-10 mx-4 md:mx-auto">
+    <div id="main-container" class="w-full max-w-[1050px] flex flex-col md:flex-row relative min-h-[700px] z-10 transition-all duration-700">
         
-        <div id="blue-panel" class="panel-brand text-white w-full md:w-[45%] p-8 md:p-12 flex flex-col justify-center items-center text-center transition-all duration-700 ease-in-out">
+        <div id="blue-panel" class="panel-brand text-white w-full md:w-[45%] p-8 md:p-12 flex flex-col justify-center items-center text-center transition-all duration-700 ease-in-out relative z-20">
             
-            <div id="panel-content-login" class="panel-content fade-in w-full">
-                <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg border border-white/30">
-                    <i class="fa-solid fa-rocket text-2xl"></i>
+            <div id="panel-content-login" class="fade-in w-full relative z-10">
+                <div class="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-xl border border-white/20">
+                    <i class="fa-solid fa-bolt text-3xl text-indigo-300"></i>
                 </div>
-                <h2 class="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">Mulai Karirmu!</h2>
-                <p class="text-sm text-indigo-100 mb-8 leading-relaxed opacity-90">Bergabung dengan ekosistem manajemen talenta dan klien terbesar di Indonesia.</p>
-                <button type="button" onclick="window.switchMode('register')" class="w-full max-w-[200px] bg-transparent border-2 border-white/80 rounded-xl py-3 font-bold hover:bg-white hover:text-indigo-600 transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl cursor-pointer">Daftar Sekarang</button>
+                <h2 class="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight">Mulai Karirmu!</h2>
+                <p class="text-sm text-indigo-100 mb-10 leading-relaxed opacity-90 px-4">Bergabunglah dengan ekosistem manajemen talenta dan klien eksklusif terbesar di Indonesia.</p>
+                <button type="button" onclick="window.switchMode('register')" class="w-full max-w-[220px] bg-transparent border-2 border-indigo-300/50 rounded-xl py-3.5 font-bold hover:bg-white hover:text-indigo-900 transition-all duration-300 transform hover:-translate-y-1 shadow-lg cursor-pointer">Daftar Akun Baru</button>
             </div>
             
-            <div id="panel-content-register" class="panel-content hidden fade-in w-full">
-                <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg border border-white/30">
-                    <i class="fa-solid fa-hand-sparkles text-2xl"></i>
+            <div id="panel-content-register" class="hidden fade-in w-full relative z-10">
+                <div class="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-xl border border-white/20">
+                    <i class="fa-regular fa-handshake text-3xl text-indigo-300"></i>
                 </div>
-                <h2 class="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">Selamat Datang!</h2>
-                <p class="text-sm text-indigo-100 mb-8 leading-relaxed opacity-90">Sudah memiliki akun? Silakan masuk untuk mengakses dashboard Anda.</p>
-                <button type="button" onclick="window.switchMode('login')" class="w-full max-w-[200px] bg-transparent border-2 border-white/80 rounded-xl py-3 font-bold hover:bg-white hover:text-indigo-600 transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl cursor-pointer">Masuk ke Akun</button>
+                <h2 class="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight">Selamat Datang!</h2>
+                <p class="text-sm text-indigo-100 mb-10 leading-relaxed opacity-90 px-4">Sudah memiliki akun? Silakan masuk untuk mengelola portofolio dan proyek Anda.</p>
+                <button type="button" onclick="window.switchMode('login')" class="w-full max-w-[220px] bg-transparent border-2 border-indigo-300/50 rounded-xl py-3.5 font-bold hover:bg-white hover:text-indigo-900 transition-all duration-300 transform hover:-translate-y-1 shadow-lg cursor-pointer">Masuk ke Dashboard</button>
             </div>
         </div>
 
-        <div class="w-full md:w-[55%] p-6 md:p-12 lg:p-16 flex items-center justify-center bg-white md:bg-transparent rounded-3xl md:rounded-none shadow-xl md:shadow-none mt-[-20px] md:mt-0 z-20">
+        <div class="w-full md:w-[55%] p-6 md:p-12 lg:p-16 flex items-center justify-center bg-white relative z-10">
             
             <div id="view-success-redirect" class="w-full max-w-sm hidden text-center fade-in">
-                <div class="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-5xl mx-auto mb-6 shadow-inner"><i class="fa-solid fa-circle-check"></i></div>
-                <h2 id="success-title" class="text-3xl font-extrabold mb-2 text-slate-800 tracking-tight">Berhasil!</h2>
-                <p class="text-sm text-slate-500 mb-8">Anda masuk sebagai <span id="logged-in-role" class="font-black uppercase text-indigo-600 tracking-wider"></span>.</p>
-                <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 mb-8 relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-20 h-20 bg-indigo-100 rounded-full blur-xl"></div>
-                    <p class="text-xs text-indigo-600 font-bold uppercase tracking-widest mb-2 relative z-10">Mengarahkan dalam</p>
-                    <p class="text-5xl font-black text-indigo-600 relative z-10"><span id="redirect-timer">5</span><span class="text-lg font-bold ml-1 text-indigo-400">detik</span></p>
+                <div class="w-28 h-28 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-6xl mx-auto mb-6 shadow-inner border border-emerald-100">
+                    <i class="fa-solid fa-check"></i>
                 </div>
-                <button type="button" onclick="window.doLogout()" class="text-slate-400 hover:text-rose-500 text-sm font-bold transition-colors cursor-pointer border-b border-transparent hover:border-rose-500 pb-1">Batal & Keluar</button>
+                <h2 id="success-title" class="text-3xl font-extrabold mb-2 text-slate-800 tracking-tight">Berhasil!</h2>
+                <p class="text-sm text-slate-500 mb-8">Otentikasi sukses. Anda login sebagai <span id="logged-in-role" class="font-black uppercase text-indigo-600"></span>.</p>
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8 relative overflow-hidden shadow-sm">
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">Mengarahkan ke Dashboard</p>
+                    <p class="text-5xl font-black text-indigo-600"><span id="redirect-timer">5</span><span class="text-lg font-bold ml-1 text-slate-400">detik</span></p>
+                </div>
+                <button type="button" onclick="window.doLogout()" class="text-slate-400 hover:text-rose-500 text-sm font-bold transition-colors cursor-pointer border-b border-transparent hover:border-rose-500 pb-1">Batalkan Sesi</button>
             </div>
 
             <div id="view-login" class="w-full max-w-sm block fade-in">
                 <div class="text-center mb-10">
-                    <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-2">Masuk</h2>
-                    <p class="text-sm text-slate-500 font-medium">Akses sistem manajemen terpadu Anda.</p>
+                    <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Masuk Akun</h2>
+                    <p class="text-sm text-slate-500 font-medium">Akses sistem enterprise Anda dengan aman.</p>
                 </div>
                 <form onsubmit="window.handleRegularLogin(event, this); return false;" class="space-y-5">
                     <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input">
-                        <i class="fa-solid fa-at text-slate-400 w-5"></i>
-                        <input type="text" id="login-id" placeholder="Email atau Username" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700 placeholder-slate-400" required>
+                        <i class="fa-solid fa-at text-slate-400 w-5 text-center"></i>
+                        <input type="text" id="login-id" placeholder="Email / Username" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700 placeholder-slate-400" required>
                     </div>
                     <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input">
-                        <i class="fa-solid fa-lock text-slate-400 w-5"></i>
-                        <input type="password" id="login-pass" placeholder="Kata Sandi" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700 placeholder-slate-400 pr-8" required>
+                        <i class="fa-solid fa-lock text-slate-400 w-5 text-center"></i>
+                        <input type="password" id="login-pass" placeholder="Kata Sandi" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700 placeholder-slate-400 pr-8" required>
                         <i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors" onclick="window.togglePw('login-pass', this)"></i>
                     </div>
                     
                     <div class="flex justify-between items-center text-sm pt-2 px-1">
-                        <div class="flex gap-3">
-                            <button type="button" onclick="window.showView('view-login-otp')" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors cursor-pointer flex items-center gap-1"><i class="fa-solid fa-message text-xs"></i> OTP</button>
-                            <span class="text-slate-300">|</span>
-                            <button type="button" onclick="window.showView('view-pin-check')" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors cursor-pointer flex items-center gap-1"><i class="fa-solid fa-key text-xs"></i> PIN</button>
+                        <div class="flex gap-4">
+                            <button type="button" onclick="window.showView('view-login-otp')" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors flex items-center gap-1.5"><i class="fa-solid fa-message text-xs"></i> OTP</button>
+                            <span class="text-slate-200">|</span>
+                            <button type="button" onclick="window.showView('view-pin-check')" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors flex items-center gap-1.5"><i class="fa-solid fa-key text-xs"></i> PIN</button>
                         </div>
-                        <button type="button" onclick="window.showView('view-forgot')" class="text-slate-500 font-semibold hover:text-slate-800 transition-colors cursor-pointer">Lupa Sandi?</button>
+                        <button type="button" onclick="window.showView('view-forgot')" class="text-slate-500 font-bold hover:text-slate-800 transition-colors">Lupa Sandi?</button>
                     </div>
                     
-                    <button type="submit" class="w-full bg-indigo-600 text-white rounded-xl py-3.5 font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200 transition-all duration-300 transform hover:-translate-y-1 mt-6 text-sm tracking-wide">MASUK SEKARANG</button>
+                    <button type="submit" class="w-full bg-indigo-600 text-white rounded-xl py-4 font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all duration-300 transform hover:-translate-y-1 mt-6 text-[13px] tracking-widest uppercase flex items-center justify-center">
+                        <span class="btn-text">Masuk Sekarang</span>
+                    </button>
                     
                     <div class="mt-8 relative text-center">
-                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
-                        <span class="relative bg-white px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Atau Masuk Dengan</span>
-                    </div>
-                    <div class="mt-6 flex justify-center">
-                        <div class="relative overflow-hidden h-11 w-full flex justify-center rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-slate-50 transition-colors cursor-pointer group">
-                            <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID" data-context="signin" data-ux_mode="popup" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
-                            <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="center" data-width="100%"></div>
-                            <div class="absolute inset-0 pointer-events-none flex items-center justify-center gap-3 bg-white group-hover:bg-slate-50 transition-colors">
-                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
-                                <span class="text-sm font-bold text-slate-600">Lanjutkan dengan Google</span>
-                            </div>
-                        </div>
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-100"></div></div>
+                        <span class="relative bg-white px-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">Single Sign-On</span>
                     </div>
                 </form>
             </div>
 
             <div id="view-register" class="w-full max-w-md hidden fade-in">
                 <div class="text-center mb-8">
-                    <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-2">Buat Akun</h2>
-                    <p class="text-sm text-slate-500 font-medium">Pilih peran Anda dan lengkapi data.</p>
+                    <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Buat Akun</h2>
+                    <p class="text-sm text-slate-500 font-medium">Pilih peran dan daftar untuk akses sistem.</p>
                 </div>
                 
                 <form onsubmit="window.handleRegisterSubmit(event, this); return false;" class="space-y-4">
                     <div class="grid grid-cols-3 gap-3 mb-6">
                         <label class="cursor-pointer group relative">
                             <input type="radio" name="reg-role" value="talent" class="peer hidden role-radio" checked onchange="toggleClientType(false)">
-                            <div class="border-2 border-slate-200 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all">Talent</div>
+                            <div class="border-2 border-slate-100 bg-slate-50 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all hover:border-indigo-200">Talent</div>
                         </label>
                         <label class="cursor-pointer group relative">
                             <input type="radio" name="reg-role" value="client" class="peer hidden role-radio" onchange="toggleClientType(true)">
-                            <div class="border-2 border-slate-200 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all">Client</div>
+                            <div class="border-2 border-slate-100 bg-slate-50 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all hover:border-indigo-200">Client</div>
                         </label>
                         <label class="cursor-pointer group relative">
                             <input type="radio" name="reg-role" value="agency" class="peer hidden role-radio" onchange="toggleClientType(false)">
-                            <div class="border-2 border-slate-200 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all">Agensi</div>
+                            <div class="border-2 border-slate-100 bg-slate-50 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all hover:border-indigo-200">Agensi</div>
                         </label>
                     </div>
 
-                    <div id="client-type-container" class="hidden fade-in mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Pilih Kategori Bisnis Anda</p>
+                    <div id="client-type-container" class="hidden fade-in mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Spesialisasi Bisnis Anda</p>
                         <div class="grid grid-cols-2 gap-2">
-                            <label class="cursor-pointer"><input type="radio" name="client-type" value="ph" class="peer hidden client-type-radio" checked><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">Prod. House (PH)</div></label>
-                            <label class="cursor-pointer"><input type="radio" name="client-type" value="tvc" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">TVC / Iklan</div></label>
-                            <label class="cursor-pointer"><input type="radio" name="client-type" value="kol" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">KOL Specialist</div></label>
-                            <label class="cursor-pointer"><input type="radio" name="client-type" value="wo_eo" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">WO / EO / Event</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="ph" class="peer hidden client-type-radio" checked><div class="border border-slate-200 bg-white rounded-lg py-2.5 px-2 text-center text-[10px] font-bold text-slate-500 transition-all hover:bg-slate-50">Prod. House (PH)</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="tvc" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2.5 px-2 text-center text-[10px] font-bold text-slate-500 transition-all hover:bg-slate-50">TVC / Iklan</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="kol" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2.5 px-2 text-center text-[10px] font-bold text-slate-500 transition-all hover:bg-slate-50">KOL Specialist</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="wo_eo" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2.5 px-2 text-center text-[10px] font-bold text-slate-500 transition-all hover:bg-slate-50">WO / EO / Event</div></label>
                         </div>
                     </div>
 
                     <div class="space-y-4">
-                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-user text-slate-400 w-4"></i><input type="text" id="reg-user" placeholder="Nama Lengkap / Instansi" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700" required></div>
-                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-envelope text-slate-400 w-4"></i><input type="email" id="reg-email" placeholder="Email Aktif" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700" required></div>
-                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-phone text-slate-400 w-4"></i><input type="tel" id="reg-phone" inputmode="numeric" placeholder="Nomor WhatsApp" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required></div>
-                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-lock text-slate-400 w-4"></i><input type="password" id="reg-pass" placeholder="Kata Sandi (Min. 8 Karakter)" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700 pr-8" required><i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer hover:text-indigo-500" onclick="window.togglePw('reg-pass', this)"></i></div>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-solid fa-user text-slate-400 w-4"></i><input type="text" id="reg-user" placeholder="Nama Lengkap / Instansi" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700" required></div>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-solid fa-envelope text-slate-400 w-4"></i><input type="email" id="reg-email" placeholder="Email Perusahaan / Pribadi" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700" required></div>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-brands fa-whatsapp text-slate-400 w-4"></i><input type="tel" id="reg-phone" inputmode="numeric" placeholder="Nomor WhatsApp Aktif" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required></div>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-solid fa-lock text-slate-400 w-4"></i><input type="password" id="reg-pass" placeholder="Kata Sandi (Min. 8 Karakter)" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700 pr-8" required minlength="8"><i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer hover:text-indigo-500" onclick="window.togglePw('reg-pass', this)"></i></div>
                     </div>
                     
-                    <button type="submit" class="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold hover:bg-slate-800 shadow-lg mt-6 text-sm tracking-wide transition-all transform hover:-translate-y-1 relative">DAFTARKAN AKUN</button>
+                    <button type="submit" class="w-full bg-slate-900 text-white rounded-xl py-4 font-bold hover:bg-slate-800 shadow-xl shadow-slate-200 mt-6 text-[13px] tracking-widest uppercase transition-all transform hover:-translate-y-1 flex items-center justify-center">
+                        <span class="btn-text">Daftarkan Akun</span>
+                    </button>
                 </form>
             </div>
 
+            <div id="view-msg-email" class="w-full max-w-sm fade-in hidden text-center">
+                <div class="w-24 h-24 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6"><i class="fa-solid fa-envelope-open-text"></i></div>
+                <h2 class="text-3xl font-extrabold mb-2 text-slate-900">Cek Kotak Masuk</h2>
+                <p id="msg-email-desc" class="text-sm text-slate-500 mb-8 leading-relaxed">Tautan rahasia telah dikirim ke email Anda. Silakan periksa folder Inbox atau Spam Anda.</p>
+                <button type="button" onclick="window.switchMode('login')" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors border-b border-indigo-200 pb-1">Kembali ke Halaman Login</button>
             </div>
+
+            <div id="view-reset-password" class="w-full max-w-sm fade-in hidden">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold mb-2 text-slate-900">Sandi Baru</h2>
+                    <p class="text-sm text-slate-500">Amankan akun Anda dengan kata sandi kuat.</p>
+                </div>
+                <form onsubmit="window.submitNewPassword(event, this); return false;" class="space-y-4">
+                    <input type="hidden" id="reset-token-hidden">
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-solid fa-lock text-slate-400 w-5"></i><input type="password" id="new-pass" placeholder="Kata Sandi Baru" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700 pr-8" required minlength="8"><i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer" onclick="window.togglePw('new-pass', this)"></i></div>
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-solid fa-check-double text-slate-400 w-5"></i><input type="password" id="confirm-new-pass" placeholder="Ulangi Kata Sandi" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700 pr-8" required minlength="8"><i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer" onclick="window.togglePw('confirm-new-pass', this)"></i></div>
+                    <button type="submit" class="w-full bg-emerald-600 text-white rounded-xl py-4 font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 mt-6 text-[13px] tracking-widest uppercase flex justify-center items-center"><span class="btn-text">Simpan Sandi Baru</span></button>
+                </form>
+            </div>
+
+            <div id="view-input-id-only" class="w-full max-w-sm fade-in hidden">
+                <button type="button" onclick="window.switchMode('login')" class="text-slate-400 hover:text-indigo-600 mb-8 flex items-center gap-2 text-sm font-bold transition-colors"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                <h2 id="single-id-title" class="text-3xl font-extrabold mb-2 text-slate-900">Verifikasi</h2>
+                <p id="single-id-desc" class="text-sm text-slate-500 mb-8">Masukkan alamat email terdaftar Anda.</p>
+                <form onsubmit="window.submitSingleId(event, this); return false;" class="space-y-5">
+                    <input type="hidden" id="single-id-purpose">
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-solid fa-id-card text-slate-400 w-5 text-center"></i><input type="email" id="single-id-input" placeholder="Alamat Email" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700" required></div>
+                    <button type="submit" class="w-full bg-slate-900 text-white rounded-xl py-4 font-bold shadow-lg hover:bg-slate-800 transition-colors text-[13px] tracking-widest uppercase flex justify-center items-center"><span class="btn-text" id="single-id-btn">Kirim Permintaan</span></button>
+                </form>
+            </div>
+
+            <div id="view-otp-verify" class="w-full max-w-sm fade-in hidden">
+                <button type="button" onclick="window.switchMode('login')" class="text-slate-400 hover:text-indigo-600 mb-8 flex items-center gap-2 text-sm font-bold transition-colors"><i class="fa-solid fa-arrow-left"></i> Batal</button>
+                <h2 class="text-3xl font-extrabold mb-2 text-slate-900">Masukkan OTP</h2>
+                <p class="text-sm text-slate-500 mb-8">Kode 6 digit telah dikirim ke <span id="otp-target-display" class="font-black text-indigo-600"></span></p>
+                <form onsubmit="window.submitOtp(event, this); return false;" class="space-y-5">
+                    <input type="hidden" id="otp-identifier"><input type="hidden" id="otp-purpose">
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-4 shadow-input bg-slate-50"><i class="fa-solid fa-shield-halved text-indigo-400 w-5"></i><input type="text" id="otp-code" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" placeholder="0 0 0 0 0 0" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-black text-2xl text-slate-800" required></div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white rounded-xl py-4 font-bold shadow-lg hover:bg-indigo-700 transition-colors text-[13px] tracking-widest uppercase flex justify-center items-center"><span class="btn-text">Verifikasi Akses</span></button>
+                    
+                    <div class="text-center mt-6 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <p class="text-xs text-slate-500 font-bold">Kirim ulang kode dalam <span id="otp-timer" class="text-rose-500 font-black ml-1">03:00</span></p>
+                        <button type="button" id="btn-resend-otp" onclick="window.resendOtp()" class="text-indigo-600 font-black text-xs mt-2 hidden hover:underline cursor-pointer transition-colors">Kirim Ulang OTP</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="view-pin-check" class="w-full max-w-sm fade-in hidden">
+                <button type="button" onclick="window.switchMode('login')" class="text-slate-400 hover:text-indigo-600 mb-8 flex items-center gap-2 text-sm font-bold"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                <h2 class="text-3xl font-extrabold mb-2 text-slate-900">Login Instan</h2>
+                <p class="text-sm text-slate-500 mb-8">Identifikasi akun Anda untuk login menggunakan PIN.</p>
+                <form onsubmit="window.checkPinStatus(event, this); return false;" class="space-y-5">
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input"><i class="fa-solid fa-user text-slate-400 w-5"></i><input type="email" id="pin-check-id" placeholder="Alamat Email" class="bg-transparent w-full ml-3 text-sm font-bold text-slate-700" required></div>
+                    <button type="submit" class="w-full bg-slate-900 text-white rounded-xl py-4 font-bold shadow-lg hover:bg-slate-800 text-[13px] tracking-widest uppercase flex justify-center items-center"><span class="btn-text">Lanjutkan</span></button>
+                </form>
+            </div>
+
+            <div id="view-pin-input" class="w-full max-w-sm fade-in hidden">
+                <button type="button" onclick="window.showView('view-pin-check')" class="text-slate-400 hover:text-indigo-600 mb-8 flex items-center gap-2 text-sm font-bold"><i class="fa-solid fa-arrow-left"></i> Ganti Akun</button>
+                <h2 class="text-3xl font-extrabold mb-2 text-slate-900">Ketik PIN</h2>
+                <p class="text-sm text-slate-500 mb-8">Buka akses untuk <span id="pin-input-email" class="font-black text-indigo-600 truncate block mt-1"></span></p>
+                <form onsubmit="window.loginWithPin(event, this); return false;" class="space-y-5">
+                    <input type="hidden" id="pin-login-identifier">
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-4 shadow-input bg-slate-50"><i class="fa-solid fa-key text-slate-400 w-5"></i><input type="password" id="pin-code" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" placeholder="• • • • • •" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-black text-2xl text-slate-800" required><i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer" onclick="window.togglePw('pin-code', this)"></i></div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white rounded-xl py-4 font-bold shadow-lg hover:bg-indigo-700 text-[13px] tracking-widest uppercase flex justify-center items-center"><span class="btn-text">Buka Dashboard</span></button>
+                </form>
+            </div>
+
+            <div id="view-pin-setup" class="w-full max-w-sm fade-in hidden">
+                <button type="button" onclick="window.showView('view-pin-check')" class="text-slate-400 hover:text-indigo-600 mb-8 flex items-center gap-2 text-sm font-bold"><i class="fa-solid fa-arrow-left"></i> Batal</button>
+                <h2 class="text-3xl font-extrabold mb-2 text-slate-900">Buat PIN Akses</h2>
+                <p class="text-sm text-slate-500 mb-8">Amankan akun Anda dengan 6 digit angka rahasia.</p>
+                <form onsubmit="window.requestPinOtp(event, this); return false;" class="space-y-4">
+                    <input type="hidden" id="pin-setup-identifier">
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-4 shadow-input"><i class="fa-solid fa-lock text-slate-400 w-5"></i><input type="password" id="new-pin-setup" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" placeholder="Buat PIN Baru" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-black text-lg" required></div>
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-4 shadow-input"><i class="fa-solid fa-check-double text-slate-400 w-5"></i><input type="password" id="confirm-pin-setup" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" placeholder="Ulangi PIN" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-black text-lg" required></div>
+                    <button type="submit" class="w-full bg-emerald-600 text-white rounded-xl py-4 font-bold shadow-lg hover:bg-emerald-700 mt-4 text-[13px] tracking-widest uppercase flex justify-center items-center"><span class="btn-text">Lanjut Verifikasi OTP</span></button>
+                </form>
+            </div>
+
+        </div>
     </div>
 
     <script>
-        // Logika Tampilan
+        const API_BASE = '/api/auth'; // Relative to the worker serving this file
         const allViews = ['view-success-redirect', 'view-login', 'view-register', 'view-msg-email', 'view-reset-password', 'view-pin-check', 'view-pin-input', 'view-pin-setup', 'view-otp-verify', 'view-input-id-only'];
+        let otpInterval;
+
+        // UI HELPERS
+        window.togglePw = function(inputId, icon) { const el = document.getElementById(inputId); if(el.type === "password") { el.type = "text"; icon.classList.replace("fa-eye-slash", "fa-eye"); } else { el.type = "password"; icon.classList.replace("fa-eye", "fa-eye-slash"); } }
         
-        window.showView = function(target) {
-            allViews.forEach(v => { const el = document.getElementById(v); if(el) el.classList.add('hidden'); });
-            const targetEl = document.getElementById(target); if(targetEl) targetEl.classList.remove('hidden');
-        }
-
-        window.switchMode = function(mode) {
-            const mc = document.getElementById('main-container'), bp = document.getElementById('blue-panel');
-            if (mode === 'register') {
-                if(window.innerWidth > 767) { mc.classList.add('flex-row-reverse'); bp.classList.add('reverse'); }
-                document.getElementById('panel-content-login').classList.add('hidden');
-                document.getElementById('panel-content-register').classList.remove('hidden');
-                window.showView('view-register');
-            } else {
-                if(window.innerWidth > 767) { mc.classList.remove('flex-row-reverse'); bp.classList.remove('reverse'); }
-                document.getElementById('panel-content-register').classList.add('hidden');
-                document.getElementById('panel-content-login').classList.remove('hidden');
-                window.showView('view-login');
-            }
-            document.querySelectorAll('form').forEach(form => form.reset());
-        }
-
-        window.togglePw = function(inputId, icon) { 
-            const el = document.getElementById(inputId); 
-            if(el.type === "password") { el.type = "text"; icon.classList.replace("fa-eye-slash", "fa-eye"); } 
-            else { el.type = "password"; icon.classList.replace("fa-eye", "fa-eye-slash"); } 
-        }
-
-        window.showToast = function(message, type = 'info') {
+        window.showToast = function(message, type = 'success') {
             const container = document.getElementById('toast-container'); if(!container) return;
             const toast = document.createElement('div');
             let icon = type === 'success' ? '<i class="fa-solid fa-circle-check text-emerald-500 text-xl"></i>' : type === 'error' ? '<i class="fa-solid fa-circle-xmark text-rose-500 text-xl"></i>' : '<i class="fa-solid fa-circle-info text-indigo-500 text-xl"></i>';
             toast.className = `toast ${type}`; toast.innerHTML = `${icon}<span>${message}</span>`;
-            container.appendChild(toast); setTimeout(() => toast.classList.add('show'), 10); 
+            container.appendChild(toast); 
+            setTimeout(() => toast.classList.add('show'), 10); 
             setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 4000);
         }
 
@@ -268,40 +323,276 @@
             if(show) container.classList.remove('hidden'); else container.classList.add('hidden');
         }
 
-        // Contoh Simulasi Loading Submit (Mencegah Double Click)
-        window.handleRegularLogin = function(e, form) {
-            e.preventDefault();
-            const btn = form.querySelector('button[type="submit"]');
-            const oriText = btn.innerText;
-            btn.classList.add('btn-loading');
+        window.showView = function(target) {
+            allViews.forEach(v => { const el = document.getElementById(v); if(el) el.classList.add('hidden'); });
+            const targetEl = document.getElementById(target); if(targetEl) targetEl.classList.remove('hidden');
             
-            // SIMULASI API CALL (Ganti dengan fetch asli ke backend SSO)
-            setTimeout(() => {
-                btn.classList.remove('btn-loading');
-                window.showToast("Login Berhasil!", "success");
-                document.getElementById('logged-in-role').innerText = "TALENT";
-                window.showView('view-success-redirect');
-            }, 1500);
+            const bp = document.getElementById('blue-panel');
+            if(target !== 'view-login' && target !== 'view-register') {
+                if(window.innerWidth < 768 && bp) bp.classList.add('hidden');
+            } else {
+                if(bp) bp.classList.remove('hidden');
+            }
+
+            // Atur Header Input ID Only
+            if(target === 'view-login-otp') { 
+                document.getElementById('single-id-title').innerText = "Login via OTP"; 
+                document.getElementById('single-id-desc').innerText = "Kami akan mengirim kode OTP ke email Anda."; 
+                document.getElementById('single-id-purpose').value = "login"; 
+                document.getElementById('single-id-btn').innerText = "Kirim OTP Sekarang"; 
+                window.showView('view-input-id-only'); 
+            }
+            if(target === 'view-forgot') { 
+                document.getElementById('single-id-title').innerText = "Lupa Password"; 
+                document.getElementById('single-id-desc').innerText = "Masukkan email untuk mereset kata sandi."; 
+                document.getElementById('single-id-purpose').value = "reset"; 
+                document.getElementById('single-id-btn').innerText = "Kirim Link Reset"; 
+                window.showView('view-input-id-only'); 
+            }
         }
 
-        window.handleRegisterSubmit = function(e, form) {
-            e.preventDefault();
-            const btn = form.querySelector('button[type="submit"]');
-            btn.classList.add('btn-loading');
+        window.switchMode = function(mode) {
+            const mc = document.getElementById('main-container'), bp = document.getElementById('blue-panel');
+            const pLogin = document.getElementById('panel-content-login'), pReg = document.getElementById('panel-content-register');
+            if(bp) bp.classList.remove('hidden');
             
-            // Ambil Role dan Tipe Klien
+            if (mode === 'register') {
+                if(window.innerWidth > 767) { mc.classList.add('flex-row-reverse'); bp.classList.add('reverse'); }
+                if(pLogin) pLogin.classList.add('hidden'); if(pReg) pReg.classList.remove('hidden'); 
+                window.showView('view-register');
+            } else {
+                if(window.innerWidth > 767) { mc.classList.remove('flex-row-reverse'); bp.classList.remove('reverse'); }
+                if(pReg) pReg.classList.add('hidden'); if(pLogin) pLogin.classList.remove('hidden'); 
+                window.showView('view-login');
+            }
+            document.querySelectorAll('form').forEach(form => form.reset());
+        }
+
+        function setLoading(btn, isLoading) {
+            const span = btn.querySelector('.btn-text');
+            if (isLoading) {
+                btn.disabled = true;
+                btn.dataset.oriText = span.innerText;
+                span.innerHTML = `<div class="spinner-btn"></div> Memproses...`;
+            } else {
+                btn.disabled = false;
+                span.innerText = btn.dataset.oriText || 'Simpan';
+            }
+        }
+
+        // REDIRECT COUNTDOWN YANG BENAR (FIXED)
+        function doRedirectCountdown(role, targetUrl) {
+            document.getElementById('logged-in-role').innerText = role.toUpperCase();
+            window.showView('view-success-redirect');
+            
+            let count = 5;
+            const timerEl = document.getElementById('redirect-timer');
+            timerEl.innerText = count;
+            
+            const intervalId = setInterval(() => { 
+                count--; 
+                timerEl.innerText = count; 
+                if(count <= 0) {
+                    clearInterval(intervalId);
+                    window.location.href = targetUrl || 'https://www.orlandmanagement.com'; 
+                } 
+            }, 1000);
+        }
+
+        function startOtpTimer() {
+            clearInterval(otpInterval); let timeLeft = 180; 
+            const timerEl = document.getElementById('otp-timer'), resendBtn = document.getElementById('btn-resend-otp');
+            timerEl.parentElement.classList.remove('hidden'); resendBtn.classList.add('hidden'); timerEl.innerText = "03:00";
+            otpInterval = setInterval(() => { 
+                timeLeft--; 
+                const m = Math.floor(timeLeft/60).toString().padStart(2, '0');
+                const s = (timeLeft%60).toString().padStart(2,'0'); 
+                timerEl.innerText = `${m}:${s}`; 
+                if(timeLeft<=0) { clearInterval(otpInterval); timerEl.parentElement.classList.add('hidden'); resendBtn.classList.remove('hidden'); } 
+            }, 1000);
+        }
+
+        // API FETCH WRAPPER
+        async function sendApi(endpoint, payload) { 
+            try { 
+                const res = await fetch(`${API_BASE}/${endpoint}`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                }); 
+                return await res.json();
+            } catch(e) { return { status: 'error', message: 'Koneksi terputus dari server.' }; } 
+        }
+
+        // FORM HANDLERS
+        window.handleRegularLogin = async function(e, form) {
+            e.preventDefault(); const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
+            const res = await sendApi('login-password', { identifier: document.getElementById('login-id').value, password: document.getElementById('login-pass').value });
+            setLoading(btn, false);
+            if(res.status === 'ok') { window.showToast("Login Berhasil!", "success"); doRedirectCountdown(res.role || 'User', res.redirect_url); } 
+            else { window.showToast(res.message, "error"); }
+        }
+
+        window.handleRegisterSubmit = async function(e, form) {
+            e.preventDefault();
+            const pass = document.getElementById('reg-pass').value;
+            if(pass.length < 8) return window.showToast("Kata sandi minimal 8 karakter", "error");
+            
+            const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
             const role = document.querySelector('input[name="reg-role"]:checked').value;
-            let clientType = null;
-            if(role === 'client') clientType = document.querySelector('input[name="client-type"]:checked').value;
+            const payload = { 
+                fullName: document.getElementById('reg-user').value, 
+                email: document.getElementById('reg-email').value, 
+                phone: document.getElementById('reg-phone').value, 
+                password: pass, 
+                role: role,
+                invite_token: window.orlandInviteToken || undefined
+            };
+            if(role === 'client') payload.client_type = document.querySelector('input[name="client-type"]:checked').value;
 
-            console.log("Mendaftar sebagai:", role, "| Tipe Bisnis:", clientType);
+            const res = await sendApi('register', payload);
+            setLoading(btn, false);
             
-            setTimeout(() => {
-                btn.classList.remove('btn-loading');
-                window.showToast("Pendaftaran Berhasil!", "success");
-                // Lanjut ke verifikasi OTP / Email
-            }, 1500);
+            if(res.status === 'ok') { 
+                window.showToast("Registrasi Sukses!", "success"); 
+                window.showView('view-msg-email'); 
+            } else window.showToast(res.message, "error");
         }
+
+        window.submitSingleId = async function(e, form) {
+            e.preventDefault(); const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
+            const id = document.getElementById('single-id-input').value, purp = document.getElementById('single-id-purpose').value;
+            const endpoint = purp === 'reset' ? 'request-reset' : 'request-otp';
+            const res = await sendApi(endpoint, { identifier: id, purpose: purp });
+            setLoading(btn, false);
+            if(res.status === 'ok') {
+                if(purp === 'reset') { window.showToast("Sukses!", "success"); document.getElementById('msg-email-desc').innerText = "Link Rahasia untuk Reset Password telah dikirim ke email Anda."; window.showView('view-msg-email'); } 
+                else { window.showToast("Kode OTP Terkirim!", "success"); document.getElementById('otp-identifier').value = id; document.getElementById('otp-purpose').value = purp; document.getElementById('otp-target-display').innerText = id; window.showView('view-otp-verify'); startOtpTimer(); }
+            } else window.showToast(res.message, "error");
+        }
+
+        window.submitOtp = async function(e, form) {
+            e.preventDefault(); const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
+            const id = document.getElementById('otp-identifier').value, purp = document.getElementById('otp-purpose').value, code = document.getElementById('otp-code').value;
+            const endpoint = purp === 'login' ? 'login-otp' : 'setup-pin';
+            const payload = { identifier: id, otp: code };
+            if (purp === 'setup-pin') payload.new_pin = document.getElementById('new-pin-setup').value;
+            const res = await sendApi(endpoint, payload);
+            setLoading(btn, false);
+            if(res.status === 'ok') { clearInterval(otpInterval); window.showToast("Akses Diberikan!", "success"); doRedirectCountdown(res.role || 'User', res.redirect_url); } 
+            else window.showToast(res.message, "error");
+        }
+
+        window.resendOtp = async function() {
+            const id = document.getElementById('otp-identifier').value, purp = document.getElementById('otp-purpose').value;
+            window.showToast("Mengirim ulang OTP...", "info");
+            const res = await sendApi('request-otp', { identifier: id, purpose: purp });
+            if(res.status === 'ok') { window.showToast("Kode terkirim ulang!", "success"); startOtpTimer(); } else window.showToast(res.message, "error");
+        }
+
+        window.checkPinStatus = async function(e, form) {
+            e.preventDefault(); const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
+            const id = document.getElementById('pin-check-id').value; 
+            const res = await sendApi('check-pin', { identifier: id });
+            setLoading(btn, false);
+            if(res.status === 'ok') {
+                if(res.has_pin) { document.getElementById('pin-login-identifier').value = res.email; document.getElementById('pin-input-email').innerText = res.email; window.showView('view-pin-input'); } 
+                else { document.getElementById('pin-setup-identifier').value = res.email; window.showView('view-pin-setup'); }
+            } else window.showToast(res.message, "error");
+        }
+
+        window.loginWithPin = async function(e, form) {
+            e.preventDefault(); const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
+            const res = await sendApi('login-pin', { identifier: document.getElementById('pin-login-identifier').value, pin: document.getElementById('pin-code').value });
+            setLoading(btn, false);
+            if(res.status === 'ok') { window.showToast("Login Sukses!", "success"); doRedirectCountdown(res.role || 'User', res.redirect_url); } 
+            else window.showToast(res.message, "error");
+        }
+
+        window.requestPinOtp = async function(e, form) {
+            e.preventDefault(); 
+            const p1 = document.getElementById('new-pin-setup').value, p2 = document.getElementById('confirm-pin-setup').value;
+            if(p1.length !== 6 || p1 !== p2) return window.showToast("PIN harus 6 digit dan sama.", "error");
+            const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
+            const id = document.getElementById('pin-setup-identifier').value;
+            const res = await sendApi('request-otp', { identifier: id, purpose: 'setup-pin' });
+            setLoading(btn, false);
+            if(res.status === 'ok') { window.showToast("Cek Email Anda!", "success"); document.getElementById('otp-identifier').value = id; document.getElementById('otp-purpose').value = 'setup-pin'; document.getElementById('otp-target-display').innerText = id; window.showView('view-otp-verify'); startOtpTimer(); } 
+            else window.showToast(res.message, "error");
+        }
+
+        window.submitNewPassword = async function(e, form) {
+            e.preventDefault();
+            const token = document.getElementById('reset-token-hidden').value, newPass = document.getElementById('new-pass').value, confPass = document.getElementById('confirm-new-pass').value;
+            if(newPass.length < 8) return window.showToast("Minimal 8 karakter", "error"); 
+            if(newPass !== confPass) return window.showToast("Kata sandi tidak cocok", "error");
+            
+            const btn = form.querySelector('button[type="submit"]'); setLoading(btn, true);
+            const res = await sendApi('reset-password', { token: token, new_password: newPass });
+            setLoading(btn, false);
+            if(res.status === 'ok') { window.showToast("Sandi diubah! Silakan login.", "success"); setTimeout(() => window.switchMode('login'), 2000); } 
+            else window.showToast(res.message, "error");
+        }
+
+        window.doLogout = async function() { 
+            window.showToast("Logout...", "info"); 
+            await fetch(API_BASE + '/logout', { method: 'POST' }); 
+            window.location.href = "/"; 
+        }
+
+        // INITIALIZATION
+        document.addEventListener('DOMContentLoaded', async () => { 
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if(urlParams.get('invite')) {
+                window.orlandInviteToken = urlParams.get('invite');
+                window.switchMode('register');
+                window.showToast("Anda mendapat Undangan Agensi!", "info");
+                // Auto pilih Talent
+                const radTalent = document.querySelector('input[name="reg-role"][value="talent"]');
+                if(radTalent) radTalent.checked = true;
+                toggleClientType(false);
+                // Sembunyikan role picker agar tidak diubah
+                const roleGrid = document.querySelector('input[name="reg-role"]').closest('.grid');
+                if(roleGrid) roleGrid.style.display = 'none';
+            }
+
+            if (urlParams.get('activation_token')) {
+                window.showToast("Mengaktifkan akun...", "info");
+                const res = await sendApi('verify-activation', { token: urlParams.get('activation_token') });
+                if(res.status === 'ok') { 
+                    doRedirectCountdown(res.role, res.redirect_url); 
+                } else { 
+                    window.showToast("Aktivasi gagal: " + res.message, "error"); 
+                }
+                window.history.replaceState({}, document.title, window.location.pathname); 
+                return;
+            }
+
+            if (urlParams.get('reset_token')) {
+                document.getElementById('reset-token-hidden').value = urlParams.get('reset_token');
+                window.showView('view-reset-password');
+                window.history.replaceState({}, document.title, window.location.pathname); 
+                return;
+            }
+
+            // Silent Login Check
+            try { 
+                const meRes = await fetch(API_BASE + '/me'); 
+                if (meRes.ok) { 
+                    const data = await meRes.json(); 
+                    if(data.status === 'ok') doRedirectCountdown(data.user.user_type || 'User', data.redirect_url); 
+                } 
+            } catch(e) {}
+        });
+
+        // Responsive Fix
+        window.addEventListener('resize', () => { 
+            if(!document.getElementById('view-register')?.classList.contains('hidden') && window.innerWidth > 767) { 
+                document.getElementById('main-container')?.classList.add('flex-row-reverse'); 
+                document.getElementById('blue-panel')?.classList.add('reverse'); 
+            } 
+        });
     </script>
 </body>
 </html>

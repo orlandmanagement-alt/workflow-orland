@@ -9,6 +9,7 @@ import type { D1Database, KVNamespace, R2Bucket, Fetcher } from '@cloudflare/wor
 /**
  * IMPORT SEMUA ROUTER FUNGSIONAL
  */
+import userUpdateRouter from './functions/auth/userHandler'
 import talentRouter from './functions/talents/talentHandler'
 import experienceRouter from './functions/talents/experienceHandler'
 import certificationRouter from './functions/talents/certificationHandler'

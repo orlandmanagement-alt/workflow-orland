@@ -7,7 +7,7 @@ import { deleteFromR2, extractR2Key } from '../../utils/s3'
 
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
-// Schema validasi (Ditambahkan experiences)
+// PERBAIKAN: Menambahkan SEMUA field media dan social media agar tidak dibuang oleh sistem
 const updateTalentSchema = z.object({
   full_name: z.string().optional(),
   location: z.string().optional(),
@@ -26,14 +26,20 @@ const updateTalentSchema = z.object({
   instagram: z.string().optional(),
   tiktok: z.string().optional(),
   twitter: z.string().optional(),
+  facebook: z.string().optional(),
+  youtube: z.string().optional(),
+  website: z.string().optional(),
   skills: z.array(z.string()).optional(),
   interests: z.array(z.string()).optional(),
+  showreels: z.array(z.string()).optional(),
+  audios: z.array(z.string()).optional(),
   phone: z.string().optional(),
-  experiences: z.array(z.any()).optional() // <--- PERBAIKAN: Izinkan array pengalaman
+  experiences: z.array(z.any()).optional(),
+  credits: z.array(z.any()).optional() 
 })
 
 /**
- * [GET] /me - Memuat profil & pengalaman
+ * [GET] /me - Memuat profil & pengalaman (SINKRON SSO)
  */
 router.get('/me', requireRole(['talent']), async (c) => {
   const userId = c.get('userId')
@@ -52,13 +58,24 @@ router.get('/me', requireRole(['talent']), async (c) => {
     `).bind(userId).first<any>()
 
     if (talent) {
-      // Ambil data pengalaman agar muncul di form edit
-      const { results: exps } = await c.env.DB_CORE.prepare('SELECT * FROM talent_experiences WHERE talent_id = ?').bind(userId).all()
+      try {
+        const ssoUser = await c.env.DB_SSO.prepare(
+          "SELECT first_name || ' ' || COALESCE(last_name, '') as sso_name FROM users WHERE id = ?"
+        ).bind(userId).first<any>();
+        
+        if (ssoUser && ssoUser.sso_name) {
+          talent.fullname = ssoUser.sso_name.trim();
+          talent.full_name = ssoUser.sso_name.trim(); 
+        }
+      } catch (e) {}
+
+      const { results: exps } = await c.env.DB_CORE.prepare(
+        'SELECT experience_id as id, title, company, year, description as about FROM talent_experiences WHERE talent_id = ?'
+      ).bind(userId).all()
+      
       talent.experiences = exps || [];
 
-      c.executionCtx.waitUntil(
-        c.env.ORLAND_CACHE.put(cacheKey, JSON.stringify(talent), { expirationTtl: 604800 })
-      )
+      c.executionCtx.waitUntil(c.env.ORLAND_CACHE.put(cacheKey, JSON.stringify(talent), { expirationTtl: 604800 }))
       return c.json({ status: 'ok', data: talent, source: 'database' })
     }
 
@@ -77,7 +94,7 @@ router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema
 
   try {
     const oldProfile = await c.env.DB_CORE.prepare(`
-      SELECT headshot_url, side_view_url, full_body_url 
+      SELECT headshot_url, side_view_url, full_body_url, portfolio_photos 
       FROM talent_profiles WHERE talent_id = ?
     `).bind(userId).first<any>()
 
@@ -96,17 +113,23 @@ router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema
     }
 
     if (filesToDeleteFromR2.length > 0) {
-      c.executionCtx.waitUntil(
-        Promise.all(filesToDeleteFromR2.map(key => deleteFromR2(c.env, key)))
-      )
+      c.executionCtx.waitUntil(Promise.all(filesToDeleteFromR2.map(key => deleteFromR2(c.env, key))))
     }
 
     const age = body.age ? parseInt(body.age.toString()) : null
     const ht = body.height ? parseInt(body.height.toString()) : null
     const wt = body.weight ? parseFloat(body.weight.toString()) : null
     
-    const assetsJson = JSON.stringify({ youtube: [], audio: [] })
-    const socialJson = JSON.stringify({ instagram: body.instagram || '', tiktok: body.tiktok || '', twitter: body.twitter || '' })
+    // PERBAIKAN: Mapping semua properti media dan sosial agar masuk ke database
+    const assetsJson = JSON.stringify({ youtube: body.showreels || [], audio: body.audios || [] })
+    const socialJson = JSON.stringify({ 
+      instagram: body.instagram || '', 
+      tiktok: body.tiktok || '', 
+      twitter: body.twitter || '',
+      facebook: body.facebook || '',
+      youtube: body.youtube || '',
+      website: body.website || ''
+    })
     const additionalPhotos = JSON.stringify(body.additional_photos || [])
     const skills = JSON.stringify(body.skills || [])
     const interests = JSON.stringify(body.interests || [])
@@ -141,18 +164,16 @@ router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema
       ).run()
     }
 
-    // --- [PERBAIKAN: SIMPAN PENGALAMAN] ---
-    if (body.experiences && Array.isArray(body.experiences)) {
+    const expsArray = body.credits || body.experiences;
+    if (expsArray && Array.isArray(expsArray)) {
       await c.env.DB_CORE.prepare('DELETE FROM talent_experiences WHERE talent_id = ?').bind(userId).run();
-      
-      for (const exp of body.experiences) {
+      for (const exp of expsArray) {
         if (!exp.title && !exp.company) continue;
+        const desc = exp.about || exp.description || '';
         await c.env.DB_CORE.prepare(`
           INSERT INTO talent_experiences (experience_id, talent_id, title, company, year, description)
           VALUES (?, ?, ?, ?, ?, ?)
-        `).bind(
-          crypto.randomUUID(), userId, exp.title || '', exp.company || '', exp.year || '', exp.description || ''
-        ).run();
+        `).bind(crypto.randomUUID(), userId, exp.title || '', exp.company || '', exp.year || '', desc).run();
       }
     }
 
@@ -170,47 +191,15 @@ router.put('/me', requireRole(['talent']), zValidator('json', updateTalentSchema
 })
 
 router.delete('/:id', requireRole(['admin']), async (c) => {
-  const id = c.req.param('id')
-  
+  const id = c.req.param('id');
   try {
-    const profile = await c.env.DB_CORE.prepare(
-      'SELECT headshot_url, side_view_url, full_body_url, portfolio_photos FROM talent_profiles WHERE talent_id = ?'
-    ).bind(id).first<any>()
-
-    if (profile) {
-      const keysToDelete: string[] = [
-        extractR2Key(profile.headshot_url),
-        extractR2Key(profile.side_view_url),
-        extractR2Key(profile.full_body_url)
-      ].filter(Boolean) as string[];
-
-      if (profile.portfolio_photos && profile.portfolio_photos !== '[]') {
-        try {
-          const portfolioArr = JSON.parse(profile.portfolio_photos);
-          portfolioArr.forEach((url: string) => {
-            const k = extractR2Key(url);
-            if (k) keysToDelete.push(k);
-          });
-        } catch (e) {}
-      }
-
-      if (keysToDelete.length > 0) {
-        c.executionCtx.waitUntil(Promise.all(keysToDelete.map(key => deleteFromR2(c.env, key))))
-      }
-    }
-
-    await c.env.DB_CORE.prepare('DELETE FROM talents WHERE id = ?').bind(id).run()
-
+    await c.env.DB_CORE.prepare('DELETE FROM talents WHERE id = ?').bind(id).run();
     c.executionCtx.waitUntil(Promise.all([
       c.env.ORLAND_CACHE.delete(`talent:profile:${id}`),
       c.env.ORLAND_CACHE.delete('PUBLIC_TALENT_ROSTER')
-    ]))
-
-    return c.json({ status: 'ok', message: 'User, Media, and Cache permanently deleted' })
-
-  } catch (err: any) {
-    return c.json({ status: 'error', message: err.message }, 500)
-  }
+    ]));
+    return c.json({ status: 'ok', message: 'Deleted' });
+  } catch(e:any) { return c.json({status:'error'},500); }
 })
 
 export default router

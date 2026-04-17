@@ -182,6 +182,7 @@ app.get('/api/v1/auth/me', async (c) => {
 })
 
 // MOUNTING SEMUA ROUTER BISNIS
+app.route('/api/v1/auth', userUpdateRouter)
 app.route('/api/v1/talents', talentRouter)
 app.route('/api/v1/talents', experienceRouter)
 app.route('/api/v1/talents', certificationRouter)

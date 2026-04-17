@@ -35,9 +35,9 @@ bucket_name = "orland-media"
 # --- PUBLIC VARIABLES ---
 [vars]
 APP_ENV = "production"
-TALENT_URL = "https://talent.orlandmanagement.com"
-CLIENT_URL = "https://client.orlandmanagement.com"
-AGENCY_URL = "https://agency.orlandmanagement.com"
+TALENT_URL = "https://www.orlandmanagement.com/p/profile.html"
+CLIENT_URL = "https://www.orlandmanagement.com/p/client-dashboard.html"
+AGENCY_URL = "https://www.orlandmanagement.com/p/agency-dashboard.html"
 CF_ACCOUNT_ID = "6c8fb4264bc8bce97572b708fc0eb5fb"
 
 # --- BACKGROUND JOBS (CRON) ---

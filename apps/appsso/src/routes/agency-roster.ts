@@ -470,7 +470,7 @@ app.get('/talent/:talentId/contact-info', async (c) => {
     return c.json({
       status: 'ok',
       contactType: 'through_agency', // or 'direct'
-      redirectUrl: 'https://agency.orlandmanagement.com/inbox',
+      redirectUrl: 'https://www.orlandmanagement.com/p/agency-dashboard.html',
       message:
         'This talent is managed by an agency. Contact the agency directly through their inbox.',
     })

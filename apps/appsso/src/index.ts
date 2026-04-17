@@ -7,10 +7,10 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 // 1. Buat daftar semua domain frontend yang diizinkan mengakses SSO
 const allowedOrigins = [
-  'https://talent.orlandmanagement.com',
-  'https://client.orlandmanagement.com',
-  'https://admin.orlandmanagement.com',
-  'https://agency.orlandmanagement.com',
+//  'https://talent.orlandmanagement.com',
+//  'https://client.orlandmanagement.com',
+//  'https://admin.orlandmanagement.com',
+//  'https://agency.orlandmanagement.com',
   'https://sso.orlandmanagement.com',
   'https://www.orlandmanagement.com', // 👈 TAMBAHKAN INI (Dengan www)
   'https://orlandmanagement.com',     // 👈 TAMBAHKAN INI (Tanpa www)

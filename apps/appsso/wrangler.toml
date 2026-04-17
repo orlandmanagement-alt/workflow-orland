@@ -34,11 +34,10 @@ PBKDF2_ITER = "100000"
 
 # === DAFTAR URL ===
 SSO_URL = "https://www.orlandmanagement.com"
-TALENT_URL = "https://talent.orlandmanagement.com"
-CLIENT_URL = "https://client.orlandmanagement.com"
-ADMIN_URL = "https://admin.orlandmanagement.com"
-AGENCY_URL = "https://agency.orlandmanagement.com"
-DASHBOARD_URL = "https://dashboard.orlandmanagement.com"
+TALENT_URL = "https://www.orlandmanagement.com/p/profile.html"
+CLIENT_URL = "https://www.orlandmanagement.com/p/client-dashboard.html"
+ADMIN_URL = "https://www.orlandmanagement.com/p/admin-dashboard.html"
+AGENCY_URL = "https://www.orlandmanagement.com/p/agency-dashboard.html"
 API_URL = "https://api.orlandmanagement.com"
 
 # === PUBLIC KEYS & IDENTIFIERS ===

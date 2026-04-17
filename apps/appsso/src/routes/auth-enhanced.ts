@@ -2,6 +2,7 @@
 // File: apps/appsso/src/routes/auth-enhanced.ts
 
 import { Hono, Context } from 'hono'
+import { cors } from 'hono/cors'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { sign } from 'hono/jwt'
 import { Buffer } from 'node:buffer'
@@ -36,6 +37,22 @@ type Bindings = {
 }
 
 const auth = new Hono<{ Bindings: Bindings }>()
+
+// ========================================
+// KONFIGURASI CORS (TAMBAHKAN BLOK INI)
+// ========================================
+auth.use('*', cors({
+  origin: [
+    'https://www.orlandmanagement.com', 
+    'https://sso.orlandmanagement.com',
+    'http://localhost:8787' // (Opsional) untuk testing lokal
+  ],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-client-id', 'x-agency-id'],
+  allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'DELETE'],
+  credentials: true,
+  maxAge: 86400,
+}))
+// ========================================
 
 const getNow = () => Math.floor(Date.now() / 1000)
 const getClientIp = (c: Context): string => c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'

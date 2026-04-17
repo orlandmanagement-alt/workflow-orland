@@ -221,4 +221,52 @@ router.get('/:talent_id', requireRole(['agency', 'admin']), async (c) => {
   }
 })
 
+// --- SCHEMA: Validasi Generate Link ---
+const generateInviteSchema = z.object({
+  max_uses: z.number().int().default(50),
+  expires_in_days: z.number().int().default(90)
+})
+
+/**
+ * [POST] /api/v1/agency/invite
+ * Membuat Magic Link Pendaftaran untuk Downline Talent
+ */
+router.post('/invite', requireRole(['agency', 'admin']), zValidator('json', generateInviteSchema), async (c) => {
+  const userId = c.get('userId')
+  
+  try {
+    // 1. Pastikan user adalah Agensi yang sah
+    const agencyId = await resolveAgencyId(c, userId)
+    if (!agencyId) return c.json({ status: 'error', message: 'Unauthorized: Sesi tidak ditemukan atau Anda bukan Agensi.' }, 401)
+
+    const body = c.req.valid('json')
+    
+    // 2. Buat Token Unik untuk URL
+    const inviteToken = crypto.randomUUID().replace(/-/g, '')
+    const invitationId = crypto.randomUUID()
+
+    // 3. Simpan ke tabel agency_invitations di database
+    await c.env.DB_CORE.prepare(`
+      INSERT INTO agency_invitations (invitation_id, agency_id, invite_link_token, created_by_user_id, expires_at, max_uses, current_uses, status)
+      VALUES (?, ?, ?, ?, datetime('now', '+' || ? || ' days'), ?, 0, 'active')
+    `).bind(
+      invitationId, 
+      agencyId, 
+      inviteToken, 
+      userId, 
+      body.expires_in_days, 
+      body.max_uses
+    ).run()
+
+    // 4. Susun URL Pendaftaran
+    const baseUrl = c.env.TALENT_URL || 'https://www.orlandmanagement.com';
+    const inviteUrl = `${baseUrl}/register?ref=${inviteToken}`
+
+    return c.json({ status: 'ok', message: 'Link berhasil dibuat', data: { invite_url: inviteUrl, token: inviteToken } })
+  } catch (err: any) {
+    console.error("Invite Error:", err)
+    return c.json({ status: 'error', message: err.message }, 500)
+  }
+})
+
 export default router

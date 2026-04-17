@@ -6,204 +6,302 @@
     <title>Enterprise SSO - Orland Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-   <!-- <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script> -->
-   <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Poppins', 'sans-serif'] }, colors: { primary: '#5b83e8', secondary: '#f4f6f9', error: '#ef4444' } } } }</script>
+    <script>
+        tailwind.config = { 
+            theme: { 
+                extend: { 
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }, 
+                    colors: { 
+                        primary: '#4f46e5', 
+                        primaryHover: '#4338ca',
+                        secondary: '#f8fafc', 
+                        error: '#ef4444' 
+                    },
+                    boxShadow: {
+                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                        'input': '0 2px 10px rgba(0, 0, 0, 0.02) inset'
+                    }
+                } 
+            } 
+        }
+    </script>
     <style>
-        body { background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Poppins', sans-serif;}
-        .input-group input:focus { outline: none; border-color: #5b83e8; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background: white; border-left: 4px solid #5b83e8; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 1rem; border-radius: 0.5rem; transform: translateX(120%); transition: transform 0.3s ease-out; display: flex; align-items: center; gap: 10px; min-width: 300px; }
-        .toast.error { border-left-color: #ef4444; } .toast.warning { border-left-color: #f59e0b; }
+        body { 
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* Animasi Latar Belakang (Blob) */
+        .bg-blob { position: absolute; filter: blur(80px); z-index: -1; opacity: 0.6; animation: float 10s infinite ease-in-out alternate; }
+        .blob-1 { top: -10%; left: -10%; width: 400px; height: 400px; background: #c7d2fe; animation-delay: 0s; }
+        .blob-2 { bottom: -10%; right: -10%; width: 500px; height: 500px; background: #fbcfe8; animation-delay: 2s; }
+        @keyframes float { 0% { transform: translateY(0px) scale(1); } 100% { transform: translateY(20px) scale(1.05); } }
+
+        /* Container Utama Glassmorphism */
+        #main-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Interaksi Input */
+        .input-group { transition: all 0.3s ease; border: 2px solid transparent; background: #f8fafc; }
+        .input-group:focus-within { border-color: #818cf8; background: #ffffff; box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.1); transform: translateY(-2px); }
+        .input-group input:focus { outline: none; }
+        
+        /* Animasi Perpindahan Tampilan */
+        .fade-in { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        
+        /* Sistem Toast / Notifikasi */
+        #toast-container { position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; }
+        .toast { background: white; border-left: 4px solid #4f46e5; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); padding: 1rem 1.25rem; border-radius: 0.75rem; transform: translateX(150%); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; align-items: center; gap: 12px; min-width: 320px; font-weight: 600; font-size: 0.875rem; color: #1e293b; }
+        .toast.error { border-left-color: #ef4444; } .toast.info { border-left-color: #3b82f6; }
         .toast.show { transform: translateX(0); }
-        @media (min-width: 768px) { .panel-blue { border-radius: 1rem 100px 100px 1rem; } .panel-blue.reverse { border-radius: 100px 1rem 1rem 100px; } }
-        @media (max-width: 767px) { .panel-blue { border-radius: 0 0 50px 50px; } }
+
+        /* Panel Samping (Branding) */
+        .panel-brand { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); position: relative; overflow: hidden; }
+        .panel-brand::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xNSkiLz48L3N2Zz4='); opacity: 0.5; z-index: 0; }
+        .panel-content { z-index: 1; position: relative; }
+        
+        @media (min-width: 768px) { 
+            .panel-brand { border-radius: 1.5rem 80px 80px 1.5rem; } 
+            .panel-brand.reverse { border-radius: 80px 1.5rem 1.5rem 80px; } 
+        }
+        @media (max-width: 767px) { 
+            .panel-brand { border-radius: 0 0 40px 40px; padding: 3rem 2rem; } 
+            #main-container { min-height: auto; border-radius: 0; box-shadow: none; background: transparent; }
+            .bg-blob { display: none; }
+        }
+
+        /* Custom Radio Buttons for Roles */
+        .role-radio:checked + div { border-color: #4f46e5; background-color: #eef2ff; color: #4f46e5; box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.15); transform: translateY(-2px); }
+        .client-type-radio:checked + div { border-color: #ec4899; background-color: #fce7f3; color: #db2777; }
+
+        /* Loading State pada Tombol */
+        .btn-loading { position: relative; color: transparent !important; pointer-events: none; }
+        .btn-loading::after { content: ''; position: absolute; width: 20px; height: 20px; top: 50%; left: 50%; margin-top: -10px; margin-left: -10px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: button-spin 0.8s linear infinite; }
+        @keyframes button-spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="text-gray-800 antialiased p-4">
+<body>
+
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
     <div id="toast-container"></div>
-    <div id="main-container" class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col md:flex-row overflow-hidden relative min-h-[650px] transition-all duration-500">
+    
+    <div id="main-container" class="w-full max-w-[1000px] flex flex-col md:flex-row relative min-h-[700px] z-10 mx-4 md:mx-auto">
         
-        <div id="blue-panel" class="panel-blue bg-primary text-white w-full md:w-2/5 p-8 flex flex-col justify-center items-center text-center transition-all duration-500 z-10 relative">
-            <div id="panel-content-login" class="fade-in">
-                <h2 class="text-3xl font-bold mb-2">Halo, Selamat Datang!</h2>
-                <p class="text-sm text-blue-100 mb-6">Belum memiliki akun nasabah?</p>
-                <button type="button" onclick="window.switchMode('register')" class="border-2 border-white rounded-full px-8 py-2 font-semibold hover:bg-white hover:text-primary transition-colors cursor-pointer">Daftar</button>
+        <div id="blue-panel" class="panel-brand text-white w-full md:w-[45%] p-8 md:p-12 flex flex-col justify-center items-center text-center transition-all duration-700 ease-in-out">
+            
+            <div id="panel-content-login" class="panel-content fade-in w-full">
+                <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg border border-white/30">
+                    <i class="fa-solid fa-rocket text-2xl"></i>
+                </div>
+                <h2 class="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">Mulai Karirmu!</h2>
+                <p class="text-sm text-indigo-100 mb-8 leading-relaxed opacity-90">Bergabung dengan ekosistem manajemen talenta dan klien terbesar di Indonesia.</p>
+                <button type="button" onclick="window.switchMode('register')" class="w-full max-w-[200px] bg-transparent border-2 border-white/80 rounded-xl py-3 font-bold hover:bg-white hover:text-indigo-600 transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl cursor-pointer">Daftar Sekarang</button>
             </div>
-            <div id="panel-content-register" class="hidden fade-in">
-                <h2 class="text-3xl font-bold mb-2">Selamat Datang Kembali!</h2>
-                <p class="text-sm text-blue-100 mb-6">Sudah memiliki akun?</p>
-                <button type="button" onclick="window.switchMode('login')" class="border-2 border-white rounded-full px-8 py-2 font-semibold hover:bg-white hover:text-primary transition-colors cursor-pointer">Masuk</button>
+            
+            <div id="panel-content-register" class="panel-content hidden fade-in w-full">
+                <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg border border-white/30">
+                    <i class="fa-solid fa-hand-sparkles text-2xl"></i>
+                </div>
+                <h2 class="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">Selamat Datang!</h2>
+                <p class="text-sm text-indigo-100 mb-8 leading-relaxed opacity-90">Sudah memiliki akun? Silakan masuk untuk mengakses dashboard Anda.</p>
+                <button type="button" onclick="window.switchMode('login')" class="w-full max-w-[200px] bg-transparent border-2 border-white/80 rounded-xl py-3 font-bold hover:bg-white hover:text-indigo-600 transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl cursor-pointer">Masuk ke Akun</button>
             </div>
         </div>
 
-        <div class="w-full md:w-3/5 p-8 md:p-12 flex items-center justify-center bg-white relative">
+        <div class="w-full md:w-[55%] p-6 md:p-12 lg:p-16 flex items-center justify-center bg-white md:bg-transparent rounded-3xl md:rounded-none shadow-xl md:shadow-none mt-[-20px] md:mt-0 z-20">
             
-            <div id="view-success-redirect" class="w-full max-w-md fade-in hidden text-center">
-                <div class="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4"><i class="fa-solid fa-circle-check"></i></div>
-                <h2 id="success-title" class="text-2xl font-bold mb-2">Aktivasi Berhasil!</h2>
-                <p class="text-sm text-gray-500 mb-8">Anda masuk sebagai <span id="logged-in-role" class="font-bold uppercase text-primary"></span>.</p>
-                <div class="bg-secondary rounded-lg p-4 mb-6">
-                    <p class="text-xs text-gray-500 font-medium uppercase mb-2">Mengarahkan ke Dashboard dalam</p>
-                    <p class="text-4xl font-bold text-primary"><span id="redirect-timer">5</span> detik</p>
+            <div id="view-success-redirect" class="w-full max-w-sm hidden text-center fade-in">
+                <div class="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-5xl mx-auto mb-6 shadow-inner"><i class="fa-solid fa-circle-check"></i></div>
+                <h2 id="success-title" class="text-3xl font-extrabold mb-2 text-slate-800 tracking-tight">Berhasil!</h2>
+                <p class="text-sm text-slate-500 mb-8">Anda masuk sebagai <span id="logged-in-role" class="font-black uppercase text-indigo-600 tracking-wider"></span>.</p>
+                <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 mb-8 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-20 h-20 bg-indigo-100 rounded-full blur-xl"></div>
+                    <p class="text-xs text-indigo-600 font-bold uppercase tracking-widest mb-2 relative z-10">Mengarahkan dalam</p>
+                    <p class="text-5xl font-black text-indigo-600 relative z-10"><span id="redirect-timer">5</span><span class="text-lg font-bold ml-1 text-indigo-400">detik</span></p>
                 </div>
-                <button type="button" onclick="window.doLogout()" class="text-red-500 hover:text-red-700 text-sm font-semibold transition-colors cursor-pointer">Logout / Ganti Akun</button>
+                <button type="button" onclick="window.doLogout()" class="text-slate-400 hover:text-rose-500 text-sm font-bold transition-colors cursor-pointer border-b border-transparent hover:border-rose-500 pb-1">Batal & Keluar</button>
             </div>
 
-            <div id="view-login" class="w-full max-w-md fade-in block">
-                <h2 class="text-3xl font-bold text-center mb-8">Login</h2>
-                <form onsubmit="window.handleRegularLogin(); return false;" class="space-y-4">
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3">
-                        <i class="fa-solid fa-user text-gray-400 w-5"></i>
-                        <input type="text" id="login-id" placeholder="Username / Email / No HP" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required>
+            <div id="view-login" class="w-full max-w-sm block fade-in">
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-2">Masuk</h2>
+                    <p class="text-sm text-slate-500 font-medium">Akses sistem manajemen terpadu Anda.</p>
+                </div>
+                <form onsubmit="window.handleRegularLogin(event, this); return false;" class="space-y-5">
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input">
+                        <i class="fa-solid fa-at text-slate-400 w-5"></i>
+                        <input type="text" id="login-id" placeholder="Email atau Username" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700 placeholder-slate-400" required>
                     </div>
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3">
-                        <i class="fa-solid fa-lock text-gray-400 w-5"></i>
-                        <input type="password" id="login-pass" placeholder="Password" class="bg-transparent w-full ml-3 text-sm pr-8 focus:outline-none" required>
-                        <i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('login-pass', this)"></i>
+                    <div class="input-group relative rounded-xl flex items-center px-4 py-3.5 shadow-input">
+                        <i class="fa-solid fa-lock text-slate-400 w-5"></i>
+                        <input type="password" id="login-pass" placeholder="Kata Sandi" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700 placeholder-slate-400 pr-8" required>
+                        <i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors" onclick="window.togglePw('login-pass', this)"></i>
                     </div>
-                    <!-- <div id="turnstile-login" class="flex justify-center mt-2"></div> -->
-                    <div class="flex justify-between items-center text-sm pt-1">
-                        <div class="flex gap-2">
-                            <a href="#" onclick="window.showView('view-login-otp')" class="text-primary font-medium hover:underline text-xs cursor-pointer">Login OTP</a>
-                            <span class="text-gray-300">|</span>
-                            <a href="#" onclick="window.showView('view-pin-check')" class="text-primary font-medium hover:underline text-xs cursor-pointer">Login PIN</a>
-                        </div>
-                        <a href="#" onclick="window.showView('view-forgot')" class="text-gray-500 hover:text-primary text-xs cursor-pointer">Lupa Password?</a>
-                    </div>
-                    <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold hover:bg-blue-600 shadow-lg mt-4 cursor-pointer">Masuk</button>
                     
-                    <div class="mt-6 text-center">
-                        <p class="text-xs text-gray-500 mb-4">atau masuk dengan Google</p>
-                        <div class="flex justify-center gap-4 relative">
-                            <div class="relative overflow-hidden h-10 w-full flex justify-center">
-                                <div id="g_id_onload" data-client_id="733506449291-84jlauv0mircq15p0mkn6vud379opmhk.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
-                                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
+                    <div class="flex justify-between items-center text-sm pt-2 px-1">
+                        <div class="flex gap-3">
+                            <button type="button" onclick="window.showView('view-login-otp')" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors cursor-pointer flex items-center gap-1"><i class="fa-solid fa-message text-xs"></i> OTP</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="window.showView('view-pin-check')" class="text-indigo-600 font-bold hover:text-indigo-800 transition-colors cursor-pointer flex items-center gap-1"><i class="fa-solid fa-key text-xs"></i> PIN</button>
+                        </div>
+                        <button type="button" onclick="window.showView('view-forgot')" class="text-slate-500 font-semibold hover:text-slate-800 transition-colors cursor-pointer">Lupa Sandi?</button>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-indigo-600 text-white rounded-xl py-3.5 font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200 transition-all duration-300 transform hover:-translate-y-1 mt-6 text-sm tracking-wide">MASUK SEKARANG</button>
+                    
+                    <div class="mt-8 relative text-center">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                        <span class="relative bg-white px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Atau Masuk Dengan</span>
+                    </div>
+                    <div class="mt-6 flex justify-center">
+                        <div class="relative overflow-hidden h-11 w-full flex justify-center rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-slate-50 transition-colors cursor-pointer group">
+                            <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID" data-context="signin" data-ux_mode="popup" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+                            <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="center" data-width="100%"></div>
+                            <div class="absolute inset-0 pointer-events-none flex items-center justify-center gap-3 bg-white group-hover:bg-slate-50 transition-colors">
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                                <span class="text-sm font-bold text-slate-600">Lanjutkan dengan Google</span>
                             </div>
                         </div>
                     </div>
                 </form>
             </div>
 
-            <div id="view-register" class="w-full max-w-md fade-in hidden">
-                <h2 class="text-3xl font-bold text-center mb-6">Registrasi</h2>
-                <form onsubmit="window.handleRegisterSubmit(); return false;">
-                    <div class="flex bg-secondary rounded-lg p-1 mb-5">
-                        <label class="flex-1 text-center"><input type="radio" name="reg-role" value="talent" class="peer hidden" checked><div class="py-2 text-sm font-medium text-gray-500 rounded-md cursor-pointer peer-checked:bg-white peer-checked:text-primary transition-all">Sebagai Talent</div></label>
-                        <label class="flex-1 text-center"><input type="radio" name="reg-role" value="client" class="peer hidden"><div class="py-2 text-sm font-medium text-gray-500 rounded-md cursor-pointer peer-checked:bg-white peer-checked:text-primary transition-all">Sebagai Client</div></label>
+            <div id="view-register" class="w-full max-w-md hidden fade-in">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-2">Buat Akun</h2>
+                    <p class="text-sm text-slate-500 font-medium">Pilih peran Anda dan lengkapi data.</p>
+                </div>
+                
+                <form onsubmit="window.handleRegisterSubmit(event, this); return false;" class="space-y-4">
+                    <div class="grid grid-cols-3 gap-3 mb-6">
+                        <label class="cursor-pointer group relative">
+                            <input type="radio" name="reg-role" value="talent" class="peer hidden role-radio" checked onchange="toggleClientType(false)">
+                            <div class="border-2 border-slate-200 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all">Talent</div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="radio" name="reg-role" value="client" class="peer hidden role-radio" onchange="toggleClientType(true)">
+                            <div class="border-2 border-slate-200 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all">Client</div>
+                        </label>
+                        <label class="cursor-pointer group relative">
+                            <input type="radio" name="reg-role" value="agency" class="peer hidden role-radio" onchange="toggleClientType(false)">
+                            <div class="border-2 border-slate-200 rounded-xl py-3 text-center text-xs font-bold text-slate-500 transition-all">Agensi</div>
+                        </label>
                     </div>
+
+                    <div id="client-type-container" class="hidden fade-in mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Pilih Kategori Bisnis Anda</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="ph" class="peer hidden client-type-radio" checked><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">Prod. House (PH)</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="tvc" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">TVC / Iklan</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="kol" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">KOL Specialist</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="client-type" value="wo_eo" class="peer hidden client-type-radio"><div class="border border-slate-200 bg-white rounded-lg py-2 px-1 text-center text-[11px] font-bold text-slate-600 transition-all">WO / EO / Event</div></label>
+                        </div>
+                    </div>
+
                     <div class="space-y-4">
-                        <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-user text-gray-400 w-5"></i><input type="text" id="reg-user" placeholder="Nama Lengkap" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required></div>
-                        <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-envelope text-gray-400 w-5"></i><input type="email" id="reg-email" placeholder="Email Aktif" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required></div>
-                        <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-phone text-gray-400 w-5"></i><input type="tel" id="reg-phone" inputmode="numeric" pattern="[0-9]*" oninput="window.enforceNumeric(this)" placeholder="Nomor WA" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required></div>
-                        <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-lock text-gray-400 w-5"></i><input type="password" id="reg-pass" placeholder="Password (Min. 8 Karakter)" class="bg-transparent w-full ml-3 text-sm pr-8 focus:outline-none" required><i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('reg-pass', this)"></i></div>
-                        <!-- <div id="turnstile-register" class="flex justify-center mt-2"></div> -->
-                        <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Daftar Sekarang</button>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-user text-slate-400 w-4"></i><input type="text" id="reg-user" placeholder="Nama Lengkap / Instansi" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700" required></div>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-envelope text-slate-400 w-4"></i><input type="email" id="reg-email" placeholder="Email Aktif" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700" required></div>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-phone text-slate-400 w-4"></i><input type="tel" id="reg-phone" inputmode="numeric" placeholder="Nomor WhatsApp" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required></div>
+                        <div class="input-group relative rounded-xl flex items-center px-4 py-3 shadow-input"><i class="fa-solid fa-lock text-slate-400 w-4"></i><input type="password" id="reg-pass" placeholder="Kata Sandi (Min. 8 Karakter)" class="bg-transparent w-full ml-3 text-sm font-semibold text-slate-700 pr-8" required><i class="fa-solid fa-eye-slash absolute right-4 text-slate-400 cursor-pointer hover:text-indigo-500" onclick="window.togglePw('reg-pass', this)"></i></div>
                     </div>
+                    
+                    <button type="submit" class="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold hover:bg-slate-800 shadow-lg mt-6 text-sm tracking-wide transition-all transform hover:-translate-y-1 relative">DAFTARKAN AKUN</button>
                 </form>
             </div>
 
-            <div id="view-msg-email" class="w-full max-w-md fade-in hidden text-center">
-                <div class="w-20 h-20 bg-blue-100 text-primary rounded-full flex items-center justify-center text-3xl mx-auto mb-4"><i class="fa-regular fa-envelope-open"></i></div>
-                <h2 class="text-2xl font-bold mb-2">Cek Email Anda</h2>
-                <p id="msg-email-desc" class="text-sm text-gray-500 mb-8">Tautan rahasia telah dikirim ke email Anda. Silakan klik link tersebut untuk melanjutkan.</p>
-                <button type="button" onclick="window.switchMode('login')" class="text-primary font-semibold hover:underline cursor-pointer">Kembali ke Halaman Login</button>
             </div>
-
-            <div id="view-reset-password" class="w-full max-w-md fade-in hidden">
-                <h2 class="text-3xl font-bold mb-2">Buat Password Baru</h2>
-                <p class="text-sm text-gray-500 mb-8">Masukkan password baru Anda (Min. 8 Karakter).</p>
-                <form onsubmit="window.submitNewPassword(); return false;" class="space-y-4">
-                    <input type="hidden" id="reset-token-hidden">
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3">
-                        <i class="fa-solid fa-lock text-gray-400 w-5"></i>
-                        <input type="password" id="new-pass" placeholder="Password Baru" class="bg-transparent w-full ml-3 text-sm pr-8 focus:outline-none" required>
-                        <i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('new-pass', this)"></i>
-                    </div>
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3">
-                        <i class="fa-solid fa-check-double text-gray-400 w-5"></i>
-                        <input type="password" id="confirm-new-pass" placeholder="Verifikasi Password Baru" class="bg-transparent w-full ml-3 text-sm pr-8 focus:outline-none" required>
-                        <i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('confirm-new-pass', this)"></i>
-                    </div>
-                    <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Simpan Password Baru</button>
-                </form>
-            </div>
-
-            <div id="view-pin-check" class="w-full max-w-md fade-in hidden">
-                <button type="button" onclick="window.switchMode('login')" class="text-gray-400 hover:text-primary mb-6 flex items-center gap-2 text-sm cursor-pointer"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
-                <h2 class="text-3xl font-bold mb-2">Masuk dengan PIN</h2>
-                <p class="text-sm text-gray-500 mb-8">Masukkan Email/No HP Anda terlebih dahulu.</p>
-                <form onsubmit="window.checkPinStatus(); return false;" class="space-y-4">
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-user text-gray-400 w-5"></i><input type="text" id="pin-check-id" placeholder="Email / No HP" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required></div>
-                    <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Lanjut</button>
-                </form>
-            </div>
-
-            <div id="view-pin-input" class="w-full max-w-md fade-in hidden">
-                <button type="button" onclick="window.showView('view-pin-check')" class="text-gray-400 hover:text-primary mb-6 flex items-center gap-2 text-sm cursor-pointer"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
-                <h2 class="text-3xl font-bold mb-2">Masukkan PIN</h2>
-                <p class="text-sm text-gray-500 mb-8">Identitas: <span id="pin-input-email" class="font-bold text-gray-700"></span></p>
-                <form onsubmit="window.loginWithPin(); return false;" class="space-y-4">
-                    <input type="hidden" id="pin-login-identifier">
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3">
-                        <i class="fa-solid fa-key text-gray-400 w-5"></i><input type="password" id="pin-code" inputmode="numeric" pattern="[0-9]*" oninput="window.enforceNumeric(this)" placeholder="6 Digit PIN" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-bold text-lg pr-8" required><i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('pin-code', this)"></i>
-                    </div>
-                    <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Masuk</button>
-                </form>
-            </div>
-
-            <div id="view-pin-setup" class="w-full max-w-md fade-in hidden">
-                <button type="button" onclick="window.showView('view-pin-check')" class="text-gray-400 hover:text-primary mb-6 flex items-center gap-2 text-sm cursor-pointer"><i class="fa-solid fa-arrow-left"></i> Batal</button>
-                <h2 class="text-3xl font-bold mb-2">Buat PIN Baru</h2>
-                <p class="text-sm text-gray-500 mb-8">Akun ini belum memiliki PIN. Buat PIN 6 digit untuk login instan.</p>
-                <form onsubmit="window.requestPinOtp(); return false;" class="space-y-4">
-                    <input type="hidden" id="pin-setup-identifier">
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-key text-gray-400 w-5"></i><input type="password" id="new-pin-setup" inputmode="numeric" pattern="[0-9]*" oninput="window.enforceNumeric(this)" placeholder="Buat 6 Digit PIN" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-bold pr-8" required><i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('new-pin-setup', this)"></i></div>
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-check-circle text-gray-400 w-5"></i><input type="password" id="confirm-pin-setup" inputmode="numeric" pattern="[0-9]*" oninput="window.enforceNumeric(this)" placeholder="Ulangi PIN" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-bold pr-8" required><i class="fa-solid fa-eye-slash absolute right-4 text-gray-400 cursor-pointer" onclick="window.togglePw('confirm-pin-setup', this)"></i></div>
-                    <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Simpan & Verifikasi OTP</button>
-                </form>
-            </div>
-
-            <div id="view-otp-verify" class="w-full max-w-md fade-in hidden">
-                <button type="button" onclick="window.switchMode('login')" class="text-gray-400 hover:text-primary mb-6 flex items-center gap-2 text-sm cursor-pointer"><i class="fa-solid fa-arrow-left"></i> Batal</button>
-                <h2 class="text-3xl font-bold mb-2">Verifikasi OTP</h2>
-                <p class="text-sm text-gray-500 mb-8">OTP telah dikirim ke <span id="otp-target-display" class="font-bold"></span></p>
-                <form onsubmit="window.submitOtp(); return false;" class="space-y-4">
-                    <input type="hidden" id="otp-identifier"><input type="hidden" id="otp-purpose">
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-message text-gray-400 w-5"></i><input type="password" id="otp-code" inputmode="numeric" pattern="[0-9]*" oninput="window.enforceNumeric(this)" placeholder="0 0 0 0 0 0" maxlength="6" class="bg-transparent w-full ml-3 text-center tracking-[0.5em] font-bold text-lg focus:outline-none" required></div>
-                    <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Verifikasi Kode</button>
-                    <div class="text-center mt-4"><p class="text-sm text-gray-500">Kirim ulang dalam <span id="otp-timer" class="font-bold text-primary">03:00</span></p><button type="button" id="btn-resend-otp" onclick="window.resendOtp()" class="text-primary font-medium text-sm mt-2 hidden hover:underline cursor-pointer">Kirim Ulang OTP</button></div>
-                </form>
-            </div>
-
-            <div id="view-input-id-only" class="w-full max-w-md fade-in hidden">
-                <button type="button" onclick="window.switchMode('login')" class="text-gray-400 hover:text-primary mb-6 flex items-center gap-2 text-sm cursor-pointer"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
-                <h2 id="single-id-title" class="text-3xl font-bold mb-2"></h2>
-                <p id="single-id-desc" class="text-sm text-gray-500 mb-8"></p>
-                <form onsubmit="window.submitSingleId(); return false;" class="space-y-4">
-                    <input type="hidden" id="single-id-purpose">
-                    <div class="input-group relative bg-secondary rounded-lg flex items-center px-4 py-3"><i class="fa-solid fa-id-card text-gray-400 w-5"></i><input type="text" id="single-id-input" placeholder="Email / No HP" class="bg-transparent w-full ml-3 text-sm focus:outline-none" required></div>
-                    <button id="single-id-btn" type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Lanjut</button>
-                </form>
-            </div>
-
-            <div id="view-social-role" class="w-full max-w-md fade-in hidden text-center">
-                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-primary"><i class="fa-brands fa-google text-2xl text-red-500"></i></div>
-                <h2 class="text-2xl font-bold mb-1">Pilih Peran Anda</h2>
-                <form onsubmit="window.processSocialRegistration(); return false;" class="space-y-4 mt-6">
-                    <input type="hidden" id="social-temp-token">
-                    <label class="block border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-primary transition-colors"><input type="radio" name="soc-role" value="talent" checked class="peer hidden"><div class="font-bold peer-checked:text-primary">Saya Talent</div></label>
-                    <label class="block border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:border-primary transition-colors"><input type="radio" name="soc-role" value="client" class="peer hidden"><div class="font-bold peer-checked:text-primary">Saya Client</div></label>
-                    <button type="submit" class="w-full bg-primary text-white rounded-lg py-3 font-semibold shadow-lg cursor-pointer">Selesaikan Pendaftaran</button>
-                </form>
-            </div>
-
-        </div>
     </div>
-    <script type="module" src="./assets/js/sso_auth_ui.js"></script>
+
+    <script>
+        // Logika Tampilan
+        const allViews = ['view-success-redirect', 'view-login', 'view-register', 'view-msg-email', 'view-reset-password', 'view-pin-check', 'view-pin-input', 'view-pin-setup', 'view-otp-verify', 'view-input-id-only'];
+        
+        window.showView = function(target) {
+            allViews.forEach(v => { const el = document.getElementById(v); if(el) el.classList.add('hidden'); });
+            const targetEl = document.getElementById(target); if(targetEl) targetEl.classList.remove('hidden');
+        }
+
+        window.switchMode = function(mode) {
+            const mc = document.getElementById('main-container'), bp = document.getElementById('blue-panel');
+            if (mode === 'register') {
+                if(window.innerWidth > 767) { mc.classList.add('flex-row-reverse'); bp.classList.add('reverse'); }
+                document.getElementById('panel-content-login').classList.add('hidden');
+                document.getElementById('panel-content-register').classList.remove('hidden');
+                window.showView('view-register');
+            } else {
+                if(window.innerWidth > 767) { mc.classList.remove('flex-row-reverse'); bp.classList.remove('reverse'); }
+                document.getElementById('panel-content-register').classList.add('hidden');
+                document.getElementById('panel-content-login').classList.remove('hidden');
+                window.showView('view-login');
+            }
+            document.querySelectorAll('form').forEach(form => form.reset());
+        }
+
+        window.togglePw = function(inputId, icon) { 
+            const el = document.getElementById(inputId); 
+            if(el.type === "password") { el.type = "text"; icon.classList.replace("fa-eye-slash", "fa-eye"); } 
+            else { el.type = "password"; icon.classList.replace("fa-eye", "fa-eye-slash"); } 
+        }
+
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toast-container'); if(!container) return;
+            const toast = document.createElement('div');
+            let icon = type === 'success' ? '<i class="fa-solid fa-circle-check text-emerald-500 text-xl"></i>' : type === 'error' ? '<i class="fa-solid fa-circle-xmark text-rose-500 text-xl"></i>' : '<i class="fa-solid fa-circle-info text-indigo-500 text-xl"></i>';
+            toast.className = `toast ${type}`; toast.innerHTML = `${icon}<span>${message}</span>`;
+            container.appendChild(toast); setTimeout(() => toast.classList.add('show'), 10); 
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 4000);
+        }
+
+        window.toggleClientType = function(show) {
+            const container = document.getElementById('client-type-container');
+            if(show) container.classList.remove('hidden'); else container.classList.add('hidden');
+        }
+
+        // Contoh Simulasi Loading Submit (Mencegah Double Click)
+        window.handleRegularLogin = function(e, form) {
+            e.preventDefault();
+            const btn = form.querySelector('button[type="submit"]');
+            const oriText = btn.innerText;
+            btn.classList.add('btn-loading');
+            
+            // SIMULASI API CALL (Ganti dengan fetch asli ke backend SSO)
+            setTimeout(() => {
+                btn.classList.remove('btn-loading');
+                window.showToast("Login Berhasil!", "success");
+                document.getElementById('logged-in-role').innerText = "TALENT";
+                window.showView('view-success-redirect');
+            }, 1500);
+        }
+
+        window.handleRegisterSubmit = function(e, form) {
+            e.preventDefault();
+            const btn = form.querySelector('button[type="submit"]');
+            btn.classList.add('btn-loading');
+            
+            // Ambil Role dan Tipe Klien
+            const role = document.querySelector('input[name="reg-role"]:checked').value;
+            let clientType = null;
+            if(role === 'client') clientType = document.querySelector('input[name="client-type"]:checked').value;
+
+            console.log("Mendaftar sebagai:", role, "| Tipe Bisnis:", clientType);
+            
+            setTimeout(() => {
+                btn.classList.remove('btn-loading');
+                window.showToast("Pendaftaran Berhasil!", "success");
+                // Lanjut ke verifikasi OTP / Email
+            }, 1500);
+        }
+    </script>
 </body>
 </html>

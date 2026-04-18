@@ -104,7 +104,8 @@ router.post('/invite', requireRole(['agency', 'admin']), async (c) => {
   const userId = c.get('userId')
   try {
     const agencyId = await resolveAgencyId(c, userId)
-    const body = await c.req.json()
+    // Tangkap body dengan aman (fallback ke objek kosong jika error)
+    const body = await c.req.json().catch(() => ({})) 
     
     const inviteToken = crypto.randomUUID().replace(/-/g, '')
     const invitationId = crypto.randomUUID()
@@ -112,16 +113,22 @@ router.post('/invite', requireRole(['agency', 'admin']), async (c) => {
     const expiresDays = parseInt(body.expires_in_days) || 90;
     const maxUses = parseInt(body.max_uses) || 50;
 
+    // Simpan token undangan ke database
     await c.env.DB_CORE.prepare(`
       INSERT INTO agency_invitations (invitation_id, agency_id, invite_link_token, created_by_user_id, expires_at, max_uses, current_uses, status)
       VALUES (?, ?, ?, ?, datetime('now', '+' || ? || ' days'), ?, 0, 'active')
     `).bind(invitationId, agencyId, inviteToken, userId, expiresDays, maxUses).run()
 
-    const inviteUrl = `https://sso.orlandmanagement.com/register?invite=${inviteToken}`
-    return c.json({ status: 'ok', message: 'Link berhasil dibuat', data: { invite_url: inviteUrl } })
+    // POINT PENTING: Ubah URL ke Blogspot
+    const inviteUrl = `https://www.orlandmanagement.com/p/invite.html?token=${inviteToken}`
+    
+    return c.json({ 
+      status: 'ok', 
+      message: 'Link berhasil dibuat', 
+      data: { invite_url: inviteUrl, token: inviteToken } 
+    })
   } catch (err: any) { return c.json({ status: 'error', message: err.message }, 500) }
 })
-
 /**
  * [GET] /api/v1/agency/invitations - Lihat Daftar Undangan
  */

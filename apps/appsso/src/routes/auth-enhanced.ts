@@ -651,4 +651,88 @@ auth.post('/register-invite', async (c) => {
   }
 });
 
+/**
+ * [GET] /api/v1/agency/talents/:id
+ * Ambil detail profil talent downline untuk diedit oleh agensi
+ */
+router.get('/talents/:id', requireRole(['agency', 'admin']), async (c) => {
+  const userId = c.get('userId');
+  const talentId = c.req.param('id');
+  try {
+    const agencyId = await resolveAgencyId(c, userId);
+    
+    // Verifikasi bahwa talent ini benar-benar downline dari agensi ini
+    const isOwned = await c.env.DB_CORE.prepare('SELECT talent_id FROM agency_talents WHERE agency_id = ? AND talent_id = ?').bind(agencyId, talentId).first();
+    if (!isOwned) return c.json({ status: 'error', message: 'Akses Ditolak: Talent bukan bagian dari roster Anda.' }, 403);
+
+    // Ambil Data Tersebar
+    const ssoUser = await c.env.DB_SSO.prepare('SELECT email, phone, first_name, last_name FROM users WHERE id = ?').bind(talentId).first<any>();
+    const talent = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE id = ?').bind(talentId).first<any>() || {};
+    const profile = await c.env.DB_CORE.prepare('SELECT * FROM talent_profiles WHERE talent_id = ?').bind(talentId).first<any>() || {};
+
+    return c.json({
+      status: 'ok',
+      data: {
+        talent_id: talentId,
+        full_name: talent.fullname || `${ssoUser?.first_name} ${ssoUser?.last_name || ''}`.trim(),
+        email: ssoUser?.email,
+        phone: ssoUser?.phone || talent.phone,
+        ...profile
+      }
+    });
+  } catch(err: any) { return c.json({ status: 'error', message: err.message }, 500); }
+});
+
+/**
+ * [PUT] /api/v1/agency/talents/:id
+ * Simpan perubahan profil downline yang diedit agensi
+ */
+router.put('/talents/:id', requireRole(['agency', 'admin']), async (c) => {
+  const userId = c.get('userId');
+  const talentId = c.req.param('id');
+  try {
+    const agencyId = await resolveAgencyId(c, userId);
+    
+    // Verifikasi Keamanan (Cegah agensi mengedit talent orang lain)
+    const isOwned = await c.env.DB_CORE.prepare('SELECT talent_id FROM agency_talents WHERE agency_id = ? AND talent_id = ?').bind(agencyId, talentId).first();
+    if (!isOwned) return c.json({ status: 'error', message: 'Akses Ditolak.' }, 403);
+
+    const body = await c.req.json();
+
+    // 1. Update Tabel Talents
+    if(body.full_name || body.phone) {
+       await c.env.DB_CORE.prepare('UPDATE talents SET fullname = COALESCE(?, fullname), phone = COALESCE(?, phone) WHERE id = ?')
+         .bind(body.full_name, body.phone, talentId).run();
+    }
+
+    // 2. Upsert (Update or Insert) Tabel Talent Profiles
+    await c.env.DB_CORE.prepare(`
+      INSERT INTO talent_profiles (
+        talent_id, gender, dob, domicile, height_cm, weight_kg, eye_color, hair_color, 
+        headshot_url, side_view_url, full_body_url, additional_photos, 
+        interests, skills, showreels, audios, social_media_json, experiences, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(talent_id) DO UPDATE SET
+        gender=excluded.gender, dob=excluded.dob, domicile=excluded.domicile, height_cm=excluded.height_cm, weight_kg=excluded.weight_kg,
+        eye_color=excluded.eye_color, hair_color=excluded.hair_color, headshot_url=excluded.headshot_url, side_view_url=excluded.side_view_url,
+        full_body_url=excluded.full_body_url, additional_photos=excluded.additional_photos, interests=excluded.interests, skills=excluded.skills,
+        showreels=excluded.showreels, audios=excluded.audios, social_media_json=excluded.social_media_json, experiences=excluded.experiences, updated_at=datetime('now')
+    `).bind(
+      talentId, body.gender, body.birth_date, body.location, body.height, body.weight, body.eye_color, body.hair_color,
+      body.headshot, body.side_view, body.full_height, JSON.stringify(body.additional_photos || []),
+      JSON.stringify(body.interests || []), JSON.stringify(body.skills || []), JSON.stringify(body.showreels || []), JSON.stringify(body.audios || []),
+      JSON.stringify({ instagram: body.instagram, tiktok: body.tiktok, facebook: body.facebook, youtube: body.youtube, twitter: body.twitter, website: body.website }),
+      JSON.stringify(body.credits || [])
+    ).run();
+
+    // Hapus Cache agar widget public otomatis update
+    c.executionCtx.waitUntil(Promise.all([
+       c.env.ORLAND_CACHE.delete(`talent:profile:${talentId}`),
+       c.env.ORLAND_CACHE.delete('PUBLIC_TALENT_ROSTER')
+    ]));
+
+    return c.json({ status: 'ok', message: 'Profil downline berhasil diperbarui' });
+  } catch(err: any) { return c.json({ status: 'error', message: err.message }, 500); }
+});
+
 export default auth

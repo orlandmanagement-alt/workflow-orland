@@ -53,6 +53,8 @@ import whitelabelRouter from './functions/whitelabel/whitelabelHandler'
 import availabilityRouter from './functions/calendar/availabilityHandler'
 import recommendationsRouter from './functions/casting/recommendationsHandler'
 import leaderboardRouter from './functions/stats/leaderboardHandler'
+import { agencyImpersonationMiddleware } from './middleware/agencyImpersonationMiddleware'
+import multiTalentRouter from './routes/agency/multiTalent'
 
 /**
  * TYPE DEFINITIONS
@@ -186,6 +188,8 @@ app.get('/api/v1/auth/me', async (c) => {
   return c.json({ status: 'ok', user, role: user.user_type })
 })
 
+
+
 // MOUNTING SEMUA ROUTER BISNIS
 app.route('/api/v1/auth', userUpdateRouter)
 app.route('/api/v1/talents', talentRouter)
@@ -239,6 +243,8 @@ app.route('/api/v1/public', availabilityRouter)
 app.route('/api/v1/ai', recommendationsRouter)
 app.route('/api/v1/recommendations', recommendationsRouter)
 app.route('/api/v1/leaderboard', leaderboardRouter)
+app.use('/api/v1/*', agencyImpersonationMiddleware)
+app.route('/api/v1/agency/casting', multiTalentRouter)
 
 /**
  * 4. PUBLIC R2 MEDIA ACCESS

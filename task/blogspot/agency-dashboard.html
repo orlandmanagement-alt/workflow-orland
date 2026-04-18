@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency Dashboard • Orland Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { colors: { bg: '#f4f6fb', card: '#ffffff', muted: '#6b7280', text: '#111827', line: '#e5e7eb' }, animation: { 'gradient-x': 'gradient-x 3s ease infinite', 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }, keyframes: { 'gradient-x': { '0%, 100%': { 'background-size': '200% 200%', 'background-position': 'left center' }, '50%': { 'background-size': '200% 200%', 'background-position': 'right center' } } } } }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; color: #111827; overflow-x: hidden; transition: background-color 0.3s; }
+    html.dark { filter: invert(1) hue-rotate(180deg); background-color: #111; }
+    html.dark img, html.dark video, html.dark iframe, html.dark .no-invert, html.dark .avatar-bg { filter: invert(1) hue-rotate(180deg); }
+    body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(-45deg, #eff6ff, #f3e8ff, #fce7f3, #fffbeb); background-size: 400% 400%; animation: gradient-x 15s ease infinite; }
+    .hover-lift { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease; }
+    .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(139, 92, 246, 0.15); }
+    .hide { display: none !important; }
+    .tab-active { color: #7c3aed; font-weight: 800; }
+    .tab-active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -7px; height: 3px; border-radius: 999px; background: linear-gradient(90deg, #8b5cf6, #ec4899); box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4); }
+    #apiLoader { position: fixed; inset: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(139, 92, 246, 0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  </style>
+</head>
+
+<body class="h-full antialiased pb-32 relative">
+
+  <div id="authGuard" class="fixed inset-0 z-[9999999] bg-slate-900/95 backdrop-blur-xl flex flex-col items-center justify-center text-white hide no-invert">
+     <div class="text-5xl mb-4 drop-shadow-lg">🏢</div>
+     <h2 class="text-2xl md:text-3xl font-black mb-2 tracking-tight text-center">Agency Portal</h2>
+     <p class="text-slate-400 mb-8 text-center max-w-sm px-4 text-sm">Please log in as an Agency to manage your roster and invitations.</p>
+     <a href="https://sso.orlandmanagement.com" class="bg-gradient-to-r from-violet-600 to-indigo-600 hover:scale-105 shadow-lg shadow-violet-500/30 px-8 py-3.5 rounded-full font-black transition-all">Log In</a>
+  </div>
+
+  <div id="actionToast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3.5 rounded-full font-black shadow-xl z-[99999] transition-all duration-500 transform -translate-y-20 opacity-0 flex items-center gap-3 no-invert border border-slate-700">
+      <span class="text-emerald-400 text-xl drop-shadow-md" id="toastIcon">✓</span>
+      <span class="text-[13px] tracking-wide" id="toastText">Action successful!</span>
+  </div>
+
+  <div id="apiLoader" class="flex flex-col items-center justify-center">
+    <div class="spinner mb-3"></div>
+    <div class="font-black text-violet-700 tracking-widest text-sm">SYNCING AGENCY DATA...</div>
+  </div>
+
+  <div class="max-w-[1200px] mx-auto px-3.5 pt-8 pb-10" id="mainAppContainer" style="opacity: 0; transition: opacity 0.5s;">
+    
+    <div class="bg-white/80 backdrop-blur-md border border-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 mb-6 flex flex-col md:flex-row items-center md:items-start justify-between gap-5 relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-violet-100 to-transparent rounded-full blur-3xl -z-10 pointer-events-none"></div>
+      
+      <div class="flex items-center gap-5 text-center md:text-left flex-col md:flex-row w-full">
+        <div class="w-24 h-24 rounded-2xl bg-gradient-to-tr from-violet-500 to-fuchsia-500 text-white flex items-center justify-center text-3xl font-black shadow-lg shrink-0 border-4 border-white">
+          <span id="agencyInitial">AG</span>
+        </div>
+        <div class="flex-1">
+          <div class="inline-block px-3 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-600 text-[10px] font-black tracking-widest uppercase mb-2">Verified Agency</div>
+          <h1 class="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1" id="agencyName">Agency Name</h1>
+          <p class="text-slate-500 font-bold text-sm" id="agencyAdmin">Admin: admin@agency.com</p>
+        </div>
+        <div class="flex items-center gap-2 mt-4 md:mt-0">
+          <button class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center transition-all shadow-sm" id="btnToggleDark" title="Dark Mode">🌙</button>
+          <button class="bg-slate-900 text-white px-5 py-2.5 rounded-full font-black text-[13px] hover:bg-slate-800 shadow-md transition-all flex items-center gap-2" id="btnLogout">
+             Keluar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-8 border-b-2 border-slate-200/50 pb-1 mb-6 px-2 overflow-x-auto no-scrollbar">
+      <div class="font-bold text-slate-400 text-[15px] relative pb-2 cursor-pointer hover:text-violet-600 transition-colors tab-active whitespace-nowrap" data-tab="roster">👥 Downline (Roster)</div>
+      <div class="font-bold text-slate-400 text-[15px] relative pb-2 cursor-pointer hover:text-fuchsia-600 transition-colors whitespace-nowrap" data-tab="invites">🔗 Link Invite</div>
+      
+      <div class="font-bold text-slate-400 text-[15px] relative pb-2 cursor-pointer hover:text-amber-500 transition-colors whitespace-nowrap" data-tab="bookings">🗓️ Booking & Jadwal</div>
+      <div class="font-bold text-slate-400 text-[15px] relative pb-2 cursor-pointer hover:text-emerald-500 transition-colors whitespace-nowrap" data-tab="stats">📊 Statistik</div>
+      <div class="font-bold text-slate-400 text-[15px] relative pb-2 cursor-pointer hover:text-blue-600 transition-colors whitespace-nowrap" data-tab="profile">🏢 Profile Agensi</div>
+    </div>
+
+    <section class="panel block animate-[fadeInUp_0.4s_ease-out]" id="panel-roster">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+         <div>
+            <h2 class="text-xl font-black text-slate-800">Your Talents</h2>
+            <p class="text-slate-500 text-sm font-bold">Kelola dan update portofolio talent di bawah naungan Anda.</p>
+         </div>
+         <div class="flex gap-3 w-full md:w-auto">
+            <button class="flex-1 md:flex-none bg-white border-2 border-violet-200 text-violet-700 hover:bg-violet-50 px-5 py-2.5 rounded-xl font-black text-[13px] shadow-sm transition-all" id="btnImportJson">
+                📄 Import JSON
+            </button>
+            <button class="flex-1 md:flex-none bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:scale-105 px-5 py-2.5 rounded-xl font-black text-[13px] shadow-md transition-all" onclick="document.querySelector('[data-tab=\'invites\']').click()">
+                + Invite Talent
+            </button>
+         </div>
+      </div>
+
+      <div id="rosterGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+         <div class="col-span-full text-center py-10 text-slate-400 font-bold">Loading talents...</div>
+      </div>
+      
+      <div id="rosterEmpty" class="hide border-2 border-dashed border-slate-300 bg-slate-50 rounded-[24px] p-10 text-center">
+         <div class="text-4xl mb-3">🚷</div>
+         <h3 class="text-lg font-black text-slate-700 mb-1">Belum Ada Talent</h3>
+         <p class="text-slate-500 text-sm font-semibold mb-5">Anda belum memiliki talent di downline Anda. Cek D1 / Buat Link Invite untuk menambah.</p>
+         <button class="bg-violet-100 text-violet-700 px-6 py-2.5 rounded-full font-black text-[13px]" onclick="document.querySelector('[data-tab=\'invites\']').click()">Buat Link Invite Sekarang</button>
+      </div>
+    </section>
+
+    <section class="panel hide animate-[fadeInUp_0.4s_ease-out]" id="panel-invites">
+      <div class="grid md:grid-cols-[1fr_350px] gap-6">
+        
+        <div class="bg-white/80 backdrop-blur-md border border-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6">
+           <h2 class="text-xl font-black text-slate-800 mb-1">Buat Link Pendaftaran</h2>
+           <p class="text-slate-500 text-sm font-bold mb-6">Link ini memungkinkan talent mendaftar dan otomatis masuk ke downline agensi Anda.</p>
+           
+           <div class="flex flex-col gap-4">
+              <div>
+                 <label class="text-[11px] font-black text-slate-500 uppercase">Maksimal Penggunaan (Talent)</label>
+                 <select id="invMaxUses" class="w-full mt-1 border-2 border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-400 bg-slate-50">
+                    <option value="-1">Tidak Terbatas (Unlimited)</option>
+                    <option value="1">Hanya 1 Orang</option>
+                    <option value="5">Maksimal 5 Orang</option>
+                    <option value="50">Maksimal 50 Orang</option>
+                 </select>
+              </div>
+              <div>
+                 <label class="text-[11px] font-black text-slate-500 uppercase">Masa Aktif Link (Hari)</label>
+                 <select id="invExpiry" class="w-full mt-1 border-2 border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-400 bg-slate-50">
+                    <option value="7">7 Hari</option>
+                    <option value="30" selected>30 Hari</option>
+                    <option value="90">90 Hari</option>
+                 </select>
+              </div>
+              <button id="btnGenerateLink" class="w-full bg-gradient-to-r from-fuchsia-500 to-rose-500 text-white px-6 py-3.5 rounded-xl font-black text-[14px] shadow-lg hover:shadow-xl transition-all mt-2">
+                 ⚡ Generate Magic Link
+              </button>
+           </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-[24px] p-6 overflow-hidden flex flex-col">
+           <h3 class="text-[12px] font-black text-slate-500 uppercase tracking-widest mb-4">Link Aktif Anda</h3>
+           <div id="invitesList" class="flex flex-col gap-3 overflow-y-auto flex-1">
+              <div class="text-center text-slate-400 text-sm font-bold py-5">Belum ada link yang dibuat.</div>
+           </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="panel hide animate-[fadeInUp_0.4s_ease-out]" id="panel-bookings">
+       <div class="border-2 border-dashed border-amber-200 bg-amber-50 rounded-[24px] p-10 md:p-20 text-center max-w-3xl mx-auto">
+         <div class="text-6xl mb-4 drop-shadow-md">🗓️</div>
+         <h3 class="text-2xl font-black text-amber-800 mb-2">Jadwal & Booking Request</h3>
+         <p class="text-amber-700 text-sm font-semibold">Fitur untuk menerima dan menyetujui permintaan booking dari klien (Production House, Brand, dsb) untuk talent downline Anda sedang dalam tahap pengembangan.</p>
+       </div>
+    </section>
+
+    <section class="panel hide animate-[fadeInUp_0.4s_ease-out]" id="panel-stats">
+       <div class="border-2 border-dashed border-emerald-200 bg-emerald-50 rounded-[24px] p-10 md:p-20 text-center max-w-3xl mx-auto">
+         <div class="text-6xl mb-4 drop-shadow-md">📊</div>
+         <h3 class="text-2xl font-black text-emerald-800 mb-2">Statistik Performa Talent</h3>
+         <p class="text-emerald-700 text-sm font-semibold">Pantau grafik interaksi, jumlah *profile views*, konversi klik ke WhatsApp, dan laporan bulanan agensi Anda di sini (Segera Hadir).</p>
+       </div>
+    </section>
+
+    <section class="panel hide animate-[fadeInUp_0.4s_ease-out]" id="panel-profile">
+      <div class="bg-white/80 backdrop-blur-md border border-white rounded-[24px] shadow-sm p-8 text-center max-w-2xl mx-auto relative">
+         <div class="w-32 h-32 mx-auto rounded-3xl bg-slate-100 flex items-center justify-center text-5xl mb-5 border-4 border-white shadow-md">🏢</div>
+         
+         <div id="profViewMode">
+             <h2 class="text-2xl font-black text-slate-800" id="profAgencyName">-</h2>
+             <p class="text-slate-500 font-bold mb-6" id="profAgencyId">ID: -</p>
+             <div class="grid grid-cols-2 gap-4 text-left bg-slate-50 p-5 rounded-2xl border border-slate-100 mb-6">
+                <div>
+                   <div class="text-[10px] font-black text-slate-400 uppercase">Admin Email</div>
+                   <div class="text-sm font-bold text-slate-700 truncate" id="profAdminEmail">-</div>
+                </div>
+                <div>
+                   <div class="text-[10px] font-black text-slate-400 uppercase">Admin Name</div>
+                   <div class="text-sm font-bold text-slate-700" id="profAdminName">-</div>
+                </div>
+             </div>
+             <button id="btnEditAgency" class="bg-slate-900 text-white px-6 py-2.5 rounded-full font-black text-[13px] hover:bg-slate-800 shadow-md transition-all">✎ Edit Profil Agensi</button>
+         </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center hide transition-opacity" id="modalEditAgency">
+      <div class="bg-white rounded-[24px] p-6 max-w-sm w-full shadow-2xl animate-[fadeInUp_0.3s_ease-out]" onclick="event.stopPropagation()">
+          <div class="flex justify-between items-center mb-5">
+              <h3 class="text-lg font-black text-slate-800">Edit Profil Agensi</h3>
+              <button id="btnCloseModalAgency" class="text-slate-400 hover:text-red-500 font-bold text-2xl leading-none">&times;</button>
+          </div>
+          <div class="mb-5">
+              <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Nama Agensi / Perusahaan</label>
+              <input type="text" id="inpAgencyName" class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-400 bg-slate-50" placeholder="Contoh: Orland Agency">
+          </div>
+          <div class="flex gap-3">
+              <button id="btnCancelEditAgency" class="flex-1 bg-slate-100 text-slate-600 px-4 py-3 rounded-xl font-black text-[13px] hover:bg-slate-200 transition-all">Batal</button>
+              <button id="btnSaveAgency" class="flex-1 bg-violet-600 text-white px-4 py-3 rounded-xl font-black text-[13px] shadow-md hover:bg-violet-700 transition-all">💾 Simpan</button>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-4 text-center leading-tight">*Email dan Nama Admin diatur via pengaturan SSO.</p>
+      </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const ssoUserStr = localStorage.getItem('orland_sso_user');
+      if(!ssoUserStr) {
+          document.getElementById("authGuard").classList.remove("hide");
+          return;
+      }
+
+      let ssoUser = {};
+      try { ssoUser = JSON.parse(ssoUserStr); } catch(e){}
+
+      if(ssoUser.role !== 'agency' && ssoUser.user_type !== 'agency' && ssoUser.role !== 'admin') {
+          document.getElementById("authGuard").innerHTML = `<div class="text-5xl mb-4">⛔</div><h2 class="text-3xl font-black mb-2">Akses Ditolak</h2><p class="text-slate-400 mb-8">Halaman ini khusus untuk Akun Agency.</p><a href="https://sso.orlandmanagement.com" class="bg-rose-600 px-8 py-3 rounded-full font-black text-white">Kembali</a>`;
+          document.getElementById("authGuard").classList.remove("hide");
+          return;
+      }
+
+      const API_BASE = "https://api.orlandmanagement.com/api/v1/agency";
+      const TOKEN = ssoUser.token || "";
+      const HEADERS = { "Content-Type": "application/json", "Authorization": `Bearer ${TOKEN}` };
+
+      // Helper: Toast
+      function showToast(msg, isErr=false) {
+         const t = document.getElementById("actionToast");
+         document.getElementById("toastText").textContent = msg;
+         document.getElementById("toastIcon").textContent = isErr ? "✖" : "✓";
+         document.getElementById("toastIcon").className = isErr ? "text-rose-400 text-xl drop-shadow-md" : "text-emerald-400 text-xl drop-shadow-md";
+         t.classList.remove("opacity-0", "-translate-y-20");
+         setTimeout(() => t.classList.add("opacity-0", "-translate-y-20"), 3000);
+      }
+
+      // Helper: Tabs
+      const tabs = document.querySelectorAll("[data-tab]");
+      tabs.forEach(tab => {
+         tab.addEventListener("click", () => {
+            tabs.forEach(t => t.classList.remove("tab-active"));
+            tab.classList.add("tab-active");
+            document.querySelectorAll(".panel").forEach(p => {
+               p.classList.add("hide"); p.classList.remove("animate-[fadeInUp_0.4s_ease-out]");
+            });
+            const target = document.getElementById(`panel-${tab.dataset.tab}`);
+            if(target) {
+               target.classList.remove("hide");
+               void target.offsetWidth; 
+               target.classList.add("animate-[fadeInUp_0.4s_ease-out]");
+            }
+         });
+      });
+
+      // Dark Mode & Logout
+      document.getElementById("btnToggleDark").addEventListener("click", () => document.documentElement.classList.toggle("dark"));
+      document.getElementById("btnLogout").addEventListener("click", () => { localStorage.removeItem("orland_sso_user"); window.location.href="https://sso.orlandmanagement.com"; });
+
+      // ==========================================
+      // API FETCHERS
+      // ==========================================
+      
+      async function loadDashboard() {
+         document.getElementById("apiLoader").classList.remove("hide");
+         await Promise.all([fetchInfo(), fetchRoster()]); // fetchInvites dipanggil setelah info agar nama agensi siap
+         await fetchInvites();
+         document.getElementById("apiLoader").classList.add("hide");
+         document.getElementById("mainAppContainer").style.opacity = "1";
+      }
+
+      // 1. Fetch Info Profile Agensi
+      async function fetchInfo() {
+         try {
+            const res = await fetch(`${API_BASE}/info`, { headers: HEADERS });
+            const data = await res.json();
+            if(data.status === 'ok' && data.data) {
+               const d = data.data;
+               document.getElementById("agencyName").textContent = d.agency_name || "Agency Profile";
+               document.getElementById("agencyInitial").textContent = (d.agency_name||"AG").substring(0,2).toUpperCase();
+               document.getElementById("agencyAdmin").textContent = `Admin: ${d.admin_email}`;
+               
+               // Isi di Tab Profil
+               document.getElementById("profAgencyName").textContent = d.agency_name;
+               document.getElementById("profAgencyId").textContent = `ID: ${d.agency_id}`;
+               document.getElementById("profAdminName").textContent = d.admin_name;
+               document.getElementById("profAdminEmail").textContent = d.admin_email;
+            }
+         } catch(e) {}
+      }
+
+      // 2. Fetch Downline Roster
+      async function fetchRoster() {
+         try {
+            const res = await fetch(`${API_BASE}`, { headers: HEADERS });
+            const data = await res.json();
+            const grid = document.getElementById("rosterGrid");
+            const empty = document.getElementById("rosterEmpty");
+            grid.innerHTML = "";
+
+            if(data.status === 'ok' && data.data && data.data.length > 0) {
+               empty.classList.add("hide");
+               grid.classList.remove("hide");
+               data.data.forEach(t => {
+                  const noImg = "https://ui-avatars.com/api/?name="+encodeURIComponent(t.fullname||'T')+"&background=f3e8ff&color=7c3aed&bold=true";
+                  const img = t.headshot_url || noImg;
+                  const card = document.createElement("div");
+                  card.className = "bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group";
+                  card.innerHTML = `
+                     <div class="h-48 bg-slate-100 relative overflow-hidden">
+                        <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-lg uppercase">${t.gender||'-'}</div>
+                     </div>
+                     <div class="p-4">
+                        <div class="font-black text-slate-800 truncate text-[15px] mb-1">${t.fullname || 'Unnamed'}</div>
+                        <div class="text-[11px] font-bold text-slate-500 flex items-center gap-1 mb-3">📍 ${t.domicile || 'Location N/A'}</div>
+                        
+                        <a href="https://www.orlandmanagement.com/p/profile.html?agency_edit=${t.talent_id}" target="_blank" class="block text-center w-full bg-violet-50 text-violet-700 hover:bg-violet-600 hover:text-white px-4 py-2 rounded-xl font-black text-[12px] transition-colors border border-violet-100">
+                            ✎ Edit Profil Talent
+                        </a>
+                     </div>
+                  `;
+                  grid.appendChild(card);
+               });
+            } else {
+               grid.classList.add("hide");
+               empty.classList.remove("hide");
+            }
+         } catch(e) { console.error(e); }
+      }
+
+      // 3. Fetch Invitations List
+      async function fetchInvites() {
+         try {
+            const res = await fetch(`${API_BASE}/invitations`, { headers: HEADERS });
+            const data = await res.json();
+            const list = document.getElementById("invitesList");
+            list.innerHTML = "";
+
+            // AMBIL NAMA AGENSI UNTUK PARAMETER URL
+            const currentAgencyName = document.getElementById("agencyName").textContent || 'Orland Management';
+            const encodedAgencyName = encodeURIComponent(currentAgencyName);
+
+            if(data.status === 'ok' && data.data && data.data.length > 0) {
+               data.data.forEach(inv => {
+                  const isAct = inv.status === 'active';
+                  // MENGGABUNGKAN NAMA AGENSI KE LINK INVITE
+                  const link = `https://www.orlandmanagement.com/p/invite.html?token=${inv.invite_link_token}&agency=${encodedAgencyName}`;
+                  
+                  const row = document.createElement("div");
+                  row.className = `p-4 rounded-xl border ${isAct ? 'border-violet-200 bg-white' : 'border-slate-200 bg-slate-100 opacity-60'} flex flex-col gap-2`;
+                  row.innerHTML = `
+                     <div class="flex justify-between items-start">
+                        <div class="text-[10px] font-black uppercase tracking-widest ${isAct?'text-emerald-600':'text-slate-400'}">${isAct ? '🟢 Active' : '🔴 Disabled'}</div>
+                        <div class="text-[10px] font-bold text-slate-500">Exp: ${new Date(inv.expires_at).toLocaleDateString()}</div>
+                     </div>
+                     <div class="font-mono text-xs text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100 truncate">${link}</div>
+                     <div class="flex justify-between items-center mt-1">
+                        <div class="text-[11px] font-bold text-slate-500">Uses: ${inv.current_uses} / ${inv.max_uses === -1 ? '∞' : inv.max_uses}</div>
+                        <div class="flex gap-2">
+                           <button class="bg-violet-100 text-violet-700 px-3 py-1.5 rounded-lg text-[11px] font-black hover:bg-violet-200 btn-copy" data-link="${link}">Copy</button>
+                           ${isAct ? `<button class="bg-rose-50 text-rose-600 px-3 py-1.5 rounded-lg text-[11px] font-black hover:bg-rose-100 btn-disable" data-id="${inv.invitation_id}">Disable</button>` : ''}
+                        </div>
+                     </div>
+                  `;
+                  
+                  row.querySelector('.btn-copy').addEventListener('click', () => {
+                     navigator.clipboard.writeText(link); showToast("Link Disalin!");
+                  });
+                  if(isAct) {
+                     row.querySelector('.btn-disable').addEventListener('click', async () => {
+                        if(confirm("Nonaktifkan link ini secara permanen?")) {
+                           await fetch(`${API_BASE}/invitations/${inv.invitation_id}`, { method: 'DELETE', headers: HEADERS });
+                           showToast("Link dinonaktifkan"); fetchInvites();
+                        }
+                     });
+                  }
+                  list.appendChild(row);
+               });
+            } else {
+               list.innerHTML = `<div class="text-center text-slate-400 text-sm font-bold py-5">Belum ada link yang dibuat.</div>`;
+            }
+         } catch(e) {}
+      }
+
+      // ==========================================
+      // ACTION LOGIC
+      // ==========================================
+
+      // Generate Link Invite
+      document.getElementById('btnGenerateLink')?.addEventListener('click', async function() {
+        const btn = this; const oriText = btn.innerHTML;
+        btn.innerHTML = "⏳ Sedang Membuat Link..."; btn.disabled = true;
+
+        try {
+            const maxUsesVal = parseInt(document.getElementById('invMaxUses')?.value || "50");
+            const expiryVal = parseInt(document.getElementById('invExpiry')?.value || "90");
+
+            const res = await fetch(`${API_BASE}/invite`, {
+                method: 'POST',
+                headers: HEADERS,
+                body: JSON.stringify({ max_uses: maxUsesVal, expires_in_days: expiryVal })
+            });
+
+            const result = await res.json();
+            if (res.ok && result.status === 'ok') {
+                showToast("Magic Link Berhasil Dibuat!");
+                fetchInvites(); // Langsung perbarui daftar link di sebelah kanan
+            } else {
+                alert("Gagal: " + (result.message || "Unauthorized"));
+            }
+        } catch (e) { alert("Terjadi kesalahan jaringan."); } 
+        finally { btn.innerHTML = oriText; btn.disabled = false; }
+      });
+
+      // MODAL EDIT PROFIL AGENSI
+      const modalEdit = document.getElementById("modalEditAgency");
+      
+      document.getElementById("btnEditAgency").addEventListener("click", () => {
+          document.getElementById("inpAgencyName").value = document.getElementById("profAgencyName").textContent;
+          modalEdit.classList.remove("hide");
+      });
+      
+      document.getElementById("btnCancelEditAgency").addEventListener("click", () => modalEdit.classList.add("hide"));
+      document.getElementById("btnCloseModalAgency").addEventListener("click", () => modalEdit.classList.add("hide"));
+      
+      // Tutup modal jika area luar di klik
+      modalEdit.addEventListener("click", () => modalEdit.classList.add("hide"));
+      
+      document.getElementById("btnSaveAgency").addEventListener("click", async function() {
+          const newName = document.getElementById("inpAgencyName").value.trim();
+          if(!newName) return alert("Nama agensi wajib diisi");
+          
+          this.textContent = "Menyimpan..."; this.disabled = true;
+          try {
+              const res = await fetch(`${API_BASE}/profile`, {
+                  method: 'PUT', headers: HEADERS, body: JSON.stringify({ company_name: newName })
+              });
+              const result = await res.json();
+              if(result.status === 'ok') {
+                  showToast("Profil Agensi Diperbarui!");
+                  await fetchInfo(); // Reload nama di layar utama
+                  modalEdit.classList.add("hide"); // Tutup popup
+                  fetchInvites(); // Refresh daftar invite agar url agensi terupdate
+              } else { alert(result.message); }
+          } catch(e) { alert("Terjadi kesalahan jaringan"); }
+          finally { this.innerHTML = "💾 Simpan"; this.disabled = false; }
+      });
+
+      // START
+      loadDashboard();
+    });
+  </script>
+</body>
+</html>

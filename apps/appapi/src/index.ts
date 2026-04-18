@@ -109,7 +109,11 @@ app.use('*', cors({
  */
 app.use('/api/v1/*', async (c, next) => {
   if (c.req.method === 'OPTIONS') return await next()
-  if (c.req.path.startsWith('/api/v1/public/')) return await next() // RUTE PUBLIK (AMAN DARI BLOKIR)
+  if (c.req.path.startsWith('/api/v1/public/')) return await next()
+	  
+  // 👉 TAMBAHKAN BARIS INI: Bebaskan rute Register & Login dari blokir Sesi
+  const publicAuthRoutes = ['/api/v1/auth/register', '/api/v1/auth/register-invite', '/api/v1/auth/login-password', '/api/v1/auth/request-otp', '/api/v1/auth/login-otp'];
+  if (publicAuthRoutes.some(r => c.req.path.startsWith(r))) return await next();
   
   let sid = null;
 

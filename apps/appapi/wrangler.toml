@@ -1,0 +1,55 @@
+name = "api-workflow-orland"
+main = "src/index.ts"
+compatibility_date = "2024-03-26"
+
+# --- BINDING DATABASES ---
+[[d1_databases]]
+binding = "DB_SSO"
+database_name = "sso_database"
+database_id = "6ebafba7-dafb-4e46-a4fe-b73e20ef7e4e"
+
+[[d1_databases]]
+binding = "DB_CORE"
+database_name = "core_database"
+database_id = "4bfd124d-66fc-4fe8-9fd9-c127641ddba3"
+
+[[d1_databases]]
+binding = "DB_LOGS"
+database_name = "logs_database"
+database_id = "284efc80-796c-4900-af41-4b1ade768d87"
+
+[[d1_databases]]
+binding = "DB_ARCHIVES"
+database_name = "archive_database"
+database_id = "c90dbea6-9a00-464c-b330-ca44a946a21a"
+
+# --- BINDING CACHE & STORAGE ---
+[[kv_namespaces]]
+binding = "ORLAND_CACHE"
+id = "dac677265b3a43f0ab3642e47a765f19"
+
+[[r2_buckets]]
+binding = "R2_MEDIA"
+bucket_name = "orland-media"
+
+# --- PUBLIC VARIABLES ---
+[vars]
+APP_ENV = "production"
+TALENT_URL = "https://www.orlandmanagement.com/p/profile.html"
+CLIENT_URL = "https://www.orlandmanagement.com/p/client-dashboard.html"
+AGENCY_URL = "https://www.orlandmanagement.com/p/agency-dashboard.html"
+CF_ACCOUNT_ID = "6c8fb4264bc8bce97572b708fc0eb5fb"
+
+# --- BACKGROUND JOBS (CRON) ---
+[triggers]
+crons = ["0 2 * * SUN"]
+
+
+# --- OBSERVABILITY & LOGS ---
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true

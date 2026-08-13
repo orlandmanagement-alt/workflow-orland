@@ -1,0 +1,173 @@
+import React, { useState, useEffect } from 'react';
+import { useProfileFormState } from '@/hooks/useProfileFormState';
+import { CheckCircle, ChevronRight, X } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/useAppStore';
+
+import Step1_BasicInfo from './steps/Step1_BasicInfo';
+import Step2_Media from './steps/Step2_Media';
+import Step3_Social from './steps/Step3_Social';
+import Step4_Assets from './steps/Step4_Assets';
+import Step5_Experience from './steps/Step5_Experience';
+import Step6_Review from './steps/Step6_Review';
+
+export default function ProfileWizard({ onClose }: { onClose?: () => void }) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [initialData, setInitialData] = useState<any>({});
+  const [hookReady, setHookReady] = useState(false);
+  
+  // Initialize the SaaS-standard form state hook after fetching draft
+  const formState = useProfileFormState<any>(initialData);
+
+  // Mengambil profile draft sebelumnya dan menentukan langkah terakhir
+  useEffect(() => {
+    const fetchDraft = async () => {
+      try {
+        const res = await api.get('/talents/me');
+        if (res.status === 200 && res.data) {
+           const d = res.data;
+           setInitialData(d);
+           // LOGIKA AUTO-RESUME (Cek mana yang masih kosong)
+           if (!d.full_name || !d.category || !d.height || !d.weight || !d.gender) {
+               setCurrentStep(1); // Balik ke Info Dasar
+           } else if (!d.headshot || !d.sideView || !d.fullHeight) {
+               setCurrentStep(2); // Lanjut ke Upload Media
+           } else if (!d.showreel && !d.voiceOver && (!d.experiences || d.experiences.length === 0)) {
+               setCurrentStep(3); // Lanjut ke Social/Assets
+           } else {
+               setCurrentStep(6); // Jika sudah lengkap, langsung ke Review
+           }
+        }
+      } catch (err) {
+        console.error("Gagal menarik draft awal profil");
+      } finally {
+        setLoadingInitial(false);
+        setHookReady(true);
+      }
+    };
+    fetchDraft();
+  }, []);
+
+  const goNext = () => setCurrentStep(prev => Math.min(prev + 1, 6));
+  const goBack = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  const finishWizard = async () => {
+    try {
+      setLoadingInitial(true);
+      await api.put('/talents/me', formState.values);
+      if (onClose) onClose();
+      window.location.reload(); 
+    } catch (error) {
+      console.error("Gagal menyimpan profil akhir", error);
+      alert("Gagal menyimpan profil. Silakan coba lagi.");
+      setLoadingInitial(false);
+    }
+  };
+
+  // ✅ SOLUSI: Wrapper kebal peluru untuk mengatasi Error TS2322
+  // Mendukung 1 argumen objek ({ field: value }) atau 2 argumen string ('field', value)
+  const handleUpdate = (fieldOrData: any, value?: any) => {
+    if (typeof fieldOrData === 'string') {
+      formState.updateField(fieldOrData, value);
+    } else if (typeof fieldOrData === 'object' && fieldOrData !== null) {
+      Object.entries(fieldOrData).forEach(([k, v]) => {
+        formState.updateField(k, v);
+      });
+    }
+  };
+
+  if (loadingInitial || !hookReady) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-[#0a192f]/95 backdrop-blur flex items-center justify-center p-4">
+        <div className="animate-pulse flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-white font-bold">Memuat Draft Profil Anda...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-[#0a192f]/95 backdrop-blur flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-3xl shadow-2xl flex flex-col h-[90vh] md:h-[85vh] relative overflow-hidden">
+        
+        {/* Tombol X Tutup Darurat */}
+        {onClose && (
+            <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 text-slate-400 hover:text-red-500 bg-slate-100 dark:bg-slate-800 rounded-full transition-colors">
+            <X size={20} />
+            </button>
+        )}
+
+        {/* Progress Bar Header */}
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 relative z-0 shrink-0">
+          <div className="flex justify-between items-center mb-4 pr-10">
+            <h2 className="text-xl font-bold dark:text-white">Lengkapi Profil Anda</h2>
+            <span className="text-sm font-semibold text-brand-600">Langkah {currentStep} dari 6</span>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+            <div 
+              className="bg-brand-600 h-2.5 rounded-full transition-all duration-500 ease-out" 
+              style={{ width: `${(currentStep / 6) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Step Content Area (Slide & Fade) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 animate-in fade-in zoom-in-95 duration-300 relative">
+          {currentStep === 1 && (
+            <Step1_BasicInfo
+              data={formState.values}
+              fieldStatus={formState.fieldStatus}
+              onUpdate={handleUpdate} 
+              onNext={goNext}
+              undo={formState.undo}
+              redo={formState.redo}
+              canUndo={formState.canUndo}
+              canRedo={formState.canRedo}
+            />
+          )}
+          {currentStep === 2 && (
+            <Step2_Media
+              data={formState.values}
+              onUpdate={handleUpdate} 
+              onNext={goNext}
+              onBack={goBack}
+            />
+          )}
+          {currentStep === 3 && (
+            <Step3_Social
+              data={formState.values}
+              onUpdate={handleUpdate} 
+              onNext={goNext}
+              onBack={goBack}
+            />
+          )}
+          {currentStep === 4 && (
+            <Step4_Assets
+              data={formState.values}
+              onUpdate={handleUpdate} 
+              onNext={goNext}
+              onBack={goBack}
+            />
+          )}
+          {currentStep === 5 && (
+            <Step5_Experience
+              data={formState.values}
+              onUpdate={handleUpdate} 
+              onNext={goNext}
+              onBack={goBack}
+            />
+          )}
+          {currentStep === 6 && (
+            <Step6_Review 
+              data={formState.values} 
+              onBack={goBack} 
+              onFinish={finishWizard} 
+            />
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}

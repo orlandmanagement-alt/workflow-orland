@@ -1,0 +1,6 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "orland-appclient"
+pages_build_output_dir = "./dist"
+
+[vars]
+API_URL = "https://api.orlandmanagement.com/api/v1"

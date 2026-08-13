@@ -1,0 +1,858 @@
+// Enterprise Auth Routes with PBKDF2, Rate Limiting, Brute-Force Protection & Full Features
+// File: apps/appsso/src/routes/auth-enhanced.ts
+
+import { Hono, Context, Next } from 'hono'
+import { cors } from 'hono/cors'
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
+import { sign } from 'hono/jwt'
+import { Buffer } from 'node:buffer'
+import { validateEmail, verifyTurnstile, sendMail } from '../utils'
+import {
+  hashPasswordPBKDF2,
+  verifyPasswordPBKDF2,
+  generateUUID,
+  generateOTP,
+  sha256
+} from '../utils/crypto'
+import {
+  isAccountLocked,
+  recordLoginAttempt,
+  checkRateLimit,
+  lockAccount,
+  validateSessionContext,
+} from '../utils/security'
+
+type Bindings = {
+  DB_SSO: D1Database
+  DB_CORE: D1Database // <--- Tambahkan Baris Ini
+  TURNSTILE_SECRET: string
+  HASH_PEPPER: string
+  JWT_SECRET: string
+  TALENT_URL?: string
+  CLIENT_URL?: string
+  ADMIN_URL?: string
+  AGENCY_URL?: string
+  PBKDF2_ITER?: string
+  SESSION_TTL_MIN?: string
+  COOKIE_DOMAIN?: string
+}
+
+const auth = new Hono<{ Bindings: Bindings }>()
+
+// Middleware untuk memverifikasi Role
+const requireRole = (allowedRoles: string[]) => {
+  return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
+    let userId = null;
+    let userRole = null;
+    const sid = getCookie(c, 'sid');
+    
+    if (sid) {
+      const session = await c.env.DB_SSO.prepare(
+        "SELECT s.user_id, u.user_type FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.session_id = ? AND s.is_active = 1"
+      ).bind(sid).first<any>();
+      if (session) {
+        userId = session.user_id;
+        userRole = session.user_type;
+      }
+    }
+    
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        try {
+          const payloadStr = atob(token.split('.')[1]);
+          const payload = JSON.parse(payloadStr);
+          userId = payload.sub;
+          userRole = payload.role;
+        } catch(e) {}
+      }
+    }
+    
+    if (!userId) {
+      return c.json({ status: 'error', message: 'Sesi tidak valid atau telah berakhir.' }, 401);
+    }
+    
+    if (userRole === 'superadmin' || userRole === 'super_admin') {
+      c.set('userId', userId);
+      c.set('userRole', userRole);
+      return await next();
+    }
+    
+    if (!allowedRoles.includes(userRole)) {
+      return c.json({ status: 'error', message: `Akses ditolak. Dibutuhkan role: ${allowedRoles.join(' atau ')}.` }, 403);
+    }
+    
+    c.set('userId', userId);
+    c.set('userRole', userRole);
+    await next();
+  }
+}
+
+// Helper resolveAgencyId
+async function resolveAgencyId(c: any, userId: string): Promise<string> {
+  const fromClients = await c.env.DB_CORE.prepare('SELECT client_id FROM clients WHERE user_id = ? AND is_agency = 1').bind(userId).first()
+  if (fromClients?.client_id) return fromClients.client_id
+
+  const agencyId = crypto.randomUUID();
+  await c.env.DB_CORE.prepare('INSERT INTO clients (client_id, user_id, company_name, is_agency) VALUES (?, ?, ?, 1)')
+    .bind(agencyId, userId, 'Agency Baru').run();
+  
+  try { await c.env.DB_SSO.prepare('UPDATE users SET agency_id = ? WHERE id = ?').bind(agencyId, userId).run() } catch(e){}
+  
+  return agencyId;
+}
+
+// ========================================
+// KONFIGURASI CORS (TAMBAHKAN BLOK INI)
+// ========================================
+auth.use('*', cors({
+  origin: [
+    'https://www.orlandmanagement.com', 
+    'https://sso.orlandmanagement.com',
+    'http://localhost:8787' // (Opsional) untuk testing lokal
+  ],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-client-id', 'x-agency-id'],
+  allowMethods: ['POST', 'GET', 'OPTIONS', 'PUT', 'DELETE'],
+  credentials: true,
+  maxAge: 86400,
+}))
+// ========================================
+
+const getNow = () => Math.floor(Date.now() / 1000)
+const getClientIp = (c: Context): string => c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+
+/**
+ * HELPER: Konfigurasi Cookie Standar Enterprise
+ */
+const getCookieOpts = (env: Bindings) => ({
+  domain: env.COOKIE_DOMAIN || '.orlandmanagement.com',
+  path: '/',
+  httpOnly: true,
+  secure: true,
+  sameSite: 'None' as const, 
+})
+
+const getSessionExpiry = (env: Bindings) => Number(env.SESSION_TTL_MIN || 720) * 60
+
+const getCryptoConfig = (env: Bindings) => ({
+  pepper: env.HASH_PEPPER || 'orland_fallback_pepper_999',
+  iter: Number(env.PBKDF2_ITER) || 100000
+})
+
+/**
+ * HELPER: URL Dashboard Berdasarkan Peran (Role)
+ */
+async function getPortalUrl(env: Bindings, user: any, sid: string) {
+  const safeRole = (user.user_type || 'talent').toLowerCase(); 
+  let baseUrl: string;
+  
+  if (safeRole === 'admin' || safeRole === 'super_admin') {
+    baseUrl = env.ADMIN_URL || 'https://www.orlandmanagement.com/p/admin-dashboard.html';
+  } else if (safeRole === 'agency') {
+    baseUrl = env.AGENCY_URL || 'https://www.orlandmanagement.com/p/agency-dashboard.html';
+  } else if (safeRole === 'client') {
+    baseUrl = env.CLIENT_URL || 'https://www.orlandmanagement.com/p/client-dashboard.html';
+  } else {
+    baseUrl = env.TALENT_URL || 'https://www.orlandmanagement.com/p/profile.html';
+  }
+  
+  const now = getNow();
+  const sessionExp = getSessionExpiry(env);
+  const payload = { sub: user.id, role: safeRole, sid: sid, exp: now + sessionExp, iat: now };
+  const token = await sign(payload, env.JWT_SECRET);
+  
+  const params = new URLSearchParams({ 
+    token: token, 
+    role: safeRole, 
+    user_id: user.id, 
+    name: `${user.first_name} ${user.last_name || ''}`.trim(), 
+    email: user.email,
+    phone: user.phone || ''
+  });
+  
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}${params.toString()}`;
+}
+
+/**
+ * HELPER: Membuat Sesi Baru di Database
+ */
+async function createSession(c: Context<{ Bindings: Bindings }>, user: any, ipAddress: string, userAgent: string) {
+  const now = getNow()
+  const sessionId = generateUUID()
+  const sessionExp = getSessionExpiry(c.env)
+  const expiresAt = now + sessionExp
+
+  await c.env.DB_SSO.prepare(
+    `INSERT INTO sessions (session_id, user_id, ip_address, user_agent, expires_at, created_at, is_active)
+     VALUES (?, ?, ?, ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), 1)`
+  ).bind(sessionId, user.id, ipAddress, userAgent, expiresAt, now).run()
+
+  setCookie(c, 'sid', sessionId, { ...getCookieOpts(c.env), maxAge: sessionExp })
+  return { sessionId, expiresAt, redirectUrl: await getPortalUrl(c.env, user, sessionId) }
+}
+
+/**
+ * ========================================
+ * 1. PENDAFTARAN & AKTIVASI
+ * ========================================
+ */
+auth.post('/register', async (c) => {
+  try {
+    const body = await c.req.json<any>()
+    const email = body.email.toLowerCase().trim()
+    
+    if (!validateEmail(email)) {
+      return c.json({ status: 'error', message: 'Masukkan alamat email yang valid (Contoh: nama@gmail.com)' }, 400);
+    }
+
+    if (!body.password || !body.role) return c.json({ status: 'error', message: 'Data pendaftaran tidak lengkap.' }, 400)
+
+    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<any>()
+    if (existing) return c.json({ status: 'error', message: 'Email sudah terdaftar. Silakan masuk.' }, 409)
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    const { salt, hash } = await hashPasswordPBKDF2(body.password, cryptoCfg.pepper, cryptoCfg.iter)
+    
+    const userId = crypto.randomUUID()
+    const nameParts = (body.fullName || 'User').split(' ')
+    const firstName = nameParts[0]
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
+    
+    // PERBAIKAN: Tangkap tipe klien jika ada (PH, TVC, KOL, dll)
+    const clientType = body.client_type || null;
+
+    // SIMPAN USER DENGAN STATUS BELUM AKTIF
+    await c.env.DB_SSO.prepare(
+      `INSERT INTO users (
+        id, email, first_name, last_name, phone, user_type, client_type, is_active, email_verified,
+        password_hash, password_salt, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?, datetime('now'))`
+    ).bind(
+      userId, email, firstName, lastName, body.phone || null, body.role.toLowerCase(), clientType, hash, salt
+    ).run()
+
+    // TRIGGER EMAIL AKTIVASI
+    const activationToken = crypto.randomUUID().replace(/-/g, '')
+    await c.env.DB_SSO.prepare(
+      `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
+       VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
+    ).bind(crypto.randomUUID(), userId, email, activationToken).run()
+
+    try { 
+      await sendMail(c.env, email, activationToken, 'activation'); 
+    } catch(e) {
+      console.error("Email API Error:", e);
+    }
+
+    return c.json({ status: 'ok', message: 'Registrasi Berhasil! Silakan cek email (Inbox/Spam) untuk mengaktifkan akun Anda.' })
+    
+  } catch (error: any) {
+    return c.json({ status: 'error', message: `Kesalahan Sistem: ${error.message}` }, 500)
+  }
+})
+
+auth.post('/verify-activation', async (c) => {
+  const body = await c.req.json<any>()
+  const ipAddress = getClientIp(c)
+  const userAgent = c.req.header('user-agent') || 'unknown'
+
+  const tokenRow = await c.env.DB_SSO.prepare(
+    "SELECT * FROM otp_codes WHERE code = ? AND expires_at > datetime('now')"
+  ).bind(body.token).first<any>()
+
+  if (!tokenRow) return c.json({ status: "error", message: "Tautan aktivasi tidak valid atau sudah kadaluarsa." }, 400)
+  
+  await c.env.DB_SSO.prepare("UPDATE users SET email_verified = 1, email_verified_at = datetime('now') WHERE id = ?").bind(tokenRow.user_id).run()
+  await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id = ?").bind(tokenRow.otp_id).run()
+  
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE id = ?").bind(tokenRow.user_id).first<any>()
+  const session = await createSession(c, user, ipAddress, userAgent)
+  
+  return c.json({ status: "ok", role: user.user_type, redirect_url: session.redirectUrl })
+})
+
+/**
+ * ========================================
+ * 1.B PENDAFTARAN VIA UNDANGAN AGENSI (INVITE)
+ * ========================================
+ */
+auth.post('/register-invite', async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const email = (body.email || "").toLowerCase().trim();
+    const token = (body.token || "").trim();
+    
+    if (!token) return c.json({ status: 'error', message: 'Token undangan tidak valid atau hilang.' }, 400);
+    if (!validateEmail(email)) return c.json({ status: 'error', message: 'Format email tidak valid.' }, 400);
+    if (!body.password || !body.fullName) return c.json({ status: 'error', message: 'Data pendaftaran tidak lengkap.' }, 400);
+
+    // 1. CEK TOKEN UNDANGAN DI DB_CORE
+    const invite = await c.env.DB_CORE.prepare(
+      "SELECT invitation_id, agency_id, current_uses, max_uses FROM agency_invitations WHERE invite_link_token = ? AND status = 'active' AND expires_at > datetime('now')"
+    ).bind(token).first<any>();
+
+    if (!invite) return c.json({ status: 'error', message: 'Link undangan kadaluarsa atau batas kuota habis.' }, 400);
+
+    // 2. CEK APAKAH USER SUDAH PUNYA AKUN DI DB_SSO
+    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<any>();
+    
+    if (existing) {
+      // JIKA SUDAH PUNYA AKUN: Cek apakah sudah terhubung ke Agensi ini
+      const alreadyLinked = await c.env.DB_CORE.prepare('SELECT status FROM agency_talents WHERE agency_id = ? AND talent_id = ?').bind(invite.agency_id, existing.id).first();
+      
+      if (!alreadyLinked) {
+          await c.env.DB_CORE.prepare(`INSERT INTO agency_talents (agency_id, talent_id, status, joined_at) VALUES (?, ?, 'active', datetime('now'))`).bind(invite.agency_id, existing.id).run();
+          
+          // Update Kuota
+          const newUses = invite.current_uses + 1;
+          await c.env.DB_CORE.prepare("UPDATE agency_invitations SET current_uses = ?, status = ? WHERE invitation_id = ?")
+            .bind(newUses, newUses >= invite.max_uses ? 'completed' : 'active', invite.invitation_id).run();
+      }
+      
+      // Kirim respon khusus ke frontend bahwa dia sudah terdaftar
+      return c.json({ status: 'existing', message: 'Akun Anda sudah terdaftar dan berhasil ditautkan ke Agensi ini! Silakan Login SSO.' });
+    }
+
+    // 3. JIKA BELUM PUNYA AKUN: Lakukan Insert & Hash Password Baru
+    const cryptoCfg = getCryptoConfig(c.env);
+    const { salt, hash } = await hashPasswordPBKDF2(body.password, cryptoCfg.pepper, cryptoCfg.iter);
+    
+    const userId = crypto.randomUUID();
+    const nameParts = (body.fullName || 'Talent').split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+    await c.env.DB_SSO.prepare(
+      `INSERT INTO users (id, email, first_name, last_name, phone, user_type, is_active, email_verified, password_hash, password_salt, created_at) 
+       VALUES (?, ?, ?, ?, ?, 'talent', 1, 0, ?, ?, datetime('now'))`
+    ).bind(userId, email, firstName, lastName, body.phone || null, hash, salt).run();
+
+    // 4. HUBUNGKAN KE AGENSI & UPDATE KUOTA
+    await c.env.DB_CORE.prepare(`INSERT INTO agency_talents (agency_id, talent_id, status, joined_at) VALUES (?, ?, 'active', datetime('now'))`).bind(invite.agency_id, userId).run();
+    await c.env.DB_CORE.prepare("UPDATE agency_invitations SET current_uses = ?, status = ? WHERE invitation_id = ?").bind(invite.current_uses + 1, (invite.current_uses + 1) >= invite.max_uses ? 'completed' : 'active', invite.invitation_id).run();
+
+    // 5. KIRIM OTP AKTIVASI
+    const activationToken = crypto.randomUUID().replace(/-/g, '');
+    await c.env.DB_SSO.prepare(`INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at) VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`).bind(crypto.randomUUID(), userId, email, activationToken).run();
+    try { await sendMail(c.env, email, activationToken, 'activation'); } catch(e) { console.error(e); }
+
+    return c.json({ status: 'ok', message: 'Registrasi via undangan berhasil!' });
+    
+  } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
+});
+
+/**
+ * ========================================
+ * 2. PROSES MASUK (LOGIN)
+ * ========================================
+ */
+auth.post('/login-password', async (c) => {
+  try {
+    const body = await c.req.json<any>()
+    const ipAddress = getClientIp(c)
+    const userAgent = c.req.header('user-agent') || 'unknown'
+    const now = getNow()
+
+    const identifier = (body.identifier || "").toLowerCase().trim()
+    const rateLimit = await checkRateLimit(c.env.DB_SSO, identifier, ipAddress, now)
+    if (rateLimit.shouldBlock) return c.json({ status: 'error', message: 'Terlalu banyak percobaan. Silakan coba lagi nanti.' }, 429)
+
+    const user = await c.env.DB_SSO.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1').bind(identifier).first<any>()
+    
+    if (!user) {
+      await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, false)
+      return c.json({ status: 'error', message: 'Email atau Kata Sandi salah.' }, 401)
+    }
+
+    if (user.email_verified === 0) {
+      const activationToken = crypto.randomUUID().replace(/-/g, '')
+      await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id = ? AND method = 'email'").bind(user.id).run()
+      await c.env.DB_SSO.prepare(
+        `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
+         VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
+      ).bind(crypto.randomUUID(), user.id, user.email, activationToken).run()
+
+      try { await sendMail(c.env, user.email, activationToken, 'activation'); } catch(e) {}
+
+      return c.json({ 
+        status: 'error', 
+        message: 'Akun Anda belum aktif! Kami telah MENGIRIM ULANG tautan aktivasi ke email Anda.' 
+      }, 403)
+    }
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    const passwordValid = await verifyPasswordPBKDF2(body.password, user.password_hash, user.password_salt, cryptoCfg.pepper, cryptoCfg.iter)
+    
+    if (!passwordValid) {
+      await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, false, user.id)
+      return c.json({ status: 'error', message: 'Email atau Kata Sandi salah.' }, 401)
+    }
+
+    await recordLoginAttempt(c.env.DB_SSO, identifier, ipAddress, true, user.id)
+    await c.env.DB_SSO.prepare("UPDATE users SET last_login = datetime('now'), last_login_ip = ? WHERE id = ?").bind(ipAddress, user.id).run()
+
+    const session = await createSession(c, user, ipAddress, userAgent)
+    return c.json({ status: 'ok', redirect_url: session.redirectUrl })
+  } catch (error: any) {
+    return c.json({ status: 'error', message: 'Terjadi kesalahan sistem saat masuk.' }, 500)
+  }
+})
+
+auth.post('/request-otp', async (c) => {
+  const body = await c.req.json<any>()
+  const id = (body.identifier || "").trim().toLowerCase()
+
+  if (!validateEmail(id)) return c.json({ status: "error", message: "Masukkan alamat email lengkap." }, 400)
+
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE email = ? AND is_active = 1").bind(id).first<any>()
+  if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
+  
+  if (user.email_verified === 0) {
+    return c.json({ status: "error", message: "Akun belum aktif! Silakan cek Inbox/Spam email Anda." }, 403)
+  }
+
+  const otp = generateOTP()
+  await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id = ?").bind(user.id).run()
+  await c.env.DB_SSO.prepare(
+    "INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at) VALUES (?, ?, ?, ?, 'email', datetime('now', '+5 minutes'))"
+  ).bind(crypto.randomUUID(), user.id, user.email, otp).run()
+  
+  try { await sendMail(c.env, user.email, otp, 'login'); } catch (e) {}
+  return c.json({ status: "ok", message: "Kode OTP telah dikirim ke email Anda." })
+})
+
+auth.post('/login-otp', async (c) => {
+  const body = await c.req.json<any>()
+  const ipAddress = getClientIp(c)
+  const userAgent = c.req.header('user-agent') || 'unknown'
+  const id = (body.identifier || "").trim().toLowerCase()
+
+  const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE email = ? AND is_active = 1").bind(id).first<any>()
+  if (!user) return c.json({ status: "error", message: "Akun tidak ditemukan." }, 404)
+  
+  const otpRow = await c.env.DB_SSO.prepare("SELECT * FROM otp_codes WHERE user_id = ? AND code = ? AND expires_at > datetime('now')").bind(user.id, body.otp).first<any>()
+  if (!otpRow) return c.json({ status: "error", message: "Kode OTP salah atau sudah kadaluarsa." }, 400)
+  
+  await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id = ?").bind(otpRow.otp_id).run()
+  const session = await createSession(c, user, ipAddress, userAgent)
+  return c.json({ status: "ok", redirect_url: session.redirectUrl })
+})
+
+/**
+ * ========================================
+ * 3. MANAJEMEN SESI (SILENT AUTH)
+ * ========================================
+ */
+auth.get('/me', async (c) => {
+  const sid = getCookie(c, 'sid')
+  if (!sid) return c.json({ status: 'error', message: 'Sesi tidak ditemukan.' }, 401)
+
+  const session = await c.env.DB_SSO.prepare(
+    "SELECT * FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
+  ).bind(sid).first<any>()
+  
+  if (!session) return c.json({ status: 'error', message: 'Sesi telah kadaluarsa.' }, 401)
+
+  const user = await c.env.DB_SSO.prepare(
+    "SELECT id, email, phone, first_name, last_name, user_type, is_active FROM users WHERE id = ?"
+  ).bind(session.user_id).first<any>() 
+  
+  if (!user || user.is_active === 0) return c.json({ status: 'error', message: 'Akun dinonaktifkan.' }, 401)
+
+  const portalUrl = await getPortalUrl(c.env, user, sid)
+  return c.json({ status: 'ok', user, redirect_url: portalUrl })
+})
+
+auth.post('/logout', async (c) => {
+  const sid = getCookie(c, 'sid')
+  if (sid) {
+    await c.env.DB_SSO.prepare('UPDATE sessions SET is_active = 0 WHERE session_id = ?').bind(sid).run()
+  }
+  deleteCookie(c, 'sid', getCookieOpts(c.env))
+  return c.json({ status: 'ok', message: 'Anda telah keluar dengan aman.' })
+})
+
+auth.post('/request-reset', async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const email = (body.identifier || "").toLowerCase().trim();
+    if (!email) return c.json({ status: 'error', message: 'Email wajib diisi.' }, 400);
+
+    const user = await c.env.DB_SSO.prepare("SELECT id, email FROM users WHERE email = ? AND is_active = 1").bind(email).first<any>();
+    if (!user) return c.json({ status: 'error', message: 'Email tidak terdaftar atau akun tidak aktif.' }, 404);
+
+    const resetToken = crypto.randomUUID().replace(/-/g, "");
+    
+    // Hapus token reset sebelumnya jika ada
+    await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id = ? AND method = 'reset'").bind(user.id).run();
+    
+    // Simpan token baru (berlaku 30 menit)
+    await c.env.DB_SSO.prepare(
+      `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at) 
+       VALUES (?, ?, ?, ?, 'reset', datetime('now', '+30 minutes'))`
+    ).bind(crypto.randomUUID(), user.id, user.email, resetToken).run();
+
+    try {
+      await sendMail(c.env, user.email, resetToken, 'reset');
+    } catch (e: any) {
+      console.error("Gagal mengirim email reset:", e);
+    }
+
+    return c.json({ status: 'ok', message: 'Link reset password telah dikirim ke email Anda.' });
+  } catch (error: any) {
+    return c.json({ status: 'error', message: error.message }, 500);
+  }
+});
+
+auth.post('/reset-password', async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const { token, new_password } = body;
+    if (!token || !new_password) return c.json({ status: 'error', message: 'Token dan Password Baru wajib diisi.' }, 400);
+    if (new_password.length < 8) return c.json({ status: 'error', message: 'Sandi minimal 8 karakter.' }, 400);
+
+    const otpRow = await c.env.DB_SSO.prepare(
+      "SELECT * FROM otp_codes WHERE code = ? AND method = 'reset' AND expires_at > datetime('now')"
+    ).bind(token).first<any>();
+    if (!otpRow) return c.json({ status: 'error', message: 'Token reset tidak valid atau sudah kadaluarsa.' }, 400);
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    const { salt, hash } = await hashPasswordPBKDF2(new_password, cryptoCfg.pepper, cryptoCfg.iter);
+
+    await c.env.DB_SSO.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, otpRow.user_id).run();
+    await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id = ?").bind(otpRow.otp_id).run();
+
+    return c.json({ status: 'ok', message: 'Kata sandi berhasil diubah! Silakan login kembali.' });
+  } catch (error: any) {
+    return c.json({ status: 'error', message: error.message }, 500);
+  }
+});
+
+/**
+ * ========================================
+ * 4. UPDATE DATA PROFIL SSO (NAMA & KONTAK)
+ * ========================================
+ */
+auth.put('/update-sso', async (c) => {
+  try {
+    let userId = null;
+    const sid = getCookie(c, 'sid');
+    
+    if (sid) {
+      const session = await c.env.DB_SSO.prepare("SELECT user_id FROM sessions WHERE session_id = ? AND is_active = 1").bind(sid).first<any>();
+      if (session) userId = session.user_id;
+    }
+    
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        try {
+           const payloadStr = atob(token.split('.')[1]);
+           const payload = JSON.parse(payloadStr);
+           userId = payload.sub;
+        } catch(e) {}
+      }
+    }
+
+    if (!userId) return c.json({ status: 'error', message: 'Sesi tidak valid atau telah berakhir.' }, 401);
+
+    const body = await c.req.json<any>();
+
+    if (body.email) {
+       const user = await c.env.DB_SSO.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first<any>();
+       if (user && user.email !== body.email) {
+           const otp = generateOTP();
+           await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id = ? AND method = 'email'").bind(userId).run();
+           await c.env.DB_SSO.prepare(
+             "INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at) VALUES (?, ?, ?, ?, 'email', datetime('now', '+5 minutes'))"
+           ).bind(crypto.randomUUID(), userId, user.email, otp).run();
+           
+           try { await sendMail(c.env, user.email, otp, 'login'); } catch (e) {}
+           return c.json({ status: 'requires_verification' });
+       }
+    }
+
+    await c.env.DB_SSO.prepare(`
+      UPDATE users SET 
+        first_name = COALESCE(?, first_name),
+        last_name = COALESCE(?, last_name),
+        phone = COALESCE(?, phone),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+        body.first_name || null, 
+        body.last_name || null, 
+        body.phone || null, 
+        userId
+    ).run();
+
+    return c.json({ status: 'ok', message: 'Data SSO berhasil diperbarui' });
+  } catch (error: any) {
+    return c.json({ status: 'error', message: error.message }, 500);
+  }
+});
+
+/**
+ * ========================================
+ * 5. ENDPOINT KEAMANAN & PENGATURAN AKUN
+ * ========================================
+ */
+
+// Helper untuk mengambil userId dari Token Bearer yang dikirim oleh sso-settings.html
+async function getUserIdFromBearer(c: Context) {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  try {
+    const token = authHeader.split(' ')[1];
+    const payloadStr = atob(token.split('.')[1]);
+    const payload = JSON.parse(payloadStr);
+    return payload.sub; // user ID
+  } catch(e) { return null; }
+}
+
+// A. Verifikasi OTP untuk Perubahan Email
+auth.post('/verify-email-change', async (c) => {
+  try {
+    const userId = await getUserIdFromBearer(c);
+    if (!userId) return c.json({ status: 'error', message: 'Sesi tidak valid.' }, 401);
+
+    const body = await c.req.json<any>();
+    
+    // Cek OTP yang valid
+    const otpRow = await c.env.DB_SSO.prepare(
+      "SELECT * FROM otp_codes WHERE user_id = ? AND code = ? AND method = 'email' AND expires_at > datetime('now')"
+    ).bind(userId, body.otp).first<any>();
+
+    if (!otpRow) return c.json({ status: 'error', message: 'OTP salah atau sudah kedaluwarsa.' }, 400);
+
+    // Update Email
+    await c.env.DB_SSO.prepare("UPDATE users SET email = ? WHERE id = ?").bind(body.new_email, userId).run();
+    await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id = ?").bind(otpRow.otp_id).run();
+
+    return c.json({ status: 'ok', message: 'Email berhasil diubah.' });
+  } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
+});
+
+// B. Ganti Password Saat Sedang Login
+auth.post('/change-password', async (c) => {
+  try {
+    const userId = await getUserIdFromBearer(c);
+    if (!userId) return c.json({ status: 'error', message: 'Sesi tidak valid.' }, 401);
+
+    const body = await c.req.json<any>();
+    const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first<any>();
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    
+    // Verifikasi Password Lama
+    const oldValid = await verifyPasswordPBKDF2(body.old_password, user.password_hash, user.password_salt, cryptoCfg.pepper, cryptoCfg.iter);
+    if (!oldValid) return c.json({ status: 'error', message: 'Kata sandi saat ini salah.' }, 400);
+
+    // Hash Password Baru
+    const { salt, hash } = await hashPasswordPBKDF2(body.new_password, cryptoCfg.pepper, cryptoCfg.iter);
+
+    // Update ke Database
+    await c.env.DB_SSO.prepare("UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?").bind(hash, salt, userId).run();
+
+    return c.json({ status: 'ok', message: 'Kata sandi berhasil diperbarui.' });
+  } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
+});
+
+// C. Atur/Ubah PIN Login 6 Digit
+auth.post('/setup-pin-logged-in', async (c) => {
+  try {
+    const userId = await getUserIdFromBearer(c);
+    if (!userId) return c.json({ status: 'error', message: 'Sesi tidak valid.' }, 401);
+
+    const body = await c.req.json<any>();
+    if (!body.pin || body.pin.length !== 6) return c.json({ status: 'error', message: 'PIN harus 6 digit.' }, 400);
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    
+    // Hash PIN (menggunakan algoritma yang sama dengan password untuk keamanan)
+    const { salt, hash } = await hashPasswordPBKDF2(body.pin, cryptoCfg.pepper, cryptoCfg.iter);
+
+    await c.env.DB_SSO.prepare("UPDATE users SET pin_hash = ?, pin_salt = ?, pin_required = 1 WHERE id = ?").bind(hash, salt, userId).run();
+
+    return c.json({ status: 'ok', message: 'PIN berhasil disetel.' });
+  } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
+});
+
+/**
+ * ========================================
+ * 1.B PENDAFTARAN VIA UNDANGAN AGENSI (INVITE)
+ * ========================================
+ */
+auth.post('/register-invite', async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const email = (body.email || "").toLowerCase().trim();
+    const token = (body.token || "").trim();
+    
+    // Validasi Input Dasar
+    if (!token) return c.json({ status: 'error', message: 'Token undangan tidak valid atau hilang.' }, 400);
+    if (!validateEmail(email)) return c.json({ status: 'error', message: 'Masukkan alamat email yang valid.' }, 400);
+    if (!body.password || !body.fullName) return c.json({ status: 'error', message: 'Data pendaftaran tidak lengkap.' }, 400);
+
+    // 1. Validasi Token Undangan & 2. Dapatkan agency_id
+    // Asumsi tabel bernama `agency_invites` (Sesuaikan jika nama tabel Anda berbeda)
+    const invite = await c.env.DB_SSO.prepare(
+      "SELECT agency_id, email, is_used FROM agency_invites WHERE token = ? AND is_used = 0 AND expires_at > datetime('now')"
+    ).bind(token).first<any>();
+
+    if (!invite) {
+      return c.json({ status: 'error', message: 'Link undangan tidak valid, kadaluarsa, atau sudah pernah digunakan.' }, 400);
+    }
+
+    // Pengecekan Duplikasi Email
+    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<any>();
+    if (existing) {
+      return c.json({ status: 'error', message: 'Email sudah terdaftar. Silakan masuk atau gunakan email lain.' }, 409);
+    }
+
+    // 3. Insert ke tabel Users (Alur enkripsi PBKDF2 sama seperti /register biasa)
+    const cryptoCfg = getCryptoConfig(c.env);
+    const { salt, hash } = await hashPasswordPBKDF2(body.password, cryptoCfg.pepper, cryptoCfg.iter);
+    
+    const userId = crypto.randomUUID();
+    const nameParts = (body.fullName || 'Talent').split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    
+    // Paksa role menjadi 'talent' karena ini adalah undangan agensi
+    const role = 'talent';
+
+    await c.env.DB_SSO.prepare(
+      `INSERT INTO users (
+        id, email, first_name, last_name, phone, user_type, is_active, email_verified,
+        password_hash, password_salt, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?, datetime('now'))`
+    ).bind(
+      userId, email, firstName, lastName, body.phone || null, role, hash, salt
+    ).run();
+
+    // 4. Hubungkan User ID yang baru dengan agency_id (Sebagai Downline)
+    // Asumsi tabel relasi bernama `agency_talents` (Sesuaikan dengan skema D1 Anda)
+    await c.env.DB_SSO.prepare(
+      `INSERT INTO agency_talents (agency_id, talent_id, status, joined_at)
+       VALUES (?, ?, 'active', datetime('now'))`
+    ).bind(invite.agency_id, userId).run();
+
+    // Opsional: Tandai token undangan bahwa sudah digunakan agar tidak bisa dipakai 2x
+    await c.env.DB_SSO.prepare(
+      "UPDATE agency_invites SET is_used = 1, used_by_email = ?, used_at = datetime('now') WHERE token = ?"
+    ).bind(email, token).run();
+
+    // 5. Kirim OTP Aktivasi via Email
+    const activationToken = crypto.randomUUID().replace(/-/g, '');
+    await c.env.DB_SSO.prepare(
+      `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
+       VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
+    ).bind(crypto.randomUUID(), userId, email, activationToken).run();
+
+    try { 
+      // Kirim email menggunakan fungsi utilitas yang sudah ada
+      await sendMail(c.env, email, activationToken, 'activation'); 
+    } catch(e) {
+      console.error("Email API Error:", e);
+    }
+
+    return c.json({ 
+      status: 'ok', 
+      message: 'Registrasi via undangan berhasil! Silakan cek email untuk aktivasi akun.' 
+    });
+    
+  } catch (error: any) {
+    console.error("Register Invite Error:", error);
+    return c.json({ status: 'error', message: `Kesalahan Sistem: ${error.message}` }, 500);
+  }
+});
+
+/**
+ * [GET] /api/v1/agency/talents/:id
+ * Ambil detail profil talent downline untuk diedit oleh agensi
+ */
+auth.get('/talents/:id', requireRole(['agency', 'admin']), async (c) => {
+  const userId = c.get('userId');
+  const talentId = c.req.param('id');
+  try {
+    const agencyId = await resolveAgencyId(c, userId);
+    
+    // Verifikasi bahwa talent ini benar-benar downline dari agensi ini
+    const isOwned = await c.env.DB_CORE.prepare('SELECT talent_id FROM agency_talents WHERE agency_id = ? AND talent_id = ?').bind(agencyId, talentId).first();
+    if (!isOwned) return c.json({ status: 'error', message: 'Akses Ditolak: Talent bukan bagian dari roster Anda.' }, 403);
+
+    // Ambil Data Tersebar
+    const ssoUser = await c.env.DB_SSO.prepare('SELECT email, phone, first_name, last_name FROM users WHERE id = ?').bind(talentId).first<any>();
+    const talent = await c.env.DB_CORE.prepare('SELECT * FROM talents WHERE id = ?').bind(talentId).first<any>() || {};
+    const profile = await c.env.DB_CORE.prepare('SELECT * FROM talent_profiles WHERE talent_id = ?').bind(talentId).first<any>() || {};
+
+    return c.json({
+      status: 'ok',
+      data: {
+        talent_id: talentId,
+        full_name: talent.fullname || `${ssoUser?.first_name} ${ssoUser?.last_name || ''}`.trim(),
+        email: ssoUser?.email,
+        phone: ssoUser?.phone || talent.phone,
+        ...profile
+      }
+    });
+  } catch(err: any) { return c.json({ status: 'error', message: err.message }, 500); }
+});
+
+/**
+ * [PUT] /api/v1/agency/talents/:id
+ * Simpan perubahan profil downline yang diedit agensi
+ */
+auth.put('/talents/:id', requireRole(['agency', 'admin']), async (c) => {
+  const userId = c.get('userId');
+  const talentId = c.req.param('id');
+  try {
+    const agencyId = await resolveAgencyId(c, userId);
+    
+    // Verifikasi Keamanan (Cegah agensi mengedit talent orang lain)
+    const isOwned = await c.env.DB_CORE.prepare('SELECT talent_id FROM agency_talents WHERE agency_id = ? AND talent_id = ?').bind(agencyId, talentId).first();
+    if (!isOwned) return c.json({ status: 'error', message: 'Akses Ditolak.' }, 403);
+
+    const body = await c.req.json();
+
+    // 1. Update Tabel Talents
+    if(body.full_name || body.phone) {
+       await c.env.DB_CORE.prepare('UPDATE talents SET fullname = COALESCE(?, fullname), phone = COALESCE(?, phone) WHERE id = ?')
+         .bind(body.full_name, body.phone, talentId).run();
+    }
+
+    // 2. Upsert (Update or Insert) Tabel Talent Profiles
+    await c.env.DB_CORE.prepare(`
+      INSERT INTO talent_profiles (
+        talent_id, gender, dob, domicile, height_cm, weight_kg, eye_color, hair_color, 
+        headshot_url, side_view_url, full_body_url, additional_photos, 
+        interests, skills, showreels, audios, social_media_json, experiences, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(talent_id) DO UPDATE SET
+        gender=excluded.gender, dob=excluded.dob, domicile=excluded.domicile, height_cm=excluded.height_cm, weight_kg=excluded.weight_kg,
+        eye_color=excluded.eye_color, hair_color=excluded.hair_color, headshot_url=excluded.headshot_url, side_view_url=excluded.side_view_url,
+        full_body_url=excluded.full_body_url, additional_photos=excluded.additional_photos, interests=excluded.interests, skills=excluded.skills,
+        showreels=excluded.showreels, audios=excluded.audios, social_media_json=excluded.social_media_json, experiences=excluded.experiences, updated_at=datetime('now')
+    `).bind(
+      talentId, body.gender, body.birth_date, body.location, body.height, body.weight, body.eye_color, body.hair_color,
+      body.headshot, body.side_view, body.full_height, JSON.stringify(body.additional_photos || []),
+      JSON.stringify(body.interests || []), JSON.stringify(body.skills || []), JSON.stringify(body.showreels || []), JSON.stringify(body.audios || []),
+      JSON.stringify({ instagram: body.instagram, tiktok: body.tiktok, facebook: body.facebook, youtube: body.youtube, twitter: body.twitter, website: body.website }),
+      JSON.stringify(body.credits || [])
+    ).run();
+
+    // Hapus Cache agar widget public otomatis update
+    c.executionCtx.waitUntil(Promise.all([
+       c.env.ORLAND_CACHE.delete(`talent:profile:${talentId}`),
+       c.env.ORLAND_CACHE.delete('PUBLIC_TALENT_ROSTER')
+    ]));
+
+    return c.json({ status: 'ok', message: 'Profil downline berhasil diperbarui' });
+  } catch(err: any) { return c.json({ status: 'error', message: err.message }, 500); }
+});
+
+export default auth

@@ -1,0 +1,14 @@
+node_modules/  
+.turbo/  
+.next/  
+package-lock.json  
+BACKUP  
+p/   
+.wrangler   
+migrations/  
+task/  
+packages/  
+scripts/  
+.turbo/  
+.github/  
+docs/  

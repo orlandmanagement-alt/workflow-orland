@@ -296,14 +296,17 @@ auth.post('/register-invite', async (c) => {
     if (!invite) return c.json({ status: 'error', message: 'Link undangan kadaluarsa atau batas kuota habis.' }, 400);
 
     // 2. CEK APAKAH USER SUDAH PUNYA AKUN DI DB_SSO
-    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<any>();
+    const existing = await c.env.DB_SSO.prepare('SELECT id, password_hash FROM users WHERE email = ?').bind(email).first<any>();
     
     if (existing) {
       // JIKA SUDAH PUNYA AKUN: Cek apakah sudah terhubung ke Agensi ini
-      const alreadyLinked = await c.env.DB_CORE.prepare('SELECT status FROM agency_talents WHERE agency_id = ? AND talent_id = ?').bind(invite.agency_id, existing.id).first();
+      const alreadyLinked = await c.env.DB_CORE.prepare('SELECT id FROM managed_talents WHERE agencyId = ? AND email = ?').bind(invite.agency_id, email).first();
       
       if (!alreadyLinked) {
-          await c.env.DB_CORE.prepare(`INSERT INTO agency_talents (agency_id, talent_id, status, joined_at) VALUES (?, ?, 'active', datetime('now'))`).bind(invite.agency_id, existing.id).run();
+          await c.env.DB_CORE.prepare(
+            `INSERT INTO managed_talents (id, agencyId, email, name, passwordHash, role, profileStatus) 
+             VALUES (?, ?, ?, ?, ?, 'talent', 'active')`
+          ).bind(existing.id, invite.agency_id, email, body.fullName || 'Talent', existing.password_hash || '').run();
           
           // Update Kuota
           const newUses = invite.current_uses + 1;
@@ -319,7 +322,7 @@ auth.post('/register-invite', async (c) => {
     const cryptoCfg = getCryptoConfig(c.env);
     const { salt, hash } = await hashPasswordPBKDF2(body.password, cryptoCfg.pepper, cryptoCfg.iter);
     
-    const userId = crypto.randomUUID();
+    const userId = 'talent_' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
     const nameParts = (body.fullName || 'Talent').split(' ');
     const firstName = nameParts[0];
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
@@ -330,7 +333,10 @@ auth.post('/register-invite', async (c) => {
     ).bind(userId, email, firstName, lastName, body.phone || null, hash, salt).run();
 
     // 4. HUBUNGKAN KE AGENSI & UPDATE KUOTA
-    await c.env.DB_CORE.prepare(`INSERT INTO agency_talents (agency_id, talent_id, status, joined_at) VALUES (?, ?, 'active', datetime('now'))`).bind(invite.agency_id, userId).run();
+    await c.env.DB_CORE.prepare(
+      `INSERT INTO managed_talents (id, agencyId, email, name, passwordHash, role, profileStatus) 
+       VALUES (?, ?, ?, ?, ?, 'talent', 'active')`
+    ).bind(userId, invite.agency_id, email, body.fullName, hash).run();
     await c.env.DB_CORE.prepare("UPDATE agency_invitations SET current_uses = ?, status = ? WHERE invitation_id = ?").bind(invite.current_uses + 1, (invite.current_uses + 1) >= invite.max_uses ? 'completed' : 'active', invite.invitation_id).run();
 
     // 5. KIRIM OTP AKTIVASI
@@ -754,95 +760,6 @@ auth.post('/setup-pin-logged-in', async (c) => {
   } catch (error: any) { return c.json({ status: 'error', message: error.message }, 500); }
 });
 
-/**
- * ========================================
- * 1.B PENDAFTARAN VIA UNDANGAN AGENSI (INVITE)
- * ========================================
- */
-auth.post('/register-invite', async (c) => {
-  try {
-    const body = await c.req.json<any>();
-    const email = (body.email || "").toLowerCase().trim();
-    const token = (body.token || "").trim();
-    
-    // Validasi Input Dasar
-    if (!token) return c.json({ status: 'error', message: 'Token undangan tidak valid atau hilang.' }, 400);
-    if (!validateEmail(email)) return c.json({ status: 'error', message: 'Masukkan alamat email yang valid.' }, 400);
-    if (!body.password || !body.fullName) return c.json({ status: 'error', message: 'Data pendaftaran tidak lengkap.' }, 400);
-
-    // 1. Validasi Token Undangan & 2. Dapatkan agency_id
-    // Asumsi tabel bernama `agency_invites` (Sesuaikan jika nama tabel Anda berbeda)
-    const invite = await c.env.DB_SSO.prepare(
-      "SELECT agency_id, email, is_used FROM agency_invites WHERE token = ? AND is_used = 0 AND expires_at > datetime('now')"
-    ).bind(token).first<any>();
-
-    if (!invite) {
-      return c.json({ status: 'error', message: 'Link undangan tidak valid, kadaluarsa, atau sudah pernah digunakan.' }, 400);
-    }
-
-    // Pengecekan Duplikasi Email
-    const existing = await c.env.DB_SSO.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<any>();
-    if (existing) {
-      return c.json({ status: 'error', message: 'Email sudah terdaftar. Silakan masuk atau gunakan email lain.' }, 409);
-    }
-
-    // 3. Insert ke tabel Users (Alur enkripsi PBKDF2 sama seperti /register biasa)
-    const cryptoCfg = getCryptoConfig(c.env);
-    const { salt, hash } = await hashPasswordPBKDF2(body.password, cryptoCfg.pepper, cryptoCfg.iter);
-    
-    const userId = crypto.randomUUID();
-    const nameParts = (body.fullName || 'Talent').split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-    
-    // Paksa role menjadi 'talent' karena ini adalah undangan agensi
-    const role = 'talent';
-
-    await c.env.DB_SSO.prepare(
-      `INSERT INTO users (
-        id, email, first_name, last_name, phone, user_type, is_active, email_verified,
-        password_hash, password_salt, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?, datetime('now'))`
-    ).bind(
-      userId, email, firstName, lastName, body.phone || null, role, hash, salt
-    ).run();
-
-    // 4. Hubungkan User ID yang baru dengan agency_id (Sebagai Downline)
-    // Asumsi tabel relasi bernama `agency_talents` (Sesuaikan dengan skema D1 Anda)
-    await c.env.DB_SSO.prepare(
-      `INSERT INTO agency_talents (agency_id, talent_id, status, joined_at)
-       VALUES (?, ?, 'active', datetime('now'))`
-    ).bind(invite.agency_id, userId).run();
-
-    // Opsional: Tandai token undangan bahwa sudah digunakan agar tidak bisa dipakai 2x
-    await c.env.DB_SSO.prepare(
-      "UPDATE agency_invites SET is_used = 1, used_by_email = ?, used_at = datetime('now') WHERE token = ?"
-    ).bind(email, token).run();
-
-    // 5. Kirim OTP Aktivasi via Email
-    const activationToken = crypto.randomUUID().replace(/-/g, '');
-    await c.env.DB_SSO.prepare(
-      `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at)
-       VALUES (?, ?, ?, ?, 'email', datetime('now', '+1 day'))`
-    ).bind(crypto.randomUUID(), userId, email, activationToken).run();
-
-    try { 
-      // Kirim email menggunakan fungsi utilitas yang sudah ada
-      await sendMail(c.env, email, activationToken, 'activation'); 
-    } catch(e) {
-      console.error("Email API Error:", e);
-    }
-
-    return c.json({ 
-      status: 'ok', 
-      message: 'Registrasi via undangan berhasil! Silakan cek email untuk aktivasi akun.' 
-    });
-    
-  } catch (error: any) {
-    console.error("Register Invite Error:", error);
-    return c.json({ status: 'error', message: `Kesalahan Sistem: ${error.message}` }, 500);
-  }
-});
 
 /**
  * [GET] /api/v1/agency/talents/:id

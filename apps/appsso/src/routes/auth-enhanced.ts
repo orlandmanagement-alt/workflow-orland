@@ -530,6 +530,79 @@ auth.post('/reset-password', async (c) => {
   }
 });
 
+auth.post('/check-pin', async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const id = (body.identifier || "").trim().toLowerCase();
+    if (!id) return c.json({ status: 'error', message: 'Email/WA wajib diisi.' }, 400);
+
+    const user = await c.env.DB_SSO.prepare("SELECT email, pin_hash FROM users WHERE (email = ? OR phone = ?) AND is_active = 1").bind(id, id).first<any>();
+    if (!user) return c.json({ status: 'error', message: 'Akun tidak ditemukan.' }, 404);
+
+    return c.json({ status: 'ok', has_pin: !!user.pin_hash, email: user.email });
+  } catch (error: any) {
+    return c.json({ status: 'error', message: error.message }, 500);
+  }
+});
+
+auth.post('/login-pin', async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const id = (body.identifier || "").trim().toLowerCase();
+    const pin = body.pin;
+    if (!id || !pin) return c.json({ status: 'error', message: 'Email dan PIN wajib diisi.' }, 400);
+
+    const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE email = ? AND is_active = 1").bind(id).first<any>();
+    if (!user) return c.json({ status: 'error', message: 'Akun tidak ditemukan.' }, 404);
+    if (!user.pin_hash) return c.json({ status: 'error', message: 'PIN belum disetel untuk akun ini. Silakan atur PIN terlebih dahulu.' }, 400);
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    const isValid = await verifyPasswordPBKDF2(pin, user.pin_salt, user.pin_hash, cryptoCfg.pepper, cryptoCfg.iter);
+    if (!isValid) return c.json({ status: 'error', message: 'PIN salah.' }, 401);
+
+    const ipAddress = getClientIp(c);
+    const userAgent = c.req.header('user-agent') || 'unknown';
+    const session = await createSession(c, user, ipAddress, userAgent);
+
+    return c.json({ status: 'ok', redirect_url: session.redirectUrl, role: user.user_type });
+  } catch (error: any) {
+    return c.json({ status: 'error', message: error.message }, 500);
+  }
+});
+
+auth.post('/setup-pin', async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const id = (body.identifier || "").trim().toLowerCase();
+    const otp = body.otp;
+    const newPin = body.new_pin;
+
+    if (!id || !otp || !newPin) return c.json({ status: 'error', message: 'Email, OTP, dan PIN Baru wajib diisi.' }, 400);
+    if (newPin.length !== 6) return c.json({ status: 'error', message: 'PIN harus 6 digit.' }, 400);
+
+    const user = await c.env.DB_SSO.prepare("SELECT * FROM users WHERE email = ? AND is_active = 1").bind(id).first<any>();
+    if (!user) return c.json({ status: 'error', message: 'Akun tidak ditemukan.' }, 404);
+
+    const otpRow = await c.env.DB_SSO.prepare("SELECT * FROM otp_codes WHERE user_id = ? AND code = ? AND expires_at > datetime('now')").bind(user.id, otp).first<any>();
+    if (!otpRow) return c.json({ status: 'error', message: 'Kode OTP salah atau sudah kadaluarsa.' }, 400);
+
+    await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE otp_id = ?").bind(otpRow.otp_id).run();
+
+    const cryptoCfg = getCryptoConfig(c.env);
+    const { salt, hash } = await hashPasswordPBKDF2(newPin, cryptoCfg.pepper, cryptoCfg.iter);
+
+    await c.env.DB_SSO.prepare("UPDATE users SET pin_hash = ?, pin_salt = ?, pin_required = 1 WHERE id = ?").bind(hash, salt, user.id).run();
+
+    const ipAddress = getClientIp(c);
+    const userAgent = c.req.header('user-agent') || 'unknown';
+    const session = await createSession(c, user, ipAddress, userAgent);
+
+    return c.json({ status: 'ok', redirect_url: session.redirectUrl, role: user.user_type });
+  } catch (error: any) {
+    return c.json({ status: 'error', message: error.message }, 500);
+  }
+});
+
 /**
  * ========================================
  * 4. UPDATE DATA PROFIL SSO (NAMA & KONTAK)

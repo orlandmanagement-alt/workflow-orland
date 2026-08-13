@@ -486,12 +486,12 @@ auth.post('/request-reset', async (c) => {
     const resetToken = crypto.randomUUID().replace(/-/g, "");
     
     // Hapus token reset sebelumnya jika ada
-    await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id = ? AND method = 'reset'").bind(user.id).run();
+    await c.env.DB_SSO.prepare("DELETE FROM otp_codes WHERE user_id = ? AND method = 'email'").bind(user.id).run();
     
     // Simpan token baru (berlaku 30 menit)
     await c.env.DB_SSO.prepare(
       `INSERT INTO otp_codes (otp_id, user_id, email, code, method, expires_at) 
-       VALUES (?, ?, ?, ?, 'reset', datetime('now', '+30 minutes'))`
+       VALUES (?, ?, ?, ?, 'email', datetime('now', '+30 minutes'))`
     ).bind(crypto.randomUUID(), user.id, user.email, resetToken).run();
 
     try {
@@ -514,7 +514,7 @@ auth.post('/reset-password', async (c) => {
     if (new_password.length < 8) return c.json({ status: 'error', message: 'Sandi minimal 8 karakter.' }, 400);
 
     const otpRow = await c.env.DB_SSO.prepare(
-      "SELECT * FROM otp_codes WHERE code = ? AND method = 'reset' AND expires_at > datetime('now')"
+      "SELECT * FROM otp_codes WHERE code = ? AND method = 'email' AND expires_at > datetime('now')"
     ).bind(token).first<any>();
     if (!otpRow) return c.json({ status: 'error', message: 'Token reset tidak valid atau sudah kadaluarsa.' }, 400);
 

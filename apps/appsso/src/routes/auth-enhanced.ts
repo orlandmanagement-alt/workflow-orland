@@ -453,19 +453,19 @@ auth.post('/login-otp', async (c) => {
  */
 auth.get('/me', async (c) => {
   const sid = getCookie(c, 'sid')
-  if (!sid) return c.json({ status: 'error', message: 'Sesi tidak ditemukan.' }, 401)
+  if (!sid) return c.json({ status: 'error', message: 'Sesi tidak ditemukan.' }, 200)
 
   const session = await c.env.DB_SSO.prepare(
     "SELECT * FROM sessions WHERE session_id = ? AND expires_at > datetime('now') AND is_active = 1"
   ).bind(sid).first<any>()
   
-  if (!session) return c.json({ status: 'error', message: 'Sesi telah kadaluarsa.' }, 401)
+  if (!session) return c.json({ status: 'error', message: 'Sesi telah kadaluarsa.' }, 200)
 
   const user = await c.env.DB_SSO.prepare(
     "SELECT id, email, phone, first_name, last_name, user_type, is_active FROM users WHERE id = ?"
   ).bind(session.user_id).first<any>() 
   
-  if (!user || user.is_active === 0) return c.json({ status: 'error', message: 'Akun dinonaktifkan.' }, 401)
+  if (!user || user.is_active === 0) return c.json({ status: 'error', message: 'Akun dinonaktifkan.' }, 200)
 
   const portalUrl = await getPortalUrl(c.env, user, sid)
   return c.json({ status: 'ok', user, redirect_url: portalUrl })
